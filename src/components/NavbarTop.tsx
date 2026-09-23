@@ -26,11 +26,17 @@ export default function NavbarTop({
     <header className="navbar-top no-print">
       <div className="d-flex align-items-center gap-2">
         <button
+          type="button"
           className="btn-toggle-sidebar"
-          onClick={onToggleSidebar}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleSidebar();
+          }}
           title="Mostrar/Ocultar Menú"
+          style={{ touchAction: 'manipulation' }}
         >
-          <i className="bi bi-list fs-5"></i>
+          <i className="bi bi-list fs-4"></i>
         </button>
         <span
           className="badge bg-light text-dark border px-2 py-1 small text-truncate"

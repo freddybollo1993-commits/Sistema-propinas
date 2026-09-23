@@ -85,11 +85,23 @@ export default function HomePage() {
     setCurrentModule('Dashboard');
   };
 
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.body.classList.toggle('sidebar-open-mobile', mobileSidebarOpen);
+    }
+  }, [mobileSidebarOpen]);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.body.classList.toggle('sidebar-collapsed', sidebarCollapsed);
+    }
+  }, [sidebarCollapsed]);
+
   const handleToggleSidebar = () => {
     if (typeof window !== 'undefined' && window.innerWidth < 992) {
-      setMobileSidebarOpen(!mobileSidebarOpen);
+      setMobileSidebarOpen((prev) => !prev);
     } else {
-      setSidebarCollapsed(!sidebarCollapsed);
+      setSidebarCollapsed((prev) => !prev);
     }
   };
 
@@ -138,16 +150,20 @@ export default function HomePage() {
     >
       {/* Backdrop Móvil */}
       <div
-        className="sidebar-backdrop"
+        className={`sidebar-backdrop ${mobileSidebarOpen ? 'show' : ''}`}
         onClick={() => setMobileSidebarOpen(false)}
       ></div>
 
       {/* Sidebar Plegable */}
       <Sidebar
         currentModule={currentModule}
-        onSelectModule={(mod) => setCurrentModule(mod)}
+        onSelectModule={(mod) => {
+          setCurrentModule(mod);
+          setMobileSidebarOpen(false);
+        }}
         currentUser={currentUser}
         onCloseMobile={() => setMobileSidebarOpen(false)}
+        isOpenMobile={mobileSidebarOpen}
       />
 
       {/* Contenedor Principal */}

@@ -19,6 +19,7 @@ interface SidebarProps {
   onSelectModule: (module: ModuleName) => void;
   currentUser: SessionUser | null;
   onCloseMobile: () => void;
+  isOpenMobile?: boolean;
 }
 
 export default function Sidebar({
@@ -26,6 +27,7 @@ export default function Sidebar({
   onSelectModule,
   currentUser,
   onCloseMobile,
+  isOpenMobile = false,
 }: SidebarProps) {
   const esAdminOMaestro =
     currentUser?.rol === 'Administrador' ||
@@ -45,7 +47,7 @@ export default function Sidebar({
   ];
 
   return (
-    <aside className="sidebar no-print" id="appSidebar">
+    <aside className={`sidebar ${isOpenMobile ? 'mobile-open' : ''} no-print`} id="appSidebar">
       <div className="sidebar-brand">
         <div className="d-flex align-items-center gap-2">
           <div
