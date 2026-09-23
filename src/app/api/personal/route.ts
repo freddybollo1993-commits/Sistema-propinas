@@ -1,0 +1,83 @@
+import { NextResponse } from 'next/server';
+import prisma from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
+import { logAuditoria } from '@/lib/auditoria';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
+  try {
+    const personal = await prisma.colaborador.findMany({
+      orderBy: { nombre: 'asc' },
+    });
+    return NextResponse.json(personal);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const user = await getCurrentUser();
+    const usuarioActual = user?.nombre || 'Sistema';
+
+    const { nombre, area, estado } = await request.json();
+
+    if (!nombre) {
+      return NextResponse.json(
+        { success: false, message: 'El nombre del colaborador es obligatorio.' },
+        { status: 400 }
+      );
+    }
+
+    const cleanNombre = String(nombre).trim();
+    const cleanArea = String(area || 'Salón').trim();
+    const cleanEstado = String(estado || 'Activo').trim();
+
+    const existente = await prisma.colaborador.findUnique({
+      where: { nombre: cleanNombre },
+    });
+
+    if (existente) {
+      await prisma.colaborador.update({
+        where: { id: existente.id },
+        data: {
+          area: cleanArea,
+          estado: cleanEstado,
+        },
+      });
+
+      await logAuditoria(
+        'Modificación de Personal',
+        `Actualizado colaborador: ${cleanNombre} (${cleanArea} - ${cleanEstado})`,
+        usuarioActual
+      );
+
+      return NextResponse.json({
+        success: true,
+        message: 'Colaborador actualizado exitosamente.',
+      });
+    } else {
+      await prisma.colaborador.create({
+        data: {
+          nombre: cleanNombre,
+          area: cleanArea,
+          estado: cleanEstado,
+        },
+      });
+
+      await logAuditoria(
+        'Alta de Personal',
+        `Nuevo colaborador registrado: ${cleanNombre} en ${cleanArea}`,
+        usuarioActual
+      );
+
+      return NextResponse.json({
+        success: true,
+        message: 'Colaborador registrado exitosamente.',
+      });
+    }
+  } catch (error: any) {
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}

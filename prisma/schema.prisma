@@ -1,0 +1,138 @@
+// Esquema de Base de Datos para el Sistema de Gestión y Registro de Propinas
+// Compatible con Supabase (PostgreSQL) y Vercel
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Usuario {
+  id           String   @id // USR-001, USR-MASTER, etc.
+  nombre       String
+  email        String   @unique
+  passwordHash String
+  rol          String   // Administrador, Supervisor, Moderador
+  estado       String   @default("Activo") // Activo, Inactivo
+  esMaestro    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("usuarios")
+}
+
+model ConfiguracionSistema {
+  id             Int      @id @default(autoincrement())
+  clave          String   @unique // MODO_SANCIONES, etc.
+  valor          String   // CLASICO o FONDO_MANCOMUNADO
+  actualizadoPor String?
+  fecha          DateTime @updatedAt
+
+  @@map("configuracion_sistema")
+}
+
+model Colaborador {
+  id        Int      @id @default(autoincrement())
+  nombre    String   @unique
+  area      String   // Salón, Cocina, Apoyo Salón, Apoyo Cocina
+  estado    String   @default("Activo") // Activo, Inactivo
+  createdAt DateTime @default(now())
+
+  @@map("personal")
+}
+
+model CicloLiquidacion {
+  id          Int      @id @default(autoincrement())
+  fechaInicio String   // Formato YYYY-MM-DD
+  fechaFin    String   // Formato YYYY-MM-DD
+  estado      String   @default("Abierto") // Abierto, Cerrado
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("ciclo_liquidacion")
+}
+
+model RegistroPropina {
+  id            Int                    @id @default(autoincrement())
+  fecha         String                 // Formato YYYY-MM-DD
+  montoTotal    Float
+  fondoSalon    Float                  // 60%
+  fondoCocina   Float                  // 40%
+  estado        String                 @default("Activo") // Activo, Anulado, Pendiente de Anulación
+  justificacion String?
+  validador     String?
+  createdAt     DateTime               @default(now())
+  detalles      DetalleParticipacion[]
+
+  @@map("registro_propinas")
+}
+
+model DetalleParticipacion {
+  id             Int             @id @default(autoincrement())
+  registroId     Int
+  colaborador    String
+  area           String
+  horas          Float
+  totalHorasArea Float
+  propina        Float
+  registro       RegistroPropina @relation(fields: [registroId], references: [id], onDelete: Cascade)
+
+  @@map("detalle_participacion")
+}
+
+model ReglaSancion {
+  id                  Int     @id @default(autoincrement())
+  infraccion          String  @unique
+  estado              String  @default("Activo") // Activo, Inactivo
+  monto               Float   @default(0)
+  frecuenciaMax       Int     @default(1)
+  consecuencia        String  @default("Pérdida del 100% de propinas acumuladas")
+  toleranciaMin       Int     @default(0)
+  toleranciaActiva    Boolean @default(false)
+  multiplicador       Float   @default(0)
+  multiplicadorActivo Boolean @default(false)
+
+  @@map("configuracion_sanciones")
+}
+
+model SancionAdelanto {
+  id          Int      @id @default(autoincrement())
+  fecha       String   // Formato YYYY-MM-DD
+  colaborador String
+  concepto    String   // "Sanción: ...", "Sanción Fondo: ...", "Adelanto"
+  monto       Float
+  detalle     String?
+  estado      String   @default("Aprobado") // Aprobado, Pendiente, Rechazado
+  usuario     String
+  createdAt   DateTime @default(now())
+
+  @@map("sanciones_adelantos")
+}
+
+model RetiroFondo {
+  id            Int      @id @default(autoincrement())
+  fecha         String   // Formato YYYY-MM-DD
+  concepto      String   // Comida, Lonche, Daños internos, etc.
+  monto         Float
+  justificacion String
+  solicitadoPor String
+  rol           String
+  estado        String   @default("Aprobado")
+  createdAt     DateTime @default(now())
+
+  @@map("retiros_fondo")
+}
+
+model Auditoria {
+  id        Int      @id @default(autoincrement())
+  fechaHora DateTime @default(now())
+  usuario   String
+  accion    String
+  detalle   String
+
+  @@map("auditoria")
+}

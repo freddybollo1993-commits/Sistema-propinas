@@ -1,0 +1,460 @@
+/*
+========================================================================
+ESTILOS DE IMPRESIÓN OFICIALES (1 HOJA A4 HORIZONTAL / 1 HOJA A4 INDIVIDUAL)
+========================================================================
+*/
+@media print {
+  html,
+  body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #0f172a !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  /* 1. IMPRESIÓN PLANILLA CONSOLIDADA A4 HORIZONTAL */
+  body.imprimiendo-planilla #printPlanillaA4,
+  body.imprimiendo-planilla #printPlanillaA4 * {
+    visibility: visible;
+  }
+
+  body.imprimiendo-planilla #printPlanillaA4 {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    display: block !important;
+  }
+
+  /* 2. IMPRESIÓN BOLETA INDIVIDUAL EN 1 SOLA HOJA A4 */
+  body.imprimiendo-boleta #modalBoletaPrintArea,
+  body.imprimiendo-boleta #modalBoletaPrintArea * {
+    visibility: visible;
+  }
+
+  body.imprimiendo-boleta #modalBoletaPrintArea {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    display: block !important;
+  }
+
+  .no-print,
+  .btn,
+  .modal-header,
+  .modal-footer,
+  .btn-close,
+  .navbar,
+  .sidebar,
+  .modal-backdrop {
+    display: none !important;
+  }
+
+  /* Planilla A4 Horizontal */
+  .hoja-a4-horizontal {
+    width: 100%;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    overflow: hidden;
+  }
+
+  .table-resumen-print {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 7.5pt;
+    margin-bottom: 4px;
+    background: #f8fafc;
+  }
+
+  .table-resumen-print td {
+    padding: 2px 5px;
+    border: 1px solid #cbd5e1;
+  }
+
+  .table-resumen-print .lbl {
+    font-weight: 600;
+    color: #475569;
+    text-align: right;
+    background: #f1f5f9;
+  }
+
+  .table-resumen-print .val {
+    font-weight: 700;
+    text-align: left;
+  }
+
+  .table-resumen-print .highlight {
+    background: #e2e8f0;
+    font-weight: 800;
+  }
+
+  .tabla-planilla-print {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8pt;
+    line-height: 1.15;
+    margin-bottom: 4px;
+  }
+
+  .tabla-planilla-print th {
+    background: #f1f5f9 !important;
+    color: #0f172a;
+    font-weight: 700;
+    border: 1px solid #94a3b8;
+    padding: 3px 4px;
+    text-align: center;
+    font-size: 7.5pt;
+    text-transform: uppercase;
+  }
+
+  .tabla-planilla-print td {
+    border: 1px solid #cbd5e1;
+    padding: 2.5px 4px;
+    text-align: center;
+  }
+
+  .tabla-planilla-print td.col-nombre {
+    text-align: left;
+    font-weight: 600;
+  }
+
+  .tabla-planilla-print td.col-neto {
+    font-weight: 800;
+    background: #f8fafc !important;
+    color: #0f172a;
+    font-size: 8.5pt;
+  }
+
+  .tabla-planilla-print td.col-firma {
+    padding: 1px 5px;
+    vertical-align: bottom;
+  }
+
+  .linea-firma-trabajador {
+    border-bottom: 1px dotted #475569;
+    height: 14px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-end;
+  }
+
+  .tabla-planilla-print tfoot th,
+  .tabla-planilla-print tfoot td {
+    background: #e2e8f0 !important;
+    font-weight: 800;
+    border: 1px solid #64748b;
+    padding: 3px 4px;
+    font-size: 8pt;
+  }
+
+  .pie-firmas-print {
+    width: 100%;
+    margin-top: 6px;
+    padding-top: 2px;
+  }
+
+  .row-firmas-print {
+    display: flex;
+    justify-content: space-between;
+    gap: 40px;
+  }
+
+  .box-firma-print {
+    flex: 1;
+    text-align: center;
+    font-size: 7.5pt;
+    color: #334155;
+  }
+
+  .box-firma-print .linea-guia {
+    border-bottom: 1px solid #475569;
+    height: 24px;
+    margin-bottom: 2px;
+  }
+
+  /* Boleta Individual A4 (1 Sola Hoja) */
+  .boleta-a4-individual {
+    width: 100%;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    overflow: hidden;
+    color: #0f172a;
+  }
+
+  .table-info-colab {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8pt;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+  }
+
+  .table-info-colab td {
+    padding: 2.5px 6px;
+    border: 1px solid #cbd5e1;
+  }
+
+  .table-info-colab .lbl {
+    font-weight: 700;
+    color: #475569;
+    background: #f1f5f9;
+    width: 11%;
+    text-align: right;
+  }
+
+  .table-info-colab .val {
+    font-weight: 600;
+    color: #0f172a;
+  }
+
+  .table-info-colab .val-name {
+    font-weight: 800;
+    color: #1e3a8a;
+    font-size: 8.5pt;
+  }
+
+  .boleta-grid-2col {
+    display: flex !important;
+    gap: 12px !important;
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .boleta-col-izq {
+    flex: 1.05;
+    width: 51%;
+  }
+
+  .boleta-col-der {
+    flex: 0.95;
+    width: 49%;
+  }
+
+  .boleta-box-title {
+    font-size: 7pt;
+    font-weight: 700;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-bottom: none;
+    padding: 2px 5px;
+    text-transform: uppercase;
+    color: #1e293b;
+  }
+
+  .tabla-boleta-dias {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 7.5pt;
+    border: 1px solid #cbd5e1;
+  }
+
+  .tabla-boleta-dias th {
+    background: #f8fafc !important;
+    color: #334155;
+    font-weight: 700;
+    border: 1px solid #cbd5e1;
+    padding: 2px 4px;
+    text-align: center;
+  }
+
+  .tabla-boleta-dias td {
+    border: 1px solid #cbd5e1;
+    padding: 1.6px 4px;
+  }
+
+  .tabla-boleta-dias tfoot th {
+    background: #e2e8f0 !important;
+    font-weight: 800;
+    border: 1px solid #94a3b8;
+    padding: 2px 4px;
+  }
+
+  .tabla-boleta-sub {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 7pt;
+    border: 1px solid #cbd5e1;
+  }
+
+  .tabla-boleta-sub th {
+    background: #f8fafc !important;
+    color: #334155;
+    font-weight: 700;
+    border: 1px solid #cbd5e1;
+    padding: 1.5px 4px;
+    text-align: center;
+  }
+
+  .tabla-boleta-sub td {
+    border: 1px solid #cbd5e1;
+    padding: 1.5px 4px;
+  }
+
+  .tabla-boleta-totales {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 7.5pt;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+  }
+
+  .tabla-boleta-totales td {
+    padding: 2px 5px;
+    border: 1px solid #cbd5e1;
+  }
+
+  .tabla-boleta-totales .row-neto-final {
+    background: #e2e8f0 !important;
+  }
+
+  .tabla-boleta-totales .lbl-neto {
+    font-weight: 800;
+    font-size: 8pt;
+    color: #0f172a;
+  }
+
+  .tabla-boleta-totales .val-neto {
+    font-weight: 800;
+    font-size: 9.5pt;
+    color: #1e3a8a;
+  }
+
+  .boleta-firmas-container {
+    width: 100%;
+    margin-top: 8px;
+    padding-top: 4px;
+  }
+
+  .row-firmas-boleta {
+    display: flex !important;
+    justify-content: space-around;
+    gap: 40px;
+  }
+
+  .box-firma-boleta {
+    flex: 1;
+    text-align: center;
+  }
+
+  .linea-firma-boleta {
+    border-bottom: 1px solid #334155;
+    height: 30px;
+    margin-bottom: 3px;
+  }
+}
+
+/* Estilos de visualización en pantalla (Modal en Navegador) */
+.boleta-grid-2col {
+  display: flex;
+  gap: 12px;
+}
+
+.boleta-col-izq {
+  flex: 1.05;
+}
+
+.boleta-col-der {
+  flex: 0.95;
+}
+
+.boleta-box-title {
+  font-size: 8pt;
+  font-weight: 700;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  padding: 3px 6px;
+  text-transform: uppercase;
+  color: #1e293b;
+}
+
+.tabla-boleta-dias,
+.tabla-boleta-sub,
+.tabla-boleta-totales,
+.table-info-colab {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8pt;
+  border: 1px solid #cbd5e1;
+}
+
+.tabla-boleta-dias th,
+.tabla-boleta-sub th {
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 700;
+  border: 1px solid #cbd5e1;
+  padding: 2.5px 4px;
+  text-align: center;
+}
+
+.tabla-boleta-dias td,
+.tabla-boleta-sub td,
+.tabla-boleta-totales td,
+.table-info-colab td {
+  border: 1px solid #cbd5e1;
+  padding: 2.5px 5px;
+}
+
+.tabla-boleta-dias tfoot th {
+  background: #e2e8f0;
+  font-weight: 800;
+  border: 1px solid #94a3b8;
+  padding: 3px 4px;
+}
+
+.table-info-colab .lbl {
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  text-align: right;
+}
+
+.table-info-colab .val-name {
+  font-weight: 800;
+  color: #1e3a8a;
+}
+
+.tabla-boleta-totales .row-neto-final {
+  background: #e2e8f0 !important;
+}
+
+.tabla-boleta-totales .lbl-neto {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.tabla-boleta-totales .val-neto {
+  font-weight: 800;
+  font-size: 11pt;
+  color: #1e3a8a;
+}
+
+.row-firmas-boleta {
+  display: flex;
+  justify-content: space-around;
+  gap: 40px;
+}
+
+.box-firma-boleta {
+  flex: 1;
+  text-align: center;
+}
+
+.linea-firma-boleta {
+  border-bottom: 1px solid #334155;
+  height: 35px;
+  margin-bottom: 4px;
+}
