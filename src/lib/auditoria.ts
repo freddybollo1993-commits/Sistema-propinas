@@ -6,7 +6,8 @@ import prisma from './db';
 export async function logAuditoria(
   accion: string,
   detalle: string,
-  usuario: string = 'Sistema'
+  usuario: string = 'Sistema',
+  tiendaId?: string | null
 ): Promise<void> {
   try {
     await prisma.auditoria.create({
@@ -14,6 +15,7 @@ export async function logAuditoria(
         usuario: usuario || 'Sistema',
         accion,
         detalle,
+        tiendaId,
       },
     });
   } catch (err) {

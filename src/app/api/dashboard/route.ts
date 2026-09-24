@@ -1,21 +1,24 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getCicloActivo } from '@/lib/formulas';
+import { resolveTiendaId } from '@/lib/tiendas';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
+    const { tiendaId } = await resolveTiendaId(request);
     const { searchParams } = new URL(request.url);
     const inicio = searchParams.get('inicio');
     const fin = searchParams.get('fin');
 
-    const ciclo = await getCicloActivo();
+    const ciclo = await getCicloActivo(tiendaId);
     const fInicio = inicio || ciclo.fechaInicio;
     const fFin = fin || ciclo.fechaFin;
 
     const registros = await prisma.registroPropina.findMany({
       where: {
+        tiendaId,
         estado: 'Activo', // Descartar turnos anulados
         ...(fInicio && fFin ? { fecha: { gte: fInicio, lte: fFin } } : {}),
       },

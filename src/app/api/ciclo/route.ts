@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
 import { logAuditoria } from '@/lib/auditoria';
 import { getCicloActivo } from '@/lib/formulas';
+import { resolveTiendaId } from '@/lib/tiendas';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const ciclo = await getCicloActivo();
+    const { tiendaId } = await resolveTiendaId(request);
+    const ciclo = await getCicloActivo(tiendaId);
     return NextResponse.json({
       inicio: ciclo.fechaInicio,
       fin: ciclo.fechaFin,
@@ -22,7 +23,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
+    const { tiendaId, user } = await resolveTiendaId(request);
     const usuarioActual = user?.nombre || 'Sistema';
 
     const { inicio, fin, estado } = await request.json();
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
     }
 
     const cicloActual = await prisma.cicloLiquidacion.findFirst({
+      where: { tiendaId },
       orderBy: { id: 'desc' },
     });
 
@@ -60,13 +62,14 @@ export async function POST(request: Request) {
           fechaInicio: inicio,
           fechaFin: fin,
           estado: estado || 'Abierto',
+          tiendaId,
         },
       });
     }
 
     await logAuditoria(
       'Configuración de Ciclo',
-      `Ciclo activo actualizado: ${inicio} al ${fin} (${estado || 'Abierto'})`,
+      `Ciclo activo actualizado: ${inicio} al ${fin} (${estado || 'Abierto'}) en tienda ${tiendaId}`,
       usuarioActual
     );
 

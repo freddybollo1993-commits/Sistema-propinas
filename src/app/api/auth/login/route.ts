@@ -24,6 +24,9 @@ export async function POST(request: Request) {
           { id: { equals: cleanUser, mode: 'insensitive' } },
         ],
       },
+      include: {
+        tienda: true,
+      },
     });
 
     if (!usuario) {
@@ -48,6 +51,23 @@ export async function POST(request: Request) {
       );
     }
 
+    // Si no tiene tienda asignada y no es maestro, asignar a la sede principal por defecto
+    let tiendaId = usuario.tiendaId;
+    let tiendaNombre = usuario.tienda?.nombre || null;
+    let tiendaSlug = usuario.tienda?.slug || null;
+
+    if (!tiendaId && !usuario.esMaestro) {
+      const tiendaPrincipal = await prisma.tienda.findFirst({
+        where: { estado: 'Activo' },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (tiendaPrincipal) {
+        tiendaId = tiendaPrincipal.id;
+        tiendaNombre = tiendaPrincipal.nombre;
+        tiendaSlug = tiendaPrincipal.slug;
+      }
+    }
+
     const sessionUser = {
       id: usuario.id,
       nombre: usuario.nombre,
@@ -55,11 +75,14 @@ export async function POST(request: Request) {
       rol: usuario.rol,
       estado: usuario.estado,
       esMaestro: usuario.esMaestro || usuario.id === 'USR-MASTER',
+      tiendaId: tiendaId || null,
+      tiendaNombre: tiendaNombre || (usuario.esMaestro ? 'Todas las Tiendas (Corporativo)' : null),
+      tiendaSlug: tiendaSlug || null,
     };
 
     const token = await createSessionToken(sessionUser);
 
-    await logAuditoria('Inicio de Sesión', 'Ingreso exitoso al sistema', usuario.nombre);
+    await logAuditoria('Inicio de Sesión', `Ingreso exitoso al sistema [Tienda: ${tiendaNombre || 'Corporativo'}]`, usuario.nombre);
 
     const response = NextResponse.json({
       success: true,
@@ -67,7 +90,7 @@ export async function POST(request: Request) {
       token,
     });
 
-    // Guardar cookie HTTP-only
+    // Guardar cookies de sesión y tienda activa
     response.cookies.set('auth_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -75,6 +98,16 @@ export async function POST(request: Request) {
       path: '/',
       maxAge: 60 * 60 * 24 * 7, // 7 días
     });
+
+    if (tiendaId) {
+      response.cookies.set('active_tienda_id', tiendaId, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7,
+      });
+    }
 
     return response;
   } catch (error: any) {

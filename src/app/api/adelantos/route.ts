@@ -1,15 +1,19 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
 import { logAuditoria } from '@/lib/auditoria';
 import { getLiquidacionResumen } from '@/lib/formulas';
+import { resolveTiendaId } from '@/lib/tiendas';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { tiendaId } = await resolveTiendaId(request);
     const adelantos = await prisma.sancionAdelanto.findMany({
-      where: { concepto: { contains: 'Adelanto' } },
+      where: {
+        concepto: { contains: 'Adelanto' },
+        tiendaId,
+      },
       orderBy: { id: 'desc' },
     });
 
@@ -33,7 +37,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
+    const { tiendaId, user } = await resolveTiendaId(request);
     const usuarioActual = user?.nombre || 'Sistema';
     const rol = user?.rol || 'Moderador';
 
@@ -54,8 +58,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validación estricta de saldo acumulado disponible en el ciclo
-    const resumen = await getLiquidacionResumen();
+    // Validación estricta de saldo acumulado disponible en el ciclo de esta tienda
+    const resumen = await getLiquidacionResumen({ tiendaId });
     const infoColaborador = resumen.lista.find(
       (c: any) => c.colaborador.toLowerCase() === payload.colaborador.trim().toLowerCase()
     );
@@ -97,12 +101,13 @@ export async function POST(request: Request) {
         detalle: payload.detalle || 'Adelanto de propina',
         estado,
         usuario: usuarioActual,
+        tiendaId,
       },
     });
 
     await logAuditoria(
       'Solicitud de Adelanto',
-      `Adelanto para ${payload.colaborador} por S/ ${monto.toFixed(2)} [${estado}]`,
+      `Adelanto para ${payload.colaborador} por S/ ${monto.toFixed(2)} [${estado}] en tienda ${tiendaId}`,
       usuarioActual
     );
 

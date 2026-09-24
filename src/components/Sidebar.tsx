@@ -20,6 +20,7 @@ interface SidebarProps {
   currentUser: SessionUser | null;
   onCloseMobile: () => void;
   isOpenMobile?: boolean;
+  activeTiendaNombre?: string;
 }
 
 export default function Sidebar({
@@ -28,6 +29,7 @@ export default function Sidebar({
   currentUser,
   onCloseMobile,
   isOpenMobile = false,
+  activeTiendaNombre,
 }: SidebarProps) {
   const esAdminOMaestro =
     currentUser?.rol === 'Administrador' ||
@@ -64,6 +66,15 @@ export default function Sidebar({
           onClick={onCloseMobile}
         ></button>
       </div>
+
+      {activeTiendaNombre && (
+        <div className="px-3 py-2 bg-dark bg-opacity-25 text-white-50 small border-bottom border-secondary d-flex align-items-center gap-2">
+          <i className="bi bi-shop text-warning"></i>
+          <span className="text-truncate fw-semibold text-white small" title={activeTiendaNombre}>
+            {activeTiendaNombre}
+          </span>
+        </div>
+      )}
 
       <nav className="nav flex-column mt-3">
         {menuItems.map((item) => {

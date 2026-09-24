@@ -67,21 +67,25 @@ export function calcularProrrateoEnMemoria(
 /**
  * Obtiene el ciclo de fechas activo actual
  */
-export async function getCicloActivo() {
+export async function getCicloActivo(tiendaId?: string) {
   const hoy = new Date().toISOString().split('T')[0];
+  const whereBase: any = { estado: 'Abierto' };
+  if (tiendaId) whereBase.tiendaId = tiendaId;
+
   let ciclo = await prisma.cicloLiquidacion.findFirst({
-    where: { estado: 'Abierto' },
+    where: whereBase,
     orderBy: { id: 'desc' },
   });
 
   if (!ciclo) {
     ciclo = await prisma.cicloLiquidacion.findFirst({
+      where: tiendaId ? { tiendaId } : {},
       orderBy: { id: 'desc' },
     });
   }
 
   if (!ciclo) {
-    return { id: 1, fechaInicio: hoy, fechaFin: hoy, estado: 'Abierto' };
+    return { id: 1, fechaInicio: hoy, fechaFin: hoy, estado: 'Abierto', tiendaId: tiendaId || null };
   }
 
   return ciclo;
@@ -90,9 +94,12 @@ export async function getCicloActivo() {
 /**
  * Obtiene la configuración del modo de sanciones: CLASICO o FONDO_MANCOMUNADO
  */
-export async function getModoSanciones(): Promise<'CLASICO' | 'FONDO_MANCOMUNADO'> {
-  const config = await prisma.configuracionSistema.findUnique({
-    where: { clave: 'MODO_SANCIONES' },
+export async function getModoSanciones(tiendaId?: string): Promise<'CLASICO' | 'FONDO_MANCOMUNADO'> {
+  const whereClause: any = { clave: 'MODO_SANCIONES' };
+  if (tiendaId) whereClause.tiendaId = tiendaId;
+
+  const config = await prisma.configuracionSistema.findFirst({
+    where: whereClause,
   });
   if (config && config.valor === 'FONDO_MANCOMUNADO') {
     return 'FONDO_MANCOMUNADO';
@@ -103,14 +110,15 @@ export async function getModoSanciones(): Promise<'CLASICO' | 'FONDO_MANCOMUNADO
 /**
  * Calcula los promedios diarios de propina por colaborador dentro del ciclo activo
  */
-export async function getPromediosColaboradores(): Promise<Record<string, number>> {
-  const ciclo = await getCicloActivo();
+export async function getPromediosColaboradores(tiendaId?: string): Promise<Record<string, number>> {
+  const ciclo = await getCicloActivo(tiendaId);
   const fInicio = ciclo.fechaInicio;
   const fFin = ciclo.fechaFin;
 
   const registrosValidos = await prisma.registroPropina.findMany({
     where: {
       estado: 'Activo',
+      ...(tiendaId ? { tiendaId } : {}),
       fecha: {
         gte: fInicio,
         lte: fFin,
@@ -146,12 +154,13 @@ export async function getPromediosColaboradores(): Promise<Record<string, number
 /**
  * Calcula el estado, ingresos, retiros y trazabilidad multi-ciclo del Fondo Mancomunado
  */
-export async function getEstadoFondoMancomunado(filtroRango?: { inicio?: string; fin?: string }) {
-  const ciclo = await getCicloActivo();
+export async function getEstadoFondoMancomunado(filtroRango?: { inicio?: string; fin?: string; tiendaId?: string }, tiendaIdParam?: string) {
+  const tiendaId = filtroRango?.tiendaId || tiendaIdParam;
+  const ciclo = await getCicloActivo(tiendaId);
   const fInicio = filtroRango?.inicio || ciclo.fechaInicio;
   const fFin = filtroRango?.fin || ciclo.fechaFin;
 
-  const modoActivo = await getModoSanciones();
+  const modoActivo = await getModoSanciones(tiendaId);
   const esModoFondoActivo = modoActivo === 'FONDO_MANCOMUNADO';
 
   const todasSanciones = await prisma.sancionAdelanto.findMany({
@@ -159,6 +168,7 @@ export async function getEstadoFondoMancomunado(filtroRango?: { inicio?: string;
       estado: 'Aprobado',
       monto: { gt: 0 },
       concepto: { contains: 'Sanción' },
+      ...(tiendaId ? { tiendaId } : {}),
     },
     orderBy: { fecha: 'desc' },
   });
@@ -167,6 +177,7 @@ export async function getEstadoFondoMancomunado(filtroRango?: { inicio?: string;
     where: {
       estado: { notIn: ['Anulado', 'Rechazado'] },
       monto: { gt: 0 },
+      ...(tiendaId ? { tiendaId } : {}),
     },
     orderBy: { fecha: 'desc' },
   });
@@ -274,13 +285,17 @@ export async function getEstadoFondoMancomunado(filtroRango?: { inicio?: string;
 /**
  * Motor integral de liquidación de propinas
  */
-export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin?: string }) {
-  const ciclo = await getCicloActivo();
+export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin?: string; tiendaId?: string }, tiendaIdParam?: string) {
+  const tiendaId = filtroRango?.tiendaId || tiendaIdParam;
+  const ciclo = await getCicloActivo(tiendaId);
   const fInicio = filtroRango?.inicio || ciclo.fechaInicio;
   const fFin = filtroRango?.fin || ciclo.fechaFin;
 
-  // 1. Obtener personal activo
+  // 1. Obtener personal activo de la tienda
   const personal = await prisma.colaborador.findMany({
+    where: {
+      ...(tiendaId ? { tiendaId } : {}),
+    },
     orderBy: { nombre: 'asc' },
   });
 
@@ -307,11 +322,12 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
     }
   });
 
-  // 2. Registros de propina válidos
+  // 2. Registros de propina válidos de la tienda
   const registros = await prisma.registroPropina.findMany({
     where: {
       estado: 'Activo',
       ...(fInicio && fFin ? { fecha: { gte: fInicio, lte: fFin } } : {}),
+      ...(tiendaId ? { tiendaId } : {}),
     },
     include: {
       detalles: true,
@@ -354,8 +370,12 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
     });
   });
 
-  // 4. Catálogo de sanciones
-  const catalogo = await prisma.reglaSancion.findMany();
+  // 4. Catálogo de sanciones de la tienda
+  const catalogo = await prisma.reglaSancion.findMany({
+    where: {
+      ...(tiendaId ? { tiendaId } : {}),
+    },
+  });
   const reglasActivas: Record<string, boolean> = {};
   const mapLimites: Record<string, number> = {};
 
@@ -373,11 +393,12 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
     }
   });
 
-  // 5. Sanciones y adelantos aprobados
+  // 5. Sanciones y adelantos aprobados de la tienda
   const sancionesAdelantos = await prisma.sancionAdelanto.findMany({
     where: {
       estado: 'Aprobado',
       ...(fInicio && fFin ? { fecha: { gte: fInicio, lte: fFin } } : {}),
+      ...(tiendaId ? { tiendaId } : {}),
     },
     orderBy: { fecha: 'asc' },
   });
@@ -500,7 +521,7 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
   });
 
   // 7. Modalidad activa: Clásico vs Fondo Mancomunado
-  const modoActivo = await getModoSanciones();
+  const modoActivo = await getModoSanciones(tiendaId);
   const esFondoMancomunado = modoActivo === 'FONDO_MANCOMUNADO';
 
   let fondoRedistribuirTotal = 0;
@@ -611,7 +632,7 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
     };
   });
 
-  const fondoMancomunado = await getEstadoFondoMancomunado(filtroRango);
+  const fondoMancomunado = await getEstadoFondoMancomunado(filtroRango, tiendaId);
 
   return {
     lista: listaFinal,

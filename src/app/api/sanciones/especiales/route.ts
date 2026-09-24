@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
 import { logAuditoria } from '@/lib/auditoria';
+import { resolveTiendaId } from '@/lib/tiendas';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { tiendaId } = await resolveTiendaId(request);
     const especiales = await prisma.sancionEspecial.findMany({
+      where: { tiendaId },
       orderBy: { id: 'asc' },
     });
     return NextResponse.json(especiales);
@@ -18,7 +20,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
+    const { tiendaId, user } = await resolveTiendaId(request);
     const usuarioActual = user?.nombre || 'Sistema';
     const rol = user?.rol || '';
 
@@ -48,6 +50,7 @@ export async function POST(request: Request) {
               tipoEfecto: item.tipoEfecto || 'PERDIDA_DIA',
               criterioDisparador: item.criterioDisparador || 'TOLERANCIA_O_FRECUENCIA',
               disparadorFrecuencia: parseInt(item.disparadorFrecuencia || 1),
+              tiendaId,
             },
           });
         } else {
@@ -59,6 +62,7 @@ export async function POST(request: Request) {
               tipoEfecto: item.tipoEfecto || 'PERDIDA_DIA',
               criterioDisparador: item.criterioDisparador || 'TOLERANCIA_O_FRECUENCIA',
               disparadorFrecuencia: parseInt(item.disparadorFrecuencia || 1),
+              tiendaId,
             },
           });
         }
@@ -66,7 +70,7 @@ export async function POST(request: Request) {
 
       await logAuditoria(
         'Configuración de Sanciones Especiales',
-        `Catálogo de sanciones especiales/modificadores actualizado (${payload.length} reglas)`,
+        `Catálogo de sanciones especiales/modificadores actualizado (${payload.length} reglas) en tienda ${tiendaId}`,
         usuarioActual
       );
 
@@ -89,12 +93,13 @@ export async function POST(request: Request) {
           tipoEfecto: tipoEfecto || 'PERDIDA_DIA',
           criterioDisparador: criterioDisparador || 'TOLERANCIA_O_FRECUENCIA',
           disparadorFrecuencia: parseInt(disparadorFrecuencia || 1),
+          tiendaId,
         },
       });
 
       await logAuditoria(
         'Configuración de Sanción Especial',
-        `Modificador actualizado: ${nombre} asociado a ${sancionPrincipal} (${estado})`,
+        `Modificador actualizado: ${nombre} asociado a ${sancionPrincipal} (${estado}) en tienda ${tiendaId}`,
         usuarioActual
       );
 
@@ -112,12 +117,13 @@ export async function POST(request: Request) {
           tipoEfecto: tipoEfecto || 'PERDIDA_DIA',
           criterioDisparador: criterioDisparador || 'TOLERANCIA_O_FRECUENCIA',
           disparadorFrecuencia: parseInt(disparadorFrecuencia || 1),
+          tiendaId,
         },
       });
 
       await logAuditoria(
         'Alta de Sanción Especial',
-        `Nuevo modificador creado: ${nombre} asociado a ${sancionPrincipal}`,
+        `Nuevo modificador creado: ${nombre} asociado a ${sancionPrincipal} en tienda ${tiendaId}`,
         usuarioActual
       );
 
@@ -134,7 +140,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const user = await getCurrentUser();
+    const { tiendaId, user } = await resolveTiendaId(request);
     const rol = user?.rol || '';
     if (rol === 'Moderador') {
       return NextResponse.json(
@@ -159,7 +165,7 @@ export async function DELETE(request: Request) {
 
     await logAuditoria(
       'Eliminación de Sanción Especial',
-      `Sanción especial ID #${id} eliminada.`,
+      `Sanción especial ID #${id} eliminada en tienda ${tiendaId}.`,
       user?.nombre || 'Sistema'
     );
 

@@ -1,11 +1,23 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { resolveTiendaId } from '@/lib/tiendas';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { tiendaId, user } = await resolveTiendaId(request);
+
+    const whereClause: any = {};
+    if (!user?.esMaestro) {
+      whereClause.OR = [
+        { tiendaId },
+        { tiendaId: null }, // Logs generales
+      ];
+    }
+
     const logs = await prisma.auditoria.findMany({
+      where: whereClause,
       orderBy: { id: 'desc' },
       take: 200,
     });

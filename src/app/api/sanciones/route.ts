@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
 import { logAuditoria } from '@/lib/auditoria';
+import { resolveTiendaId } from '@/lib/tiendas';
 import {
   getCicloActivo,
   getModoSanciones,
@@ -10,9 +10,11 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { tiendaId } = await resolveTiendaId(request);
     const sanciones = await prisma.sancionAdelanto.findMany({
+      where: { tiendaId },
       orderBy: { id: 'desc' },
     });
 
@@ -36,12 +38,12 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
+    const { tiendaId, user } = await resolveTiendaId(request);
     const usuarioActual = user?.nombre || 'Sistema';
     const rol = user?.rol || 'Moderador';
 
     const payload = await request.json();
-    const modoConfig = await getModoSanciones();
+    const modoConfig = await getModoSanciones(tiendaId);
     const esModoFondo =
       payload.esModoFondo === true ||
       payload.esModoFondo === 'true' ||
@@ -81,6 +83,7 @@ export async function POST(request: Request) {
           detalle: detalleSanc,
           estado,
           usuario: usuarioActual,
+          tiendaId,
         },
       });
 
@@ -105,7 +108,9 @@ export async function POST(request: Request) {
       detalleCompleto += ` | Tardanza: ${payload.tiempoTardanza} min`;
     }
 
-    const catalogo = await prisma.reglaSancion.findMany();
+    const catalogo = await prisma.reglaSancion.findMany({
+      where: { tiendaId },
+    });
     const reglaTardanza = catalogo.find((c) => c.infraccion === 'Tardanza');
 
     // Validación bolsa de tolerancia para Tardanza
@@ -130,7 +135,7 @@ export async function POST(request: Request) {
 
         const tiempoDemora = parseFloat(payload.tiempoBreak) || 0;
         const nominal = tiempoDemora * mult;
-        const promedios = await getPromediosColaboradores();
+        const promedios = await getPromediosColaboradores(tiendaId);
         const promDiario = promedios[payload.colaborador] || 0;
 
         if (promDiario > 0 && nominal > promDiario) {
@@ -148,6 +153,7 @@ export async function POST(request: Request) {
       where: {
         sancionPrincipal: payload.infraccion,
         estado: 'Activo',
+        tiendaId,
       },
     });
 
@@ -179,6 +185,7 @@ export async function POST(request: Request) {
             colaborador: payload.colaborador,
             concepto: { contains: payload.infraccion },
             estado: 'Aprobado',
+            tiendaId,
           },
         });
         const frecDisparo = modificadorEspecial.disparadorFrecuencia || 1;
@@ -198,6 +205,7 @@ export async function POST(request: Request) {
             registro: {
               fecha,
               estado: 'Activo',
+              tiendaId,
             },
           },
         });
@@ -226,6 +234,7 @@ export async function POST(request: Request) {
         tipoEfecto,
         montoEspecialCalculado,
         fechaAfectada: fecha,
+        tiendaId,
       },
     });
 
@@ -236,11 +245,12 @@ export async function POST(request: Request) {
     );
 
     // Validación de reincidencia en el ciclo activo
-    const ciclo = await getCicloActivo();
+    const ciclo = await getCicloActivo(tiendaId);
     const historial = await prisma.sancionAdelanto.findMany({
       where: {
         colaborador: payload.colaborador,
         estado: 'Aprobado',
+        tiendaId,
         fecha: {
           gte: ciclo.fechaInicio,
           lte: ciclo.fechaFin,

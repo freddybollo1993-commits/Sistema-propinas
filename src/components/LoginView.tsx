@@ -42,35 +42,47 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
   return (
     <div
       className="d-flex justify-content-center align-items-center"
-      style={{ minHeight: '100vh', background: '#0f172a', padding: '20px' }}
+      style={{
+        minHeight: '100vh',
+        background: 'radial-gradient(ellipse at top, #1e293b, #0f172a)',
+        padding: '20px',
+      }}
     >
       <div
-        className="card p-4 shadow-lg border-0"
-        style={{ width: '100%', maxWidth: '420px', borderRadius: '16px' }}
+        className="card p-4 p-sm-5 shadow-lg border-0"
+        style={{ width: '100%', maxWidth: '440px', borderRadius: '20px' }}
       >
         <div className="text-center mb-4">
           <div
             className="bg-primary text-white rounded-circle d-inline-flex justify-content-center align-items-center mb-3 shadow"
-            style={{ width: '65px', height: '65px' }}
+            style={{ width: '70px', height: '70px' }}
           >
-            <i className="bi bi-cash-coin fs-2"></i>
+            <i className="bi bi-buildings fs-2"></i>
           </div>
-          <h4 className="fw-bold text-dark mb-1">Gestión de Propinas</h4>
-          <p className="text-muted small">Restaurante - Acceso Autenticado</p>
+          <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 mb-2 fw-semibold">
+            Portal Único Multi-Restaurante
+          </span>
+          <h4 className="fw-bold text-dark mb-1">Gestión Central de Propinas</h4>
+          <p className="text-muted small mb-0">
+            Ingresa con tus credenciales para ser redirigido automáticamente al entorno de tu tienda asignada.
+          </p>
         </div>
 
         {error && (
-          <div className="alert alert-danger py-2 px-3 small border mb-3">
-            <i className="bi bi-exclamation-triangle-fill me-1"></i> {error}
+          <div className="alert alert-danger py-2 px-3 small border mb-3 d-flex align-items-center gap-2">
+            <i className="bi bi-exclamation-triangle-fill"></i>
+            <div>{error}</div>
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
-            <label className="form-label small fw-semibold">Correo o ID de Usuario</label>
+            <label className="form-label small fw-semibold text-secondary">
+              Usuario o Correo Corporativo
+            </label>
             <div className="input-group">
-              <span className="input-group-text bg-light">
-                <i className="bi bi-person text-secondary"></i>
+              <span className="input-group-text bg-light text-secondary">
+                <i className="bi bi-person-badge"></i>
               </span>
               <input
                 type="text"
@@ -80,15 +92,18 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
                 onChange={(e) => setUser(e.target.value)}
                 required
                 autoComplete="username"
+                autoFocus
               />
             </div>
           </div>
 
           <div className="mb-4">
-            <label className="form-label small fw-semibold">Contraseña / PIN</label>
+            <label className="form-label small fw-semibold text-secondary">
+              Contraseña / Clave de Acceso
+            </label>
             <div className="input-group">
-              <span className="input-group-text bg-light">
-                <i className="bi bi-key text-secondary"></i>
+              <span className="input-group-text bg-light text-secondary">
+                <i className="bi bi-shield-lock"></i>
               </span>
               <input
                 type="password"
@@ -104,13 +119,13 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
 
           <button
             type="submit"
-            className="btn btn-primary w-100 py-2 fw-semibold shadow-sm"
+            className="btn btn-primary w-100 py-2 fw-semibold shadow-sm rounded-3"
             disabled={cargando}
           >
             {cargando ? (
               <>
                 <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                Autenticando...
+                Autenticando y enrutando...
               </>
             ) : (
               <>
@@ -121,7 +136,12 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
         </form>
 
         <div className="mt-4 text-center text-muted small border-top pt-3">
-          <span>Niveles de Acceso: Administrador, Supervisor, Moderador</span>
+          <div className="fw-semibold text-dark mb-1">
+            <i className="bi bi-diagram-3 me-1 text-primary"></i> Enrutamiento Inteligente por Credencial
+          </div>
+          <span className="text-secondary" style={{ fontSize: '0.8rem' }}>
+            Cada colaborador o administrador accede únicamente a los datos, catálogo y personal de su sucursal autorizada.
+          </span>
         </div>
       </div>
     </div>

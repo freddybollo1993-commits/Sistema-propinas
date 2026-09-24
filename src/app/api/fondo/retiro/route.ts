@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
 import { logAuditoria } from '@/lib/auditoria';
 import { getEstadoFondoMancomunado } from '@/lib/formulas';
+import { resolveTiendaId } from '@/lib/tiendas';
 
 export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
+    const { tiendaId, user } = await resolveTiendaId(request);
     const usuarioActual = user?.nombre || 'Sistema';
     const rolUsuario = user?.rol || 'Moderador';
     const idUsuario = user?.id || '';
@@ -64,8 +64,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validar saldo disponible en el fondo
-    const estadoFondo = await getEstadoFondoMancomunado();
+    // Validar saldo disponible en el fondo de esta tienda
+    const estadoFondo = await getEstadoFondoMancomunado({ tiendaId });
     if (monto > estadoFondo.saldoDisponibleActual) {
       return NextResponse.json(
         {
@@ -87,12 +87,13 @@ export async function POST(request: Request) {
         solicitadoPor: usuarioActual,
         rol: rolUsuario,
         estado: 'Aprobado',
+        tiendaId,
       },
     });
 
     await logAuditoria(
       'Retiro Fondo Mancomunado',
-      `Retiro de S/ ${monto.toFixed(2)} para '${concepto}'. Justificación: ${justificacion} por ${usuarioActual} [${rolUsuario}]`,
+      `Retiro de S/ ${monto.toFixed(2)} para '${concepto}'. Justificación: ${justificacion} por ${usuarioActual} [${rolUsuario}] en tienda ${tiendaId}`,
       usuarioActual
     );
 

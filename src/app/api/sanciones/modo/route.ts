@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
 import { logAuditoria } from '@/lib/auditoria';
 import { getModoSanciones } from '@/lib/formulas';
+import { resolveTiendaId } from '@/lib/tiendas';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const modo = await getModoSanciones();
+    const { tiendaId } = await resolveTiendaId(request);
+    const modo = await getModoSanciones(tiendaId);
     return NextResponse.json({ success: true, modo });
   } catch (error: any) {
     return NextResponse.json({ success: true, modo: 'CLASICO', error: error.message });
@@ -17,7 +18,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
+    const { tiendaId, user } = await resolveTiendaId(request);
     const usuarioActual = user?.nombre || 'Sistema';
     const idUsuario = user?.id || '';
 
@@ -47,7 +48,12 @@ export async function POST(request: Request) {
         : 'CLASICO';
 
     await prisma.configuracionSistema.upsert({
-      where: { clave: 'MODO_SANCIONES' },
+      where: {
+        clave_tiendaId: {
+          clave: 'MODO_SANCIONES',
+          tiendaId,
+        },
+      },
       update: {
         valor: modoNormalizado,
         actualizadoPor: usuarioActual,
@@ -56,6 +62,7 @@ export async function POST(request: Request) {
         clave: 'MODO_SANCIONES',
         valor: modoNormalizado,
         actualizadoPor: usuarioActual,
+        tiendaId,
       },
     });
 
@@ -64,7 +71,7 @@ export async function POST(request: Request) {
 
     await logAuditoria(
       'Configuración de Sistema',
-      `Modo de sanciones cambiado a: ${nombreModoVisual} por ${usuarioActual} [${idUsuario}]`,
+      `Modo de sanciones cambiado a: ${nombreModoVisual} por ${usuarioActual} [${idUsuario}] en tienda ${tiendaId}`,
       usuarioActual
     );
 

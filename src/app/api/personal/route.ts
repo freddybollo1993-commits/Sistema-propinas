@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
 import { logAuditoria } from '@/lib/auditoria';
+import { resolveTiendaId } from '@/lib/tiendas';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { tiendaId } = await resolveTiendaId(request);
     const personal = await prisma.colaborador.findMany({
+      where: { tiendaId },
       orderBy: { nombre: 'asc' },
     });
     return NextResponse.json(personal);
@@ -18,7 +20,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
+    const { tiendaId, user } = await resolveTiendaId(request);
     const usuarioActual = user?.nombre || 'Sistema';
 
     const { nombre, area, estado } = await request.json();
@@ -35,7 +37,12 @@ export async function POST(request: Request) {
     const cleanEstado = String(estado || 'Activo').trim();
 
     const existente = await prisma.colaborador.findUnique({
-      where: { nombre: cleanNombre },
+      where: {
+        nombre_tiendaId: {
+          nombre: cleanNombre,
+          tiendaId,
+        },
+      },
     });
 
     if (existente) {
@@ -63,6 +70,7 @@ export async function POST(request: Request) {
           nombre: cleanNombre,
           area: cleanArea,
           estado: cleanEstado,
+          tiendaId,
         },
       });
 

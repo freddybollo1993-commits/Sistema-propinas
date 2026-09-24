@@ -1,5 +1,5 @@
 // Esquema de Base de Datos para el Sistema de Gestión y Registro de Propinas
-// Compatible con Supabase (PostgreSQL) y Vercel
+// Compatible con Supabase (PostgreSQL) y Vercel (Arquitectura Multi-Tienda)
 
 generator client {
   provider = "prisma-client-js"
@@ -11,6 +11,30 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model Tienda {
+  id          String   @id @default(cuid())
+  nombre      String   @unique
+  slug        String   @unique // Ej: "sede-central", "san-isidro", "miraflores"
+  direccion   String?
+  telefono    String?
+  estado      String   @default("Activo") // Activo, Inactivo
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  usuarios            Usuario[]
+  personal            Colaborador[]
+  ciclos              CicloLiquidacion[]
+  registros           RegistroPropina[]
+  reglasSancion       ReglaSancion[]
+  sancionesEspeciales SancionEspecial[]
+  sancionesAdelantos  SancionAdelanto[]
+  retirosFondo        RetiroFondo[]
+  configuraciones     ConfiguracionSistema[]
+  auditorias          Auditoria[]
+
+  @@map("tiendas")
+}
+
 model Usuario {
   id           String   @id // USR-001, USR-MASTER, etc.
   nombre       String
@@ -19,6 +43,8 @@ model Usuario {
   rol          String   // Administrador, Supervisor, Moderador
   estado       String   @default("Activo") // Activo, Inactivo
   esMaestro    Boolean  @default(false)
+  tiendaId     String?
+  tienda       Tienda?  @relation(fields: [tiendaId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -27,21 +53,27 @@ model Usuario {
 
 model ConfiguracionSistema {
   id             Int      @id @default(autoincrement())
-  clave          String   @unique // MODO_SANCIONES, etc.
+  clave          String   // MODO_SANCIONES, etc.
   valor          String   // CLASICO o FONDO_MANCOMUNADO
   actualizadoPor String?
+  tiendaId       String?
+  tienda         Tienda?  @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
   fecha          DateTime @updatedAt
 
+  @@unique([clave, tiendaId])
   @@map("configuracion_sistema")
 }
 
 model Colaborador {
   id        Int      @id @default(autoincrement())
-  nombre    String   @unique
+  nombre    String
   area      String   // Salón, Cocina, Apoyo Salón, Apoyo Cocina
   estado    String   @default("Activo") // Activo, Inactivo
+  tiendaId  String?
+  tienda    Tienda?  @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
+  @@unique([nombre, tiendaId])
   @@map("personal")
 }
 
@@ -50,6 +82,8 @@ model CicloLiquidacion {
   fechaInicio String   // Formato YYYY-MM-DD
   fechaFin    String   // Formato YYYY-MM-DD
   estado      String   @default("Abierto") // Abierto, Cerrado
+  tiendaId    String?
+  tienda      Tienda?  @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -65,6 +99,8 @@ model RegistroPropina {
   estado        String                 @default("Activo") // Activo, Anulado, Pendiente de Anulación
   justificacion String?
   validador     String?
+  tiendaId      String?
+  tienda        Tienda?                @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
   createdAt     DateTime               @default(now())
   detalles      DetalleParticipacion[]
 
@@ -85,17 +121,20 @@ model DetalleParticipacion {
 }
 
 model ReglaSancion {
-  id                  Int     @id @default(autoincrement())
-  infraccion          String  @unique
-  estado              String  @default("Activo") // Activo, Inactivo
-  monto               Float   @default(0)
-  frecuenciaMax       Int     @default(1)
-  consecuencia        String  @default("Pérdida del 100% de propinas acumuladas")
-  toleranciaMin       Int     @default(0)
-  toleranciaActiva    Boolean @default(false)
-  multiplicador       Float   @default(0)
-  multiplicadorActivo Boolean @default(false)
+  id                  Int      @id @default(autoincrement())
+  infraccion          String
+  estado              String   @default("Activo") // Activo, Inactivo
+  monto               Float    @default(0)
+  frecuenciaMax       Int      @default(1)
+  consecuencia        String   @default("Pérdida del 100% de propinas acumuladas")
+  toleranciaMin       Int      @default(0)
+  toleranciaActiva    Boolean  @default(false)
+  multiplicador       Float    @default(0)
+  multiplicadorActivo Boolean  @default(false)
+  tiendaId            String?
+  tienda              Tienda?  @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
 
+  @@unique([infraccion, tiendaId])
   @@map("configuracion_sanciones")
 }
 
@@ -113,6 +152,8 @@ model SancionAdelanto {
   tipoEfecto             String?  // PERDIDA_DIA, etc.
   montoEspecialCalculado Float?
   fechaAfectada          String?
+  tiendaId               String?
+  tienda                 Tienda?  @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
   createdAt              DateTime @default(now())
 
   @@map("sanciones_adelantos")
@@ -126,6 +167,8 @@ model SancionEspecial {
   tipoEfecto           String   @default("PERDIDA_DIA") // PERDIDA_DIA, etc.
   criterioDisparador   String   @default("TOLERANCIA_O_FRECUENCIA")
   disparadorFrecuencia Int      @default(1)
+  tiendaId             String?
+  tienda               Tienda?  @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -141,6 +184,8 @@ model RetiroFondo {
   solicitadoPor String
   rol           String
   estado        String   @default("Aprobado")
+  tiendaId      String?
+  tienda        Tienda?  @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
   createdAt     DateTime @default(now())
 
   @@map("retiros_fondo")
@@ -152,6 +197,8 @@ model Auditoria {
   usuario   String
   accion    String
   detalle   String
+  tiendaId  String?
+  tienda    Tienda?  @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
 
   @@map("auditoria")
 }

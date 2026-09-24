@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
 import { logAuditoria } from '@/lib/auditoria';
+import { resolveTiendaId } from '@/lib/tiendas';
 
 export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
+    const { tiendaId, user } = await resolveTiendaId(request);
     const usuarioActual = user?.nombre || 'Usuario Maestro';
     const idUsuario = user?.id || 'USR-MASTER';
     const rolUsuario = user?.rol || 'Administrador';
@@ -146,6 +146,7 @@ export async function POST(request: Request) {
       const nombrePer = String(idOParam).trim();
       const per = await prisma.colaborador.findFirst({
         where: {
+          tiendaId,
           OR: [
             { nombre: { equals: nombrePer, mode: 'insensitive' } },
             ...(!isNaN(parseInt(nombrePer, 10)) ? [{ id: parseInt(nombrePer, 10) }] : []),

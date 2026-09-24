@@ -6,6 +6,7 @@ import Sidebar, { ModuleName } from '@/components/Sidebar';
 import NavbarTop from '@/components/NavbarTop';
 import LoginView from '@/components/LoginView';
 import ModalEliminarMaster from '@/components/ModalEliminarMaster';
+import ModalNuevaTienda from '@/components/ModalNuevaTienda';
 
 import ModDashboard from '@/components/modules/ModDashboard';
 import ModRegistroPropinas from '@/components/modules/ModRegistroPropinas';
@@ -24,6 +25,11 @@ export default function HomePage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
+  // Multi-Tienda State
+  const [tiendas, setTiendas] = useState<any[]>([]);
+  const [activeTiendaId, setActiveTiendaId] = useState<string>('');
+  const [modalNuevaTiendaShow, setModalNuevaTiendaShow] = useState(false);
+
   // Ciclo activo global
   const [cicloInfo, setCicloInfo] = useState<{
     inicio: string;
@@ -40,13 +46,19 @@ export default function HomePage() {
     descripcionVisual: string;
   }>({ show: false, modulo: '', idOParam: '', descripcionVisual: '' });
 
-  // Key de recarga forzada para componentes que necesiten refrescar datos tras eliminación
+  // Key de recarga forzada para componentes que necesiten refrescar datos tras cambio de tienda o eliminación
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     verificarSesion();
-    cargarCicloActivo();
   }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      cargarTiendas();
+      cargarCicloActivo();
+    }
+  }, [currentUser]);
 
   const verificarSesion = async () => {
     try {
@@ -56,12 +68,32 @@ export default function HomePage() {
       setCargandoAuth(false);
       if (data.authenticated && data.user) {
         setCurrentUser(data.user);
+        if (data.user.tiendaId) {
+          setActiveTiendaId(data.user.tiendaId);
+        }
       } else {
         setCurrentUser(null);
       }
     } catch (e) {
       setCargandoAuth(false);
       setCurrentUser(null);
+    }
+  };
+
+  const cargarTiendas = async () => {
+    try {
+      const res = await fetch('/api/tiendas');
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        setTiendas(data);
+        // Si no hay tienda activa o la actual no está en la lista
+        setActiveTiendaId((prev) => {
+          if (prev && data.some((t: any) => t.id === prev)) return prev;
+          return currentUser?.tiendaId || data[0].id;
+        });
+      }
+    } catch (e) {
+      console.error('Error al cargar tiendas:', e);
     }
   };
 
@@ -75,6 +107,31 @@ export default function HomePage() {
     } catch (e) {
       console.error('Error al cargar ciclo:', e);
     }
+  };
+
+  const handleSelectTienda = async (tiendaId: string) => {
+    try {
+      const res = await fetch('/api/tiendas/activa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tiendaId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActiveTiendaId(tiendaId);
+        await cargarCicloActivo();
+        setRefreshKey((k) => k + 1);
+      } else {
+        alert(data.message || 'Error al cambiar de tienda.');
+      }
+    } catch (err: any) {
+      alert('Error de conexión: ' + err.message);
+    }
+  };
+
+  const handleTiendaCreada = async (nuevaTienda: any) => {
+    setTiendas((prev) => [...prev, nuevaTienda]);
+    await handleSelectTienda(nuevaTienda.id);
   };
 
   const handleLogout = async () => {
@@ -118,12 +175,15 @@ export default function HomePage() {
     });
   };
 
+  const activeTiendaObj = tiendas.find((t) => t.id === activeTiendaId);
+  const activeTiendaNombre = activeTiendaObj?.nombre || currentUser?.tiendaNombre || 'Sede Principal';
+
   if (cargandoAuth) {
     return (
       <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh', background: '#0f172a' }}>
         <div className="text-center text-white">
           <div className="spinner-border text-primary mb-3" style={{ width: '3rem', height: '3rem' }}></div>
-          <div className="fw-semibold">Cargando sistema...</div>
+          <div className="fw-semibold">Cargando sistema multi-restaurante...</div>
         </div>
       </div>
     );
@@ -135,6 +195,10 @@ export default function HomePage() {
       <LoginView
         onLoginSuccess={(user) => {
           setCurrentUser(user);
+          if (user.tiendaId) {
+            setActiveTiendaId(user.tiendaId);
+          }
+          cargarTiendas();
           cargarCicloActivo();
           setCurrentModule('Dashboard');
         }}
@@ -154,7 +218,7 @@ export default function HomePage() {
         onClick={() => setMobileSidebarOpen(false)}
       ></div>
 
-      {/* Sidebar Plegable */}
+      {/* Sidebar Plegable con Indicador de Restaurante */}
       <Sidebar
         currentModule={currentModule}
         onSelectModule={(mod) => {
@@ -164,6 +228,7 @@ export default function HomePage() {
         currentUser={currentUser}
         onCloseMobile={() => setMobileSidebarOpen(false)}
         isOpenMobile={mobileSidebarOpen}
+        activeTiendaNombre={activeTiendaNombre}
       />
 
       {/* Contenedor Principal */}
@@ -173,6 +238,10 @@ export default function HomePage() {
           cicloInfo={cicloInfo}
           onToggleSidebar={handleToggleSidebar}
           onLogout={handleLogout}
+          tiendas={tiendas}
+          activeTiendaId={activeTiendaId}
+          onSelectTienda={handleSelectTienda}
+          onOpenCrearTienda={() => setModalNuevaTiendaShow(true)}
         />
 
         {/* Notificación de Modo Moderador */}
@@ -189,7 +258,7 @@ export default function HomePage() {
 
         {/* Contenido Dinámico del Módulo Seleccionado */}
         <main className="main-content">
-          <div key={`${currentModule}-${refreshKey}`}>
+          <div key={`${currentModule}-${activeTiendaId}-${refreshKey}`}>
             {currentModule === 'Dashboard' && <ModDashboard cicloInfo={cicloInfo} />}
             {currentModule === 'RegistroPropinas' && (
               <ModRegistroPropinas
@@ -234,6 +303,13 @@ export default function HomePage() {
           </div>
         </main>
       </div>
+
+      {/* Modal Nueva Tienda (SuperAdmin) */}
+      <ModalNuevaTienda
+        show={modalNuevaTiendaShow}
+        onClose={() => setModalNuevaTiendaShow(false)}
+        onSuccess={handleTiendaCreada}
+      />
 
       {/* Modal Global de Eliminación Master */}
       <ModalEliminarMaster

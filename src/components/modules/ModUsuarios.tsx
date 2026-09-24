@@ -13,6 +13,7 @@ export default function ModUsuarios({
   onOpenEliminarMaster,
 }: ModUsuariosProps) {
   const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [tiendas, setTiendas] = useState<any[]>([]);
   const [cargando, setCargando] = useState(false);
 
   // Modal
@@ -23,6 +24,7 @@ export default function ModUsuarios({
   const [usrPassword, setUsrPassword] = useState('');
   const [usrRol, setUsrRol] = useState('Moderador');
   const [usrEstado, setUsrEstado] = useState('Activo');
+  const [usrTiendaId, setUsrTiendaId] = useState('');
 
   const esMaster =
     currentUser?.id === 'USR-MASTER' ||
@@ -31,7 +33,10 @@ export default function ModUsuarios({
 
   useEffect(() => {
     cargarUsuarios();
-  }, []);
+    if (esMaster) {
+      cargarTiendas();
+    }
+  }, [esMaster]);
 
   const cargarUsuarios = async () => {
     try {
@@ -46,6 +51,16 @@ export default function ModUsuarios({
     }
   };
 
+  const cargarTiendas = async () => {
+    try {
+      const res = await fetch('/api/tiendas');
+      const data = await res.json();
+      if (Array.isArray(data)) setTiendas(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleAbrirCrear = () => {
     setUsrId('');
     setUsrNombre('');
@@ -53,6 +68,7 @@ export default function ModUsuarios({
     setUsrPassword('');
     setUsrRol('Moderador');
     setUsrEstado('Activo');
+    setUsrTiendaId(tiendas[0]?.id || currentUser?.tiendaId || '');
     setModalShow(true);
   };
 
@@ -63,6 +79,7 @@ export default function ModUsuarios({
     setUsrPassword('');
     setUsrRol(u.rol);
     setUsrEstado(u.estado);
+    setUsrTiendaId(u.tiendaId || tiendas[0]?.id || '');
     setModalShow(true);
   };
 
@@ -85,6 +102,7 @@ export default function ModUsuarios({
           password: usrPassword.trim() || undefined,
           rol: usrRol,
           estado: usrEstado,
+          tiendaId: usrTiendaId || undefined,
         }),
       });
       const data = await res.json();
@@ -116,17 +134,19 @@ export default function ModUsuarios({
             Administración de Usuarios y Accesos
           </h5>
           <p className="text-muted small mb-0">
-            Gobernanza estricta de roles (Administrador, Supervisor, Moderador) y salvaguarda de Cuenta Maestra.
+            Gobernanza de credenciales por tienda (Administrador, Supervisor, Moderador) y salvaguarda de Cuenta Maestra.
           </p>
         </div>
-        <button className="btn btn-primary btn-sm px-3" onClick={handleAbrirCrear}>
+        <button className="btn btn-primary btn-sm px-3 shadow-sm" onClick={handleAbrirCrear}>
           <i className="bi bi-person-plus me-1"></i> Nuevo Usuario
         </button>
       </div>
 
-      <div className="alert alert-info py-2 px-3 small border mb-4">
-        <i className="bi bi-shield-lock-fill me-1"></i>
-        <strong>Gobernanza de Seguridad:</strong> El <em>Usuario Maestro (USR-MASTER)</em> es inmutable y no puede ser desactivado ni eliminado para garantizar la continuidad operativa.
+      <div className="alert alert-info py-2 px-3 small border mb-4 d-flex align-items-center gap-2">
+        <i className="bi bi-shield-lock-fill text-primary"></i>
+        <span>
+          <strong>Gobernanza Multi-Restaurante:</strong> Los usuarios asignados a una tienda sólo tendrán acceso y visibilidad de los datos de su respectiva sucursal.
+        </span>
       </div>
 
       <div className="table-responsive">
@@ -135,7 +155,8 @@ export default function ModUsuarios({
             <tr>
               <th>ID</th>
               <th>Nombre del Usuario</th>
-              <th>Correo / Identificador</th>
+              <th>Correo / Login</th>
+              <th>Tienda / Sede</th>
               <th>Rol Asignado</th>
               <th>Estado</th>
               <th className="text-center">Acciones</th>
@@ -155,6 +176,12 @@ export default function ModUsuarios({
                     <strong>{u.nombre}</strong>
                   </td>
                   <td>{u.email}</td>
+                  <td>
+                    <span className="badge bg-light text-dark border">
+                      <i className="bi bi-shop me-1 text-secondary"></i>
+                      {u.tiendaNombre || 'Sede Principal'}
+                    </span>
+                  </td>
                   <td>
                     <span className={`badge ${getRolBadge(u.rol)}`}>{u.rol}</span>
                   </td>
@@ -204,8 +231,8 @@ export default function ModUsuarios({
           <div className="modal-backdrop fade show" style={{ zIndex: 100010 }}></div>
           <div className="modal fade show d-block" tabIndex={-1} style={{ zIndex: 100015 }}>
             <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content border-0 shadow">
-                <div className="modal-header bg-primary text-white">
+              <div className="modal-content border-0 shadow-lg rounded-4">
+                <div className="modal-header bg-primary text-white rounded-top-4 py-3">
                   <h6 className="modal-title fw-bold">
                     {usrId ? `Editar Usuario: ${usrId}` : 'Crear Nuevo Usuario'}
                   </h6>
@@ -218,10 +245,11 @@ export default function ModUsuarios({
                 <div className="modal-body p-4">
                   <form onSubmit={handleGuardar}>
                     <div className="mb-3">
-                      <label className="form-label small fw-semibold">Nombre Completo</label>
+                      <label className="form-label small fw-semibold">Nombre Completo *</label>
                       <input
                         type="text"
                         className="form-control"
+                        placeholder="Ej. Juan Pérez"
                         value={usrNombre}
                         onChange={(e) => setUsrNombre(e.target.value)}
                         required
@@ -230,16 +258,36 @@ export default function ModUsuarios({
 
                     <div className="mb-3">
                       <label className="form-label small fw-semibold">
-                        Correo Electrónico / Login
+                        Correo Electrónico / Login *
                       </label>
                       <input
                         type="email"
                         className="form-control"
+                        placeholder="usuario@restaurante.com"
                         value={usrEmail}
                         onChange={(e) => setUsrEmail(e.target.value)}
                         required
                       />
                     </div>
+
+                    {esMaster && (
+                      <div className="mb-3">
+                        <label className="form-label small fw-semibold">
+                          Restaurante / Sucursal Asignada
+                        </label>
+                        <select
+                          className="form-select"
+                          value={usrTiendaId}
+                          onChange={(e) => setUsrTiendaId(e.target.value)}
+                        >
+                          {tiendas.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.nombre}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
                     <div className="mb-3">
                       <label className="form-label small fw-semibold">
@@ -264,9 +312,9 @@ export default function ModUsuarios({
                         required
                       >
                         <option value="Administrador">
-                          Administrador (Acceso Total y Usuarios)
+                          Administrador (Gestión Total de Tienda)
                         </option>
-                        <option value="Supervisor">Supervisor (Acceso Total Operativo)</option>
+                        <option value="Supervisor">Supervisor (Operación y Aprobaciones)</option>
                         <option value="Moderador">
                           Moderador (Solo Captura - Aprobación Requerida)
                         </option>
@@ -286,7 +334,7 @@ export default function ModUsuarios({
                       </select>
                     </div>
 
-                    <div className="text-end">
+                    <div className="text-end pt-2">
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm me-2"
@@ -294,8 +342,8 @@ export default function ModUsuarios({
                       >
                         Cancelar
                       </button>
-                      <button type="submit" className="btn btn-primary btn-sm" disabled={cargando}>
-                        Guardar Usuario
+                      <button type="submit" className="btn btn-primary btn-sm px-3" disabled={cargando}>
+                        {cargando ? 'Guardando...' : 'Guardar Usuario'}
                       </button>
                     </div>
                   </form>

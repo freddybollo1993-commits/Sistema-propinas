@@ -14,6 +14,9 @@ export interface SessionUser {
   rol: string;
   estado: string;
   esMaestro: boolean;
+  tiendaId?: string | null;
+  tiendaNombre?: string | null;
+  tiendaSlug?: string | null;
 }
 
 export async function hashPassword(password: string): Promise<string> {

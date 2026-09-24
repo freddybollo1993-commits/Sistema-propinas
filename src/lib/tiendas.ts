@@ -1,124 +1,30 @@
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
+import prisma from './db';
+import { logAuditoria } from './auditoria';
+import { SessionUser, getCurrentUser } from './auth';
 
-const prisma = new PrismaClient();
-
-async function main() {
-  console.log('🌱 Inicializando arquitectura Multi-Tienda en Supabase...');
-
-  // 1. Crear Sede Principal por defecto si no existe
-  const tiendaDefault = await prisma.tienda.upsert({
-    where: { slug: 'sede-principal' },
-    update: {},
-    create: {
-      id: 'tienda-principal',
-      nombre: 'Sede Principal (Restaurante Central)',
-      slug: 'sede-principal',
-      direccion: 'Av. Principal 123',
-      estado: 'Activo',
-    },
-  });
-
-  console.log(`📍 Tienda base lista: ${tiendaDefault.nombre} (${tiendaDefault.id})`);
-
-  // 2. Asignar todos los registros huérfanos preexistentes a la Sede Principal
-  await prisma.colaborador.updateMany({
-    where: { tiendaId: null },
-    data: { tiendaId: tiendaDefault.id },
-  });
-  await prisma.reglaSancion.updateMany({
-    where: { tiendaId: null },
-    data: { tiendaId: tiendaDefault.id },
-  });
-  await prisma.sancionEspecial.updateMany({
-    where: { tiendaId: null },
-    data: { tiendaId: tiendaDefault.id },
-  });
-  await prisma.registroPropina.updateMany({
-    where: { tiendaId: null },
-    data: { tiendaId: tiendaDefault.id },
-  });
-  await prisma.sancionAdelanto.updateMany({
-    where: { tiendaId: null },
-    data: { tiendaId: tiendaDefault.id },
-  });
-  await prisma.retiroFondo.updateMany({
-    where: { tiendaId: null },
-    data: { tiendaId: tiendaDefault.id },
-  });
-  await prisma.cicloLiquidacion.updateMany({
-    where: { tiendaId: null },
-    data: { tiendaId: tiendaDefault.id },
-  });
-  await prisma.configuracionSistema.updateMany({
-    where: { tiendaId: null },
-    data: { tiendaId: tiendaDefault.id },
-  });
-  await prisma.auditoria.updateMany({
-    where: { tiendaId: null },
-    data: { tiendaId: tiendaDefault.id },
-  });
-
-  // 3. Crear o actualizar Usuario Maestro Corporativo (USR-MASTER)
-  // SuperAdmin sin restricción de tienda (tiendaId: null) para gestionar todas las tiendas
-  const masterPasswordHash = await bcrypt.hash('1234', 10);
-  await prisma.usuario.upsert({
-    where: { email: 'master@empresa.com' },
-    update: {
-      rol: 'Administrador',
-      estado: 'Activo',
-      esMaestro: true,
-      tiendaId: null,
-    },
-    create: {
-      id: 'USR-MASTER',
-      nombre: 'Usuario Maestro Corporativo',
-      email: 'master@empresa.com',
-      passwordHash: masterPasswordHash,
-      rol: 'Administrador',
-      estado: 'Activo',
-      esMaestro: true,
-      tiendaId: null,
-    },
-  });
-
-  // 4. Crear Administrador asignado a la Sede Principal
-  const adminPasswordHash = await bcrypt.hash('1234', 10);
-  await prisma.usuario.upsert({
-    where: { email: 'admin@empresa.com' },
-    update: {
-      tiendaId: tiendaDefault.id,
-    },
-    create: {
-      id: 'USR-001',
-      nombre: 'Administrador Sede Principal',
-      email: 'admin@empresa.com',
-      passwordHash: adminPasswordHash,
-      rol: 'Administrador',
-      estado: 'Activo',
-      esMaestro: false,
-      tiendaId: tiendaDefault.id,
-    },
-  });
-
-  // 5. Garantizar configuración de modo en Sede Principal
+/**
+ * Clona la estructura base oficial (catálogo de sanciones, sanciones especiales,
+ * ciclo activo y modo de liquidación) para una nueva tienda/sucursal.
+ */
+export async function inicializarTiendaConPlantilla(tiendaId: string, creadoPor: string = 'Sistema') {
+  // 1. Configuración de Modo Sanciones por defecto (Clásico)
   await prisma.configuracionSistema.upsert({
     where: {
       clave_tiendaId: {
         clave: 'MODO_SANCIONES',
-        tiendaId: tiendaDefault.id,
+        tiendaId,
       },
     },
-    update: {},
+    update: { valor: 'CLASICO' },
     create: {
       clave: 'MODO_SANCIONES',
       valor: 'CLASICO',
-      tiendaId: tiendaDefault.id,
-      actualizadoPor: 'Sistema',
+      tiendaId,
+      actualizadoPor: creadoPor,
     },
   });
 
-  // 6. Garantizar catálogo oficial para la Sede Principal
+  // 2. Catálogo oficial de sanciones base
   const defaultRules = [
     {
       infraccion: 'Tardanza',
@@ -237,18 +143,18 @@ async function main() {
       where: {
         infraccion_tiendaId: {
           infraccion: r.infraccion,
-          tiendaId: tiendaDefault.id,
+          tiendaId,
         },
       },
       update: {},
       create: {
         ...r,
-        tiendaId: tiendaDefault.id,
+        tiendaId,
       },
     });
   }
 
-  // 7. Sanciones Especiales para Sede Principal
+  // 3. Sanciones Especiales por defecto (Pérdida de día para Tardanza y Celular)
   const sancionesEspecialesBase = [
     {
       nombre: 'Pérdida de propina del día',
@@ -257,7 +163,6 @@ async function main() {
       tipoEfecto: 'PERDIDA_DIA',
       criterioDisparador: 'TOLERANCIA',
       disparadorFrecuencia: 1,
-      tiendaId: tiendaDefault.id,
     },
     {
       nombre: 'Pérdida de propina del día',
@@ -266,7 +171,6 @@ async function main() {
       tipoEfecto: 'PERDIDA_DIA',
       criterioDisparador: 'FRECUENCIA',
       disparadorFrecuencia: 1,
-      tiendaId: tiendaDefault.id,
     },
   ];
 
@@ -275,17 +179,20 @@ async function main() {
       where: {
         nombre: se.nombre,
         sancionPrincipal: se.sancionPrincipal,
-        tiendaId: tiendaDefault.id,
+        tiendaId,
       },
     });
     if (!existe) {
       await prisma.sancionEspecial.create({
-        data: se,
+        data: {
+          ...se,
+          tiendaId,
+        },
       });
     }
   }
 
-  // 8. Ciclo activo para Sede Principal
+  // 4. Ciclo quincenal inicial
   const hoy = new Date();
   const year = hoy.getFullYear();
   const month = String(hoy.getMonth() + 1).padStart(2, '0');
@@ -294,49 +201,85 @@ async function main() {
   const fFin = `${year}-${month}-${dia <= 15 ? '15' : '31'}`;
 
   const cicloExiste = await prisma.cicloLiquidacion.findFirst({
-    where: { tiendaId: tiendaDefault.id },
+    where: { tiendaId },
   });
+
   if (!cicloExiste) {
     await prisma.cicloLiquidacion.create({
       data: {
         fechaInicio: fIni,
         fechaFin: fFin,
         estado: 'Abierto',
-        tiendaId: tiendaDefault.id,
+        tiendaId,
       },
     });
   }
 
-  // 9. Personal de prueba inicial para Sede Principal
-  const personalInicial = [
-    { nombre: 'Carlos Mendoza', area: 'Salón', estado: 'Activo', tiendaId: tiendaDefault.id },
-    { nombre: 'Andrea Rojas', area: 'Salón', estado: 'Activo', tiendaId: tiendaDefault.id },
-    { nombre: 'Luis Huamán', area: 'Cocina', estado: 'Activo', tiendaId: tiendaDefault.id },
-    { nombre: 'María Quispe', area: 'Cocina', estado: 'Activo', tiendaId: tiendaDefault.id },
-    { nombre: 'Jorge Silva', area: 'Apoyo Salón', estado: 'Activo', tiendaId: tiendaDefault.id },
-  ];
-
-  for (const p of personalInicial) {
-    await prisma.colaborador.upsert({
-      where: {
-        nombre_tiendaId: {
-          nombre: p.nombre,
-          tiendaId: tiendaDefault.id,
-        },
-      },
-      update: {},
-      create: p,
-    });
-  }
-
-  console.log('✅ Arquitectura Multi-Tienda inicializada exitosamente en Supabase.');
+  await logAuditoria(
+    'Inicialización de Tienda',
+    `Estructura base clonada para la tienda ${tiendaId}`,
+    creadoPor
+  );
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
+/**
+ * Obtiene el ID de la tienda efectiva para una petición o usuario.
+ * Si el usuario es de una tienda específica, siempre devuelve esa tienda (seguridad multi-tenant).
+ * Si el usuario es SuperAdmin/Maestro, permite alternar tienda vía header 'x-tienda-id' o cookie 'active_tienda_id'.
+ */
+export async function getEffectiveTiendaId(
+  user: SessionUser | null,
+  headerTiendaId?: string | null,
+  cookieTiendaId?: string | null
+): Promise<string> {
+  // 1. Si el usuario pertenece a una tienda específica (no es SuperAdmin), aislamiento estricto
+  if (user && !user.esMaestro && user.tiendaId) {
+    return user.tiendaId;
+  }
+
+  // 2. Si es SuperAdmin / Maestro, respeta la tienda seleccionada
+  if (headerTiendaId) {
+    const existe = await prisma.tienda.findUnique({ where: { id: headerTiendaId } });
+    if (existe) return existe.id;
+  }
+
+  if (cookieTiendaId) {
+    const existe = await prisma.tienda.findUnique({ where: { id: cookieTiendaId } });
+    if (existe) return existe.id;
+  }
+
+  // 3. Fallback a la primera tienda activa registrada o a 'tienda-principal'
+  const primera = await prisma.tienda.findFirst({
+    where: { estado: 'Activo' },
+    orderBy: { createdAt: 'asc' },
   });
+
+  return primera?.id || 'tienda-principal';
+}
+
+/**
+ * Resuelve la tienda efectiva y el usuario autenticado a partir de la petición HTTP.
+ */
+export async function resolveTiendaId(request?: Request): Promise<{ tiendaId: string; user: SessionUser | null }> {
+  const user = await getCurrentUser();
+  let headerTienda: string | null = null;
+  let paramTienda: string | null = null;
+
+  if (request) {
+    headerTienda = request.headers.get('x-tienda-id');
+    try {
+      const url = new URL(request.url);
+      paramTienda = url.searchParams.get('tiendaId');
+    } catch {}
+  }
+
+  let cookieTienda: string | null = null;
+  try {
+    const { cookies } = await import('next/headers');
+    const cookieStore = cookies();
+    cookieTienda = cookieStore.get('active_tienda_id')?.value || null;
+  } catch {}
+
+  const tiendaId = await getEffectiveTiendaId(user, headerTienda || paramTienda, cookieTienda);
+  return { tiendaId, user };
+}

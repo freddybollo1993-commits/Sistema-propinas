@@ -1,23 +1,25 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
 import { logAuditoria } from '@/lib/auditoria';
 import { calcularProrrateoEnMemoria, getCicloActivo } from '@/lib/formulas';
+import { resolveTiendaId } from '@/lib/tiendas';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
+    const { tiendaId } = await resolveTiendaId(request);
     const { searchParams } = new URL(request.url);
     const inicio = searchParams.get('inicio');
     const fin = searchParams.get('fin');
 
-    const ciclo = await getCicloActivo();
+    const ciclo = await getCicloActivo(tiendaId);
     const fInicio = inicio || ciclo.fechaInicio;
     const fFin = fin || ciclo.fechaFin;
 
     const registros = await prisma.registroPropina.findMany({
       where: {
+        tiendaId,
         ...(fInicio && fFin ? { fecha: { gte: fInicio, lte: fFin } } : {}),
       },
       include: {
@@ -48,7 +50,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
+    const { tiendaId, user } = await resolveTiendaId(request);
     const usuarioActual = user?.nombre || 'Sistema';
 
     const payload = await request.json();
@@ -83,6 +85,7 @@ export async function POST(request: Request) {
           fondoSalon: calculo.fondoSalon,
           fondoCocina: calculo.fondoCocina,
           estado: 'Activo',
+          tiendaId,
         },
       });
 
@@ -100,27 +103,19 @@ export async function POST(request: Request) {
       return reg;
     });
 
-    if (payload.discrepanciaPOS) {
-      await logAuditoria(
-        'Conciliación POS con Discrepancia',
-        `Registro #${nuevoRegistro.id}. Recaudado: S/ ${montoTotal}, POS: S/ ${payload.montoPOS}. Justificación: ${payload.justificacionDiscrepancia}`,
-        usuarioActual
-      );
-    } else {
-      await logAuditoria(
-        'Registro de Propinas',
-        `Registro #${nuevoRegistro.id} guardado por S/ ${montoTotal.toFixed(2)} (${participantes.length} participantes)`,
-        usuarioActual
-      );
-    }
+    await logAuditoria(
+      'Registro de Propinas',
+      `Nuevo turno registrado: S/ ${montoTotal.toFixed(2)} (${calculo.detalles.length} colaboradores) el ${fecha}`,
+      usuarioActual,
+      tiendaId
+    );
 
     return NextResponse.json({
       success: true,
-      message: `Registro de propinas #${nuevoRegistro.id} guardado y prorrateado exitosamente.`,
-      id: nuevoRegistro.id,
+      message: 'Registro de propinas guardado exitosamente.',
+      idRegistro: nuevoRegistro.id,
     });
   } catch (error: any) {
-    console.error('Error al guardar registro de propinas:', error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }

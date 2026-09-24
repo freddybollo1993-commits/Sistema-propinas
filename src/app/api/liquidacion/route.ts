@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server';
 import { getLiquidacionResumen } from '@/lib/formulas';
+import { resolveTiendaId } from '@/lib/tiendas';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
+    const { tiendaId } = await resolveTiendaId(request);
     const { searchParams } = new URL(request.url);
     const inicio = searchParams.get('inicio') || undefined;
     const fin = searchParams.get('fin') || undefined;
 
-    const data = await getLiquidacionResumen({ inicio, fin });
+    const data = await getLiquidacionResumen({ inicio, fin, tiendaId });
     return NextResponse.json(data);
   } catch (error: any) {
     console.error('Error en /api/liquidacion:', error);

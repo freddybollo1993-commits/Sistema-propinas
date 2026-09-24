@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
 import { logAuditoria } from '@/lib/auditoria';
+import { resolveTiendaId } from '@/lib/tiendas';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { tiendaId } = await resolveTiendaId(request);
     const catalogo = await prisma.reglaSancion.findMany({
+      where: { tiendaId },
       orderBy: { id: 'asc' },
     });
     return NextResponse.json(catalogo);
@@ -18,7 +20,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
+    const { tiendaId, user } = await resolveTiendaId(request);
     const usuarioActual = user?.nombre || 'Sistema';
     const rol = user?.rol || '';
 
@@ -60,7 +62,12 @@ export async function POST(request: Request) {
       const multAct = isBreak && (c.multiplicadorActivo === true || String(c.multiplicadorActivo).toLowerCase() === 'activo');
 
       await prisma.reglaSancion.upsert({
-        where: { infraccion: c.infraccion },
+        where: {
+          infraccion_tiendaId: {
+            infraccion: c.infraccion,
+            tiendaId,
+          },
+        },
         update: {
           estado: c.estado || 'Activo',
           monto: parseFloat(c.monto || 0),
@@ -81,13 +88,14 @@ export async function POST(request: Request) {
           toleranciaActiva: tolAct,
           multiplicador: multVal,
           multiplicadorActivo: multAct,
+          tiendaId,
         },
       });
     }
 
     await logAuditoria(
       'Configuración de Sanciones',
-      `Catálogo disciplinario actualizado (${nuevosDatos.length} reglas con tolerancia, multiplicador Break y división de inasistencia)`,
+      `Catálogo disciplinario actualizado (${nuevosDatos.length} reglas con tolerancia y modificadores) en tienda ${tiendaId}`,
       usuarioActual
     );
 

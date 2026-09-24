@@ -2,12 +2,27 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getCurrentUser, hashPassword } from '@/lib/auth';
 import { logAuditoria } from '@/lib/auditoria';
+import { resolveTiendaId } from '@/lib/tiendas';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { tiendaId, user } = await resolveTiendaId(request);
+
+    // Si es Usuario Maestro, puede ver todos los usuarios o filtrar por tienda si se indica
+    const whereClause: any = {};
+    if (!user?.esMaestro) {
+      whereClause.tiendaId = tiendaId;
+    }
+
     const usuarios = await prisma.usuario.findMany({
+      where: whereClause,
+      include: {
+        tienda: {
+          select: { id: true, nombre: true, slug: true },
+        },
+      },
       orderBy: { id: 'asc' },
     });
 
@@ -18,6 +33,8 @@ export async function GET() {
       rol: u.rol,
       estado: u.estado,
       esMaestro: u.esMaestro || u.id === 'USR-MASTER',
+      tiendaId: u.tiendaId,
+      tiendaNombre: u.tienda?.nombre || (u.esMaestro ? 'Todas las Sedes (Maestro)' : 'Sin Asignar'),
     }));
 
     return NextResponse.json(lista);
@@ -28,7 +45,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
+    const { tiendaId: activeTiendaId, user } = await resolveTiendaId(request);
     const usuarioActual = user?.nombre || 'Sistema';
 
     const payload = await request.json();
@@ -44,11 +61,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const { id, nombre, email, password, rol, estado } = payload;
+    const { id, nombre, email, password, rol, estado, tiendaId: targetTiendaId } = payload;
     const cleanEmail = String(email || '').trim().toLowerCase();
     const cleanNombre = String(nombre || '').trim();
     const cleanRol = String(rol || 'Moderador').trim();
     const cleanEstado = String(estado || 'Activo').trim();
+
+    // Determinar tienda asignada
+    const tiendaAsignada = user?.esMaestro
+      ? (targetTiendaId || activeTiendaId)
+      : activeTiendaId;
 
     if (!cleanNombre || !cleanEmail) {
       return NextResponse.json(
@@ -71,6 +93,10 @@ export async function POST(request: Request) {
         estado: cleanEstado,
       };
 
+      if (!usuarioExistente.esMaestro && tiendaAsignada) {
+        updateData.tiendaId = tiendaAsignada;
+      }
+
       if (password && String(password).trim() !== '') {
         updateData.passwordHash = await hashPassword(String(password).trim());
       }
@@ -82,7 +108,7 @@ export async function POST(request: Request) {
 
       await logAuditoria(
         'Modificación de Usuario',
-        `Usuario actualizado: ${cleanEmail} (Rol: ${cleanRol})`,
+        `Usuario actualizado: ${cleanEmail} (Rol: ${cleanRol}) en tienda ${tiendaAsignada}`,
         usuarioActual
       );
 
@@ -105,12 +131,13 @@ export async function POST(request: Request) {
           rol: cleanRol,
           estado: cleanEstado,
           esMaestro: false,
+          tiendaId: tiendaAsignada,
         },
       });
 
       await logAuditoria(
         'Alta de Usuario',
-        `Nuevo usuario creado: ${cleanEmail} (Rol: ${cleanRol})`,
+        `Nuevo usuario creado: ${cleanEmail} (Rol: ${cleanRol}) en tienda ${tiendaAsignada}`,
         usuarioActual
       );
 
