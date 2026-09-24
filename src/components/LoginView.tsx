@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SessionUser } from '@/lib/auth';
 
 interface LoginViewProps {
@@ -10,9 +10,21 @@ interface LoginViewProps {
 export default function LoginView({ onLoginSuccess }: LoginViewProps) {
   const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
+  const [recordarUsuario, setRecordarUsuario] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
+
+  // Cargar usuario guardado al iniciar
+  useEffect(() => {
+    try {
+      const savedUser = localStorage.getItem('propinas_saved_user');
+      if (savedUser) {
+        setUser(savedUser);
+        setRecordarUsuario(true);
+      }
+    } catch (e) {}
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,16 +32,26 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
     setCargando(true);
 
     try {
+      const cleanUser = user.trim();
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user: user.trim(), pass: pass.trim() }),
+        body: JSON.stringify({ user: cleanUser, pass: pass.trim() }),
       });
 
       const data = await res.json();
       setCargando(false);
 
       if (data.success && data.user) {
+        // Guardar o eliminar usuario según el checkbox de recordar
+        try {
+          if (recordarUsuario) {
+            localStorage.setItem('propinas_saved_user', cleanUser);
+          } else {
+            localStorage.removeItem('propinas_saved_user');
+          }
+        } catch (e) {}
+
         onLoginSuccess(data.user);
       } else {
         setError(data.message || 'Error al iniciar sesión.');
@@ -124,6 +146,25 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
               >
                 <i className={`bi ${showPass ? 'bi-eye-slash' : 'bi-eye'}`}></i>
               </button>
+            </div>
+          </div>
+
+          <div className="d-flex justify-content-between align-items-center mb-4">
+            <div className="form-check">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                id="checkRecordarUsuario"
+                checked={recordarUsuario}
+                onChange={(e) => setRecordarUsuario(e.target.checked)}
+              />
+              <label
+                className="form-check-label small text-secondary fw-semibold"
+                htmlFor="checkRecordarUsuario"
+                style={{ cursor: 'pointer', userSelect: 'none' }}
+              >
+                Recordar usuario
+              </label>
             </div>
           </div>
 

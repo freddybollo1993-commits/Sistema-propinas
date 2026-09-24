@@ -15,6 +15,11 @@ export default function ModPersonal({
   const [personal, setPersonal] = useState<any[]>([]);
   const [cargando, setCargando] = useState(false);
 
+  // Filtros de búsqueda
+  const [filtroNombre, setFiltroNombre] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
+  const [filtroArea, setFiltroArea] = useState('');
+
   // Modal
   const [modalShow, setModalShow] = useState(false);
   const [perNombre, setPerNombre] = useState('');
@@ -42,6 +47,29 @@ export default function ModPersonal({
       setCargando(false);
       console.error(e);
     }
+  };
+
+  // Obtener lista única de áreas registradas
+  const areasDisponibles = Array.from(
+    new Set(personal.map((p) => p.area).filter(Boolean))
+  );
+  if (!areasDisponibles.includes('Salón')) areasDisponibles.push('Salón');
+  if (!areasDisponibles.includes('Cocina')) areasDisponibles.push('Cocina');
+
+  // Filtrado reactivo de colaboradores
+  const personalFiltrado = personal.filter((p) => {
+    const matchNombre = !filtroNombre.trim() || (p.nombre || '').toLowerCase().includes(filtroNombre.toLowerCase().trim());
+    const matchEstado = !filtroEstado || p.estado === filtroEstado;
+    const matchArea = !filtroArea || (p.area || '').toLowerCase() === filtroArea.toLowerCase();
+    return matchNombre && matchEstado && matchArea;
+  });
+
+  const hayFiltrosActivos = !!filtroNombre.trim() || !!filtroEstado || !!filtroArea;
+
+  const limpiarFiltros = () => {
+    setFiltroNombre('');
+    setFiltroEstado('');
+    setFiltroArea('');
   };
 
   const handleGuardar = async (e: React.FormEvent) => {
@@ -106,7 +134,7 @@ export default function ModPersonal({
 
   return (
     <div className="card p-4 shadow-sm border-0 bg-white">
-      <div className="d-flex justify-content-between align-items-center mb-3">
+      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
           <h5 className="fw-bold mb-1 text-dark">
             <i className="bi bi-people text-primary me-2"></i>
@@ -117,7 +145,7 @@ export default function ModPersonal({
           </p>
         </div>
         <button
-          className="btn btn-primary btn-sm px-3"
+          className="btn btn-primary btn-sm px-3 shadow-sm"
           onClick={() => {
             setPerNombre('');
             setPerArea('Salón');
@@ -127,6 +155,109 @@ export default function ModPersonal({
         >
           <i className="bi bi-person-plus me-1"></i> Nuevo Colaborador
         </button>
+      </div>
+
+      {/* Barra de Filtros y Búsqueda */}
+      <div className="card border-0 bg-light p-3 mb-3" style={{ borderRadius: '10px' }}>
+        <div className="row g-2 align-items-center">
+          {/* Buscar por Nombre */}
+          <div className="col-12 col-md-5">
+            <label className="form-label small fw-bold text-secondary mb-1">
+              <i className="bi bi-search me-1"></i> Buscar por Nombre
+            </label>
+            <div className="input-group input-group-sm">
+              <span className="input-group-text bg-white">
+                <i className="bi bi-person text-muted"></i>
+              </span>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Ej. Juan Pérez, María..."
+                value={filtroNombre}
+                onChange={(e) => setFiltroNombre(e.target.value)}
+              />
+              {filtroNombre && (
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={() => setFiltroNombre('')}
+                  title="Borrar texto"
+                >
+                  <i className="bi bi-x"></i>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Filtrar por Área */}
+          <div className="col-6 col-md-3">
+            <label className="form-label small fw-bold text-secondary mb-1">
+              <i className="bi bi-geo-alt me-1"></i> Área de Trabajo
+            </label>
+            <select
+              className="form-select form-select-sm"
+              value={filtroArea}
+              onChange={(e) => setFiltroArea(e.target.value)}
+            >
+              <option value="">Todas las áreas ({areasDisponibles.length})</option>
+              {areasDisponibles.map((area) => (
+                <option key={area} value={area}>
+                  {area}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filtrar por Estado */}
+          <div className="col-6 col-md-2">
+            <label className="form-label small fw-bold text-secondary mb-1">
+              <i className="bi bi-toggle2-on me-1"></i> Estado
+            </label>
+            <select
+              className="form-select form-select-sm"
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value)}
+            >
+              <option value="">Todos</option>
+              <option value="Activo">Activos</option>
+              <option value="Inactivo">Inactivos</option>
+            </select>
+          </div>
+
+          {/* Botón Limpiar y Contador */}
+          <div className="col-12 col-md-2 d-flex align-items-end pt-md-3">
+            {hayFiltrosActivos ? (
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm w-100"
+                onClick={limpiarFiltros}
+                title="Restablecer todos los filtros"
+              >
+                <i className="bi bi-eraser me-1"></i> Limpiar
+              </button>
+            ) : (
+              <span className="text-muted small text-center w-100 d-none d-md-inline">
+                {personal.length} colaboradores
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Resumen de Resultados Filtrados */}
+        {hayFiltrosActivos && (
+          <div className="d-flex justify-content-between align-items-center mt-2 pt-2 border-top small text-secondary">
+            <span>
+              Mostrando <strong>{personalFiltrado.length}</strong> de <strong>{personal.length}</strong> colaboradores
+            </span>
+            <button
+              type="button"
+              className="btn btn-link btn-sm p-0 text-decoration-none text-secondary"
+              onClick={limpiarFiltros}
+            >
+              Restablecer
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="table-responsive">
@@ -140,14 +271,30 @@ export default function ModPersonal({
             </tr>
           </thead>
           <tbody>
-            {personal.length === 0 ? (
+            {personalFiltrado.length === 0 ? (
               <tr>
-                <td colSpan={4} className="text-center text-muted py-3">
-                  No hay colaboradores registrados. Presione &apos;+ Nuevo Colaborador&apos; para agregar.
+                <td colSpan={4} className="text-center text-muted py-4">
+                  {personal.length === 0 ? (
+                    'No hay colaboradores registrados. Presione "+ Nuevo Colaborador" para agregar.'
+                  ) : (
+                    <div>
+                      <i className="bi bi-funnel text-secondary fs-4 d-block mb-1"></i>
+                      <span>No se encontraron colaboradores que coincidan con los filtros aplicados.</span>
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          className="btn btn-outline-primary btn-sm py-1 px-3"
+                          onClick={limpiarFiltros}
+                        >
+                          Limpiar Filtros
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </td>
               </tr>
             ) : (
-              personal.map((p) => {
+              personalFiltrado.map((p) => {
                 const esActivo = p.estado === 'Activo';
                 const badge = esActivo ? 'bg-success' : 'bg-secondary';
                 const esApoyo = p.area.includes('Apoyo');
