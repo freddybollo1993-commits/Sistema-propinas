@@ -5,6 +5,7 @@ import { SessionUser } from '@/lib/auth';
 
 export type ModuleName =
   | 'Dashboard'
+  | 'CentralNeuralgica'
   | 'RegistroPropinas'
   | 'Personal'
   | 'Sanciones'
@@ -36,8 +37,9 @@ export default function Sidebar({
     currentUser?.esMaestro ||
     currentUser?.id === 'USR-MASTER';
 
-  const menuItems: { id: ModuleName; label: string; icon: string; adminOnly?: boolean }[] = [
-    { id: 'Dashboard', label: 'Dashboard', icon: 'bi-grid-1x2' },
+  const menuItems: { id: ModuleName; label: string; icon: string; adminOnly?: boolean; maestroOnly?: boolean }[] = [
+    { id: 'Dashboard', label: 'Dashboard Local', icon: 'bi-grid-1x2' },
+    { id: 'CentralNeuralgica', label: 'Central Neurálgica (BI)', icon: 'bi-hdd-network' },
     { id: 'RegistroPropinas', label: 'Registro de Propinas', icon: 'bi-pencil-square' },
     { id: 'Personal', label: 'Personal', icon: 'bi-people' },
     { id: 'Sanciones', label: 'Sanciones y Faltas', icon: 'bi-exclamation-octagon' },

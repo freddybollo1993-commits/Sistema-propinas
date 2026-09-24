@@ -9,6 +9,7 @@ import ModalEliminarMaster from '@/components/ModalEliminarMaster';
 import ModalNuevaTienda from '@/components/ModalNuevaTienda';
 
 import ModDashboard from '@/components/modules/ModDashboard';
+import ModCentralNeuralgica from '@/components/modules/ModCentralNeuralgica';
 import ModRegistroPropinas from '@/components/modules/ModRegistroPropinas';
 import ModPersonal from '@/components/modules/ModPersonal';
 import ModSanciones from '@/components/modules/ModSanciones';
@@ -70,6 +71,9 @@ export default function HomePage() {
         setCurrentUser(data.user);
         if (data.user.tiendaId) {
           setActiveTiendaId(data.user.tiendaId);
+        }
+        if (data.user.esMaestro) {
+          setCurrentModule('CentralNeuralgica');
         }
       } else {
         setCurrentUser(null);
@@ -200,7 +204,7 @@ export default function HomePage() {
           }
           cargarTiendas();
           cargarCicloActivo();
-          setCurrentModule('Dashboard');
+          setCurrentModule(user.esMaestro ? 'CentralNeuralgica' : 'Dashboard');
         }}
       />
     );
@@ -260,6 +264,12 @@ export default function HomePage() {
         <main className="main-content">
           <div key={`${currentModule}-${activeTiendaId}-${refreshKey}`}>
             {currentModule === 'Dashboard' && <ModDashboard cicloInfo={cicloInfo} />}
+            {currentModule === 'CentralNeuralgica' && (
+              <ModCentralNeuralgica
+                currentUser={currentUser}
+                onSelectTienda={handleSelectTienda}
+              />
+            )}
             {currentModule === 'RegistroPropinas' && (
               <ModRegistroPropinas
                 currentUser={currentUser}
