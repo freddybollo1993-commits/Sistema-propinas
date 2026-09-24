@@ -100,17 +100,36 @@ model ReglaSancion {
 }
 
 model SancionAdelanto {
-  id          Int      @id @default(autoincrement())
-  fecha       String   // Formato YYYY-MM-DD
-  colaborador String
-  concepto    String   // "Sanción: ...", "Sanción Fondo: ...", "Adelanto"
-  monto       Float
-  detalle     String?
-  estado      String   @default("Aprobado") // Aprobado, Pendiente, Rechazado
-  usuario     String
-  createdAt   DateTime @default(now())
+  id                     Int      @id @default(autoincrement())
+  fecha                  String   // Formato YYYY-MM-DD
+  colaborador            String
+  concepto               String   // "Sanción: ...", "Sanción Fondo: ...", "Adelanto"
+  monto                  Float
+  detalle                String?
+  estado                 String   @default("Aprobado") // Aprobado, Pendiente, Rechazado
+  usuario                String
+  esEspecial             Boolean  @default(false)
+  sancionEspecialId      Int?
+  tipoEfecto             String?  // PERDIDA_DIA, etc.
+  montoEspecialCalculado Float?
+  fechaAfectada          String?
+  createdAt              DateTime @default(now())
 
   @@map("sanciones_adelantos")
+}
+
+model SancionEspecial {
+  id                   Int      @id @default(autoincrement())
+  nombre               String   // Ej: "Pérdida de propina del día"
+  sancionPrincipal     String   // Ej: "Tardanza", "Uso de Celular"
+  estado               String   @default("Activo") // Activo / Inactivo
+  tipoEfecto           String   @default("PERDIDA_DIA") // PERDIDA_DIA, etc.
+  criterioDisparador   String   @default("TOLERANCIA_O_FRECUENCIA")
+  disparadorFrecuencia Int      @default(1)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@map("sanciones_especiales")
 }
 
 model RetiroFondo {

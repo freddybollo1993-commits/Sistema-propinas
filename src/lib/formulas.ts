@@ -405,7 +405,30 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
     }
 
     if (item.concepto.includes('Sanción')) {
-      colaboradores[nombre].sanciones += item.monto;
+      let montoEfectivo = item.monto;
+      let detalleEfectivo = item.detalle || 'Falta disciplinaria';
+
+      // Sanción Especial: Pérdida de la propina del día
+      if (item.esEspecial && item.tipoEfecto === 'PERDIDA_DIA') {
+        const fechaTarget = item.fechaAfectada || item.fecha;
+        const jornadasEseDia = colaboradores[nombre].detalleDias.filter(
+          (d: any) => d.fecha === fechaTarget
+        );
+        const propinaGanadaEseDia = jornadasEseDia.reduce(
+          (acc: number, j: any) => acc + (j.propina || 0),
+          0
+        );
+
+        if (propinaGanadaEseDia > 0) {
+          montoEfectivo = Math.round(propinaGanadaEseDia * 100) / 100;
+          detalleEfectivo += ` | [Castigo Especial: Pérdida del 100% de propina del día ${fechaTarget} (S/ ${montoEfectivo.toFixed(2)})]`;
+        } else if (item.montoEspecialCalculado && item.montoEspecialCalculado > 0) {
+          montoEfectivo = item.montoEspecialCalculado;
+          detalleEfectivo += ` | [Castigo Especial: Pérdida de propina del día ${fechaTarget} (S/ ${montoEfectivo.toFixed(2)})]`;
+        }
+      }
+
+      colaboradores[nombre].sanciones += montoEfectivo;
       let cuentaParaFrecuencia = true;
       let etiquetaConteo = item.concepto
         .replace('Sanción Fondo: ', '')
@@ -422,7 +445,7 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
       } else if (etiquetaConteo.includes('Tardanza')) {
         etiquetaConteo = 'Tardanza';
         const reglaTard = catalogo.find((c) => c.infraccion === 'Tardanza');
-        if (reglaTard && reglaTard.toleranciaActiva) {
+        if (reglaTard && reglaTard.toleranciaActiva && !item.esEspecial) {
           const tolMin = reglaTard.toleranciaMin || 0;
           const matchMin = (item.detalle || '').match(/Tardanza:\s*(\d+(\.\d+)?)\s*min/i);
           const minTardanza = matchMin ? parseFloat(matchMin[1]) : item.monto > 0 ? tolMin + 1 : 0;
@@ -441,9 +464,10 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
         id: item.id,
         fecha: item.fecha,
         infraccion: item.concepto.replace('Sanción Fondo: ', '').replace('Sanción: ', '').trim(),
-        monto: item.monto,
-        detalle: item.detalle || 'Falta disciplinaria',
+        monto: montoEfectivo,
+        detalle: detalleEfectivo,
         estado: item.estado,
+        esEspecial: item.esEspecial,
       });
     } else if (item.concepto.includes('Adelanto')) {
       colaboradores[nombre].adelantos += item.monto;

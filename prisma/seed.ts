@@ -154,6 +154,17 @@ async function main() {
       multiplicador: 0,
       multiplicadorActivo: false,
     },
+    {
+      infraccion: 'Uso de Celular',
+      estado: 'Activo',
+      monto: 30,
+      frecuenciaMax: 1,
+      consecuencia: 'Pérdida del 100% de propinas acumuladas',
+      toleranciaMin: 0,
+      toleranciaActiva: false,
+      multiplicador: 0,
+      multiplicadorActivo: false,
+    },
   ];
 
   for (const r of defaultRules) {
@@ -162,6 +173,40 @@ async function main() {
       update: {},
       create: r,
     });
+  }
+
+  // 4.1 Sanciones Especiales / Modificadores Disciplinarios
+  const sancionesEspecialesBase = [
+    {
+      nombre: 'Pérdida de propina del día',
+      sancionPrincipal: 'Tardanza',
+      estado: 'Activo',
+      tipoEfecto: 'PERDIDA_DIA',
+      criterioDisparador: 'TOLERANCIA_O_FRECUENCIA',
+      disparadorFrecuencia: 1,
+    },
+    {
+      nombre: 'Pérdida de propina del día',
+      sancionPrincipal: 'Uso de Celular',
+      estado: 'Activo',
+      tipoEfecto: 'PERDIDA_DIA',
+      criterioDisparador: 'TOLERANCIA_O_FRECUENCIA',
+      disparadorFrecuencia: 1,
+    },
+  ];
+
+  for (const se of sancionesEspecialesBase) {
+    const existe = await prisma.sancionEspecial.findFirst({
+      where: {
+        nombre: se.nombre,
+        sancionPrincipal: se.sancionPrincipal,
+      },
+    });
+    if (!existe) {
+      await prisma.sancionEspecial.create({
+        data: se,
+      });
+    }
   }
 
   // 5. Ciclo activo por defecto

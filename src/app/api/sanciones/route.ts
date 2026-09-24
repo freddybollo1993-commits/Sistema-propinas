@@ -143,21 +143,87 @@ export async function POST(request: Request) {
       }
     }
 
+    // Verificar si existe una Sanción Especial (Modificador) activa para esta sanción principal
+    const modificadorEspecial = await prisma.sancionEspecial.findFirst({
+      where: {
+        sancionPrincipal: payload.infraccion,
+        estado: 'Activo',
+      },
+    });
+
+    let esEspecial = false;
+    let tipoEfecto: string | null = null;
+    let montoEspecialCalculado: number | null = null;
+
+    if (modificadorEspecial) {
+      let disparaModificador = false;
+
+      // Disparador 1: Para Tardanza, se dispara cuando supera la tolerancia activa
+      if (payload.infraccion === 'Tardanza') {
+        const tiempoIng = parseFloat(payload.tiempoTardanza) || 0;
+        const tolMin = reglaTardanza?.toleranciaMin || 0;
+        if (tiempoIng > tolMin || !reglaTardanza?.toleranciaActiva) {
+          disparaModificador = true;
+        }
+      } else {
+        // Disparador 2: Para otras sanciones (ej. Uso de Celular), según la casilla disparadorFrecuencia
+        const historialPrevia = await prisma.sancionAdelanto.count({
+          where: {
+            colaborador: payload.colaborador,
+            concepto: { contains: payload.infraccion },
+            estado: 'Aprobado',
+          },
+        });
+        if (historialPrevia + 1 >= (modificadorEspecial.disparadorFrecuencia || 1)) {
+          disparaModificador = true;
+        }
+      }
+
+      if (disparaModificador) {
+        esEspecial = true;
+        tipoEfecto = modificadorEspecial.tipoEfecto || 'PERDIDA_DIA';
+
+        // Buscar si ya existe la propina ganada por el colaborador en esa fecha
+        const participacionDia = await prisma.detalleParticipacion.findFirst({
+          where: {
+            colaborador: payload.colaborador,
+            registro: {
+              fecha,
+              estado: 'Activo',
+            },
+          },
+        });
+
+        if (participacionDia && participacionDia.propina > 0) {
+          monto = participacionDia.propina;
+          montoEspecialCalculado = participacionDia.propina;
+          detalleCompleto += ` | [Castigo Especial: Pérdida del 100% de la propina del día (S/ ${monto.toFixed(2)})]`;
+        } else {
+          detalleCompleto += ` | [Castigo Especial: Pérdida de la propina del día asignada al cierre]`;
+        }
+      }
+    }
+
     const sancionCreada = await prisma.sancionAdelanto.create({
       data: {
         fecha,
         colaborador: payload.colaborador,
-        concepto: `Sanción: ${payload.infraccion}`,
+        concepto: esEspecial ? `Sanción Especial: ${payload.infraccion}` : `Sanción: ${payload.infraccion}`,
         monto,
         detalle: detalleCompleto,
         estado,
         usuario: usuarioActual,
+        esEspecial,
+        sancionEspecialId: modificadorEspecial?.id || null,
+        tipoEfecto,
+        montoEspecialCalculado,
+        fechaAfectada: fecha,
       },
     });
 
     await logAuditoria(
-      'Registro de Sanción',
-      `Sanción a ${payload.colaborador} (${payload.infraccion} - S/ ${monto.toFixed(2)}) [${estado}]`,
+      esEspecial ? 'Registro de Sanción Especial' : 'Registro de Sanción',
+      `${esEspecial ? 'Castigo Especial' : 'Sanción'} a ${payload.colaborador} (${payload.infraccion} - S/ ${monto.toFixed(2)}) [${estado}]`,
       usuarioActual
     );
 

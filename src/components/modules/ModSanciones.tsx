@@ -19,6 +19,8 @@ export default function ModSanciones({
   // Datos comunes
   const [personal, setPersonal] = useState<any[]>([]);
   const [catalogo, setCatalogo] = useState<any[]>([]);
+  const [sancionesEspeciales, setSancionesEspeciales] = useState<any[]>([]);
+  const [subTabConfig, setSubTabConfig] = useState<'principales' | 'especiales'>('principales');
   const [promediosColab, setPromediosColab] = useState<Record<string, number>>({});
 
   // Formulario Modo Clásico
@@ -82,18 +84,20 @@ export default function ModSanciones({
   const cargarDatosIniciales = async () => {
     try {
       setCargando(true);
-      const [resModo, resPer, resCat, resHist, resFondo] = await Promise.all([
+      const [resModo, resPer, resCat, resHist, resFondo, resEsp] = await Promise.all([
         fetch('/api/sanciones/modo').then((r) => r.json()),
         fetch('/api/personal').then((r) => r.json()),
         fetch('/api/sanciones/config').then((r) => r.json()),
         fetch('/api/sanciones').then((r) => r.json()),
         fetch('/api/fondo').then((r) => r.json()),
+        fetch('/api/sanciones/especiales').then((r) => r.json()),
       ]);
       setCargando(false);
 
       if (resModo?.modo) setModoActivo(resModo.modo);
       if (Array.isArray(resPer)) setPersonal(resPer.filter((p: any) => p.estado === 'Activo'));
       if (Array.isArray(resCat)) setCatalogo(resCat);
+      if (Array.isArray(resEsp)) setSancionesEspeciales(resEsp);
       if (Array.isArray(resHist)) {
         setHistorialSanciones(resHist);
         procesarSancionados100(resHist);
@@ -376,6 +380,64 @@ export default function ModSanciones({
     }
   };
 
+  const handleGuardarSancionesEspeciales = async () => {
+    try {
+      setCargando(true);
+      const res = await fetch('/api/sanciones/especiales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sancionesEspeciales),
+      });
+      const data = await res.json();
+      setCargando(false);
+
+      alert(data.message);
+      if (data.success) cargarDatosIniciales();
+    } catch (e: any) {
+      setCargando(false);
+      alert('Error al guardar sanciones especiales: ' + e.message);
+    }
+  };
+
+  const handleAgregarSancionEspecial = () => {
+    const primeraInfraccion = catalogo[0]?.infraccion || 'Tardanza';
+    setSancionesEspeciales((prev) => [
+      ...prev,
+      {
+        nombre: 'Pérdida de propina del día',
+        sancionPrincipal: primeraInfraccion,
+        estado: 'Activo',
+        tipoEfecto: 'PERDIDA_DIA',
+        criterioDisparador: 'TOLERANCIA_O_FRECUENCIA',
+        disparadorFrecuencia: 1,
+      },
+    ]);
+  };
+
+  const handleEliminarSancionEspecialFila = async (index: number) => {
+    const item = sancionesEspeciales[index];
+    if (!item) return;
+    if (!confirm(`¿Eliminar la sanción especial "${item.nombre}"?`)) return;
+
+    if (item.id) {
+      try {
+        setCargando(true);
+        const res = await fetch(`/api/sanciones/especiales?id=${item.id}`, { method: 'DELETE' });
+        const data = await res.json();
+        setCargando(false);
+        if (!data.success) {
+          alert('Error al eliminar: ' + data.message);
+          return;
+        }
+      } catch (e: any) {
+        setCargando(false);
+        alert('Error de conexión: ' + e.message);
+        return;
+      }
+    }
+    setSancionesEspeciales((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
   const handleResolverSolicitud = async (id: number, accion: 'Aprobado' | 'Rechazado') => {
     if (!confirm(`¿Confirmas marcar esta sanción como "${accion}"?`)) return;
 
@@ -556,6 +618,28 @@ export default function ModSanciones({
                     </select>
                   </div>
 
+                  {(() => {
+                    const modEsp = sancionesEspeciales.find(
+                      (se) => se.sancionPrincipal === sancInfraccion && se.estado === 'Activo'
+                    );
+                    if (!modEsp) return null;
+                    return (
+                      <div className="alert alert-warning py-2 px-3 small border mb-2 shadow-sm">
+                        <div className="d-flex align-items-center gap-2">
+                          <i className="bi bi-lightning-charge-fill text-warning fs-5"></i>
+                          <div>
+                            <strong>Castigo Ejemplar Vinculado:</strong> {modEsp.nombre}
+                            <div className="text-muted" style={{ fontSize: '0.73rem' }}>
+                              {sancInfraccion === 'Tardanza'
+                                ? 'Al superar la tolerancia de tardanza, confisca el 100% de la propina de la fecha en lugar del monto clásico.'
+                                : `Aplica a partir de la falta #${modEsp.disparadorFrecuencia}. Confisca el 100% de la propina del día.`}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <div className="mb-2">
                     <label className="form-label small fw-bold">Descuento Estimado (S/)</label>
                     <input
@@ -643,196 +727,393 @@ export default function ModSanciones({
               </div>
             </div>
 
-            {/* Panel de Configuración de Infracciones */}
+            {/* Panel de Configuración de Infracciones y Sanciones Especiales */}
             <div className="col-md-8">
-              <div className="p-3 border rounded bg-white">
-                <div className="d-flex justify-content-between align-items-center mb-2">
+              <div className="p-3 border rounded bg-white shadow-sm">
+                <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                   <div>
-                    <h6 className="fw-bold mb-0 text-dark">Configuración del Catálogo de Infracciones</h6>
+                    <h6 className="fw-bold mb-0 text-dark">
+                      <i className="bi bi-sliders me-1 text-primary"></i> Catálogo y Modificadores Disciplinarios
+                    </h6>
                     <span className="text-muted small">
-                      Habilitación, tarifas, tolerancias y multiplicadores.
+                      Configura infracciones base y castigos especiales vinculados.
                     </span>
                   </div>
-                  {!esModerador && (
-                    <button
-                      className="btn btn-primary btn-sm px-3"
-                      onClick={handleGuardarReglasCatalogo}
-                      disabled={cargando}
-                    >
-                      <i className="bi bi-save me-1"></i> Guardar Reglas
-                    </button>
-                  )}
+
+                  <div className="d-flex flex-wrap align-items-center gap-2">
+                    <div className="btn-group btn-group-sm" role="group">
+                      <button
+                        type="button"
+                        className={`btn ${subTabConfig === 'principales' ? 'btn-primary' : 'btn-outline-primary'}`}
+                        onClick={() => setSubTabConfig('principales')}
+                      >
+                        <i className="bi bi-list-check me-1"></i> Principales
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn ${
+                          subTabConfig === 'especiales'
+                            ? 'btn-warning text-dark fw-bold'
+                            : 'btn-outline-warning text-dark'
+                        }`}
+                        onClick={() => setSubTabConfig('especiales')}
+                      >
+                        <i className="bi bi-lightning-charge-fill me-1 text-warning"></i> Sanciones Especiales
+                        {sancionesEspeciales.filter((s) => s.estado === 'Activo').length > 0 && (
+                          <span className="badge bg-danger ms-1">
+                            {sancionesEspeciales.filter((s) => s.estado === 'Activo').length}
+                          </span>
+                        )}
+                      </button>
+                    </div>
+
+                    {!esModerador && (
+                      subTabConfig === 'principales' ? (
+                        <button
+                          className="btn btn-primary btn-sm px-3"
+                          onClick={handleGuardarReglasCatalogo}
+                          disabled={cargando}
+                        >
+                          <i className="bi bi-save me-1"></i> Guardar Reglas
+                        </button>
+                      ) : (
+                        <div className="d-flex gap-1">
+                          <button
+                            className="btn btn-outline-success btn-sm"
+                            onClick={handleAgregarSancionEspecial}
+                            disabled={cargando}
+                          >
+                            <i className="bi bi-plus-lg me-1"></i> Nueva
+                          </button>
+                          <button
+                            className="btn btn-warning btn-sm text-dark fw-bold px-3"
+                            onClick={handleGuardarSancionesEspeciales}
+                            disabled={cargando}
+                          >
+                            <i className="bi bi-save me-1"></i> Guardar
+                          </button>
+                        </div>
+                      )
+                    )}
+                  </div>
                 </div>
 
-                <div className="table-responsive" style={{ maxHeight: '290px', overflowY: 'auto' }}>
-                  <table className="table table-sm table-hover align-middle small mb-0">
-                    <thead className="table-light sticky-top">
-                      <tr>
-                        <th style={{ width: '10%' }}>Activo</th>
-                        <th style={{ width: '35%' }}>Infracción</th>
-                        <th style={{ width: '15%' }}>Monto (S/)</th>
-                        <th style={{ width: '25%' }}>Tolerancia / Multiplicador</th>
-                        <th style={{ width: '17%' }}>Máx. Frecuencia</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {catalogo.map((c, i) => {
-                        const isTardanza = c.infraccion === 'Tardanza';
-                        const isBreak = c.infraccion === 'Break';
-                        const isInasistencia = c.infraccion.includes('Inasistencia injustificada');
+                {subTabConfig === 'principales' ? (
+                  <div className="table-responsive" style={{ maxHeight: '310px', overflowY: 'auto' }}>
+                    <table className="table table-sm table-hover align-middle small mb-0">
+                      <thead className="table-light sticky-top">
+                        <tr>
+                          <th style={{ width: '10%' }}>Activo</th>
+                          <th style={{ width: '35%' }}>Infracción</th>
+                          <th style={{ width: '15%' }}>Monto (S/)</th>
+                          <th style={{ width: '25%' }}>Tolerancia / Multiplicador</th>
+                          <th style={{ width: '17%' }}>Máx. Frecuencia</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {catalogo.map((c, i) => {
+                          const isTardanza = c.infraccion === 'Tardanza';
+                          const isBreak = c.infraccion === 'Break';
+                          const isInasistencia = c.infraccion.includes('Inasistencia injustificada');
 
-                        return (
-                          <tr key={c.infraccion}>
-                            <td>
-                              <div className="form-check form-switch">
+                          return (
+                            <tr key={c.infraccion}>
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={c.estado === 'Activo'}
+                                    disabled={esModerador}
+                                    onChange={(e) => {
+                                      const checked = e.target.checked;
+                                      setCatalogo((prev) =>
+                                        prev.map((item, idx) =>
+                                          idx === i ? { ...item, estado: checked ? 'Activo' : 'Inactivo' } : item
+                                        )
+                                      );
+                                    }}
+                                  />
+                                </div>
+                              </td>
+                              <td>
+                                <strong>{c.infraccion}</strong>
+                                {isInasistencia && (
+                                  <>
+                                    <br />
+                                    <small className="text-primary" style={{ fontSize: '0.72rem' }}>
+                                      <i className="bi bi-link-45deg"></i> Frecuencia compartida
+                                    </small>
+                                  </>
+                                )}
+                              </td>
+                              <td>
                                 <input
-                                  className="form-check-input"
-                                  type="checkbox"
-                                  checked={c.estado === 'Activo'}
+                                  type="number"
+                                  className="form-control form-control-sm fw-semibold"
+                                  style={{ width: '75px' }}
+                                  value={c.monto}
                                   disabled={esModerador}
                                   onChange={(e) => {
-                                    const checked = e.target.checked;
+                                    const val = parseFloat(e.target.value) || 0;
                                     setCatalogo((prev) =>
-                                      prev.map((item, idx) =>
-                                        idx === i ? { ...item, estado: checked ? 'Activo' : 'Inactivo' } : item
-                                      )
+                                      prev.map((item, idx) => (idx === i ? { ...item, monto: val } : item))
                                     );
                                   }}
                                 />
-                              </div>
-                            </td>
-                            <td>
-                              <strong>{c.infraccion}</strong>
-                              {isInasistencia && (
-                                <>
-                                  <br />
-                                  <small className="text-primary" style={{ fontSize: '0.72rem' }}>
-                                    <i className="bi bi-link-45deg"></i> Frecuencia compartida
-                                  </small>
-                                </>
-                              )}
-                            </td>
-                            <td>
-                              <input
-                                type="number"
-                                className="form-control form-control-sm fw-semibold"
-                                style={{ width: '75px' }}
-                                value={c.monto}
-                                disabled={esModerador}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0;
-                                  setCatalogo((prev) =>
-                                    prev.map((item, idx) => (idx === i ? { ...item, monto: val } : item))
-                                  );
-                                }}
-                              />
-                            </td>
-                            <td>
-                              {isTardanza ? (
-                                <div className="d-flex align-items-center gap-1">
-                                  <div className="form-check form-switch m-0">
+                              </td>
+                              <td>
+                                {isTardanza ? (
+                                  <div className="d-flex align-items-center gap-1">
+                                    <div className="form-check form-switch m-0">
+                                      <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        checked={c.toleranciaActiva}
+                                        disabled={esModerador}
+                                        onChange={(e) => {
+                                          const chk = e.target.checked;
+                                          setCatalogo((prev) =>
+                                            prev.map((item, idx) =>
+                                              idx === i ? { ...item, toleranciaActiva: chk } : item
+                                            )
+                                          );
+                                        }}
+                                      />
+                                    </div>
                                     <input
-                                      className="form-check-input"
-                                      type="checkbox"
-                                      checked={c.toleranciaActiva}
-                                      disabled={esModerador}
+                                      type="number"
+                                      min="1"
+                                      step="1"
+                                      className="form-control form-control-sm px-1 text-center fw-bold"
+                                      style={{ width: '55px' }}
+                                      value={c.toleranciaMin || 15}
+                                      disabled={!c.toleranciaActiva || esModerador}
                                       onChange={(e) => {
-                                        const chk = e.target.checked;
+                                        const val = parseInt(e.target.value) || 0;
                                         setCatalogo((prev) =>
                                           prev.map((item, idx) =>
-                                            idx === i ? { ...item, toleranciaActiva: chk } : item
+                                            idx === i ? { ...item, toleranciaMin: val } : item
                                           )
                                         );
                                       }}
                                     />
+                                    <span className="small text-muted">min</span>
                                   </div>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    step="1"
-                                    className="form-control form-control-sm px-1 text-center fw-bold"
-                                    style={{ width: '55px' }}
-                                    value={c.toleranciaMin || 15}
-                                    disabled={!c.toleranciaActiva || esModerador}
-                                    onChange={(e) => {
-                                      const val = parseInt(e.target.value) || 0;
-                                      setCatalogo((prev) =>
-                                        prev.map((item, idx) =>
-                                          idx === i ? { ...item, toleranciaMin: val } : item
-                                        )
-                                      );
-                                    }}
-                                  />
-                                  <span className="small text-muted">min</span>
-                                </div>
-                              ) : isBreak ? (
-                                <div className="d-flex align-items-center gap-1">
-                                  <div className="form-check form-switch m-0">
+                                ) : isBreak ? (
+                                  <div className="d-flex align-items-center gap-1">
+                                    <div className="form-check form-switch m-0">
+                                      <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        checked={c.multiplicadorActivo}
+                                        disabled={esModerador}
+                                        onChange={(e) => {
+                                          const chk = e.target.checked;
+                                          setCatalogo((prev) =>
+                                            prev.map((item, idx) =>
+                                              idx === i ? { ...item, multiplicadorActivo: chk } : item
+                                            )
+                                          );
+                                        }}
+                                      />
+                                    </div>
                                     <input
-                                      className="form-check-input"
-                                      type="checkbox"
-                                      checked={c.multiplicadorActivo}
-                                      disabled={esModerador}
+                                      type="number"
+                                      min="0.5"
+                                      step="0.5"
+                                      className="form-control form-control-sm px-1 text-center fw-bold"
+                                      style={{ width: '55px' }}
+                                      value={c.multiplicador !== undefined ? c.multiplicador : 2}
+                                      disabled={!c.multiplicadorActivo || esModerador}
                                       onChange={(e) => {
-                                        const chk = e.target.checked;
+                                        const val = parseFloat(e.target.value) || 0;
                                         setCatalogo((prev) =>
                                           prev.map((item, idx) =>
-                                            idx === i ? { ...item, multiplicadorActivo: chk } : item
+                                            idx === i ? { ...item, multiplicador: val } : item
                                           )
                                         );
                                       }}
                                     />
+                                    <span className="small text-muted">x/min</span>
                                   </div>
-                                  <input
-                                    type="number"
-                                    min="0.5"
-                                    step="0.5"
-                                    className="form-control form-control-sm px-1 text-center fw-bold"
-                                    style={{ width: '55px' }}
-                                    value={c.multiplicador !== undefined ? c.multiplicador : 2}
-                                    disabled={!c.multiplicadorActivo || esModerador}
-                                    onChange={(e) => {
-                                      const val = parseFloat(e.target.value) || 0;
-                                      setCatalogo((prev) =>
-                                        prev.map((item, idx) =>
-                                          idx === i ? { ...item, multiplicador: val } : item
-                                        )
-                                      );
-                                    }}
-                                  />
-                                  <span className="small text-muted">x/min</span>
-                                </div>
-                              ) : (
-                                <span className="text-muted small">—</span>
-                              )}
-                            </td>
-                            <td>
-                              <input
-                                type="number"
-                                min="1"
-                                className="form-control form-control-sm text-center fw-bold"
-                                style={{ width: '60px' }}
-                                value={c.frecuenciaMax}
-                                disabled={esModerador}
-                                onChange={(e) => {
-                                  const val = parseInt(e.target.value) || 1;
-                                  setCatalogo((prev) =>
-                                    prev.map((item, idx) => {
-                                      if (isInasistencia && item.infraccion.includes('Inasistencia')) {
-                                        return { ...item, frecuenciaMax: val };
-                                      }
-                                      return idx === i ? { ...item, frecuenciaMax: val } : item;
-                                    })
-                                  );
-                                }}
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                                ) : (
+                                  <span className="text-muted small">—</span>
+                                )}
+                              </td>
+                              <td>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  className="form-control form-control-sm text-center fw-bold"
+                                  style={{ width: '60px' }}
+                                  value={c.frecuenciaMax}
+                                  disabled={esModerador}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 1;
+                                    setCatalogo((prev) =>
+                                      prev.map((item, idx) => {
+                                        if (isInasistencia && item.infraccion.includes('Inasistencia')) {
+                                          return { ...item, frecuenciaMax: val };
+                                        }
+                                        return idx === i ? { ...item, frecuenciaMax: val } : item;
+                                      })
+                                    );
+                                  }}
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="alert alert-light border py-2 px-3 small mb-2 text-muted">
+                      <i className="bi bi-info-circle text-primary me-1"></i>
+                      <strong>Sanciones Especiales (Castigos Ejemplares):</strong> Modifican la sanción base asociada.
+                      Al activarse, confiscan el <strong>100% de la propina de la fecha</strong> en vez de la tarifa clásica. Se aplican hasta que el colaborador alcance la frecuencia máxima quincenal (llegando a la pérdida del 100% total).
+                    </div>
+
+                    {sancionesEspeciales.length === 0 ? (
+                      <div className="text-center py-4 text-muted border rounded bg-light">
+                        <i className="bi bi-shield-slash fs-2 d-block mb-1 text-secondary"></i>
+                        No hay sanciones especiales configuradas.
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-success"
+                            onClick={handleAgregarSancionEspecial}
+                            disabled={esModerador}
+                          >
+                            <i className="bi bi-plus-lg me-1"></i> Crear Primera Sanción Especial
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="table-responsive" style={{ maxHeight: '310px', overflowY: 'auto' }}>
+                        <table className="table table-sm table-hover align-middle small mb-0">
+                          <thead className="table-light sticky-top">
+                            <tr>
+                              <th style={{ width: '8%' }}>Activo</th>
+                              <th style={{ width: '26%' }}>Nombre del Modificador</th>
+                              <th style={{ width: '26%' }}>Sanción Principal Asociada</th>
+                              <th style={{ width: '18%' }}>Castigo Ejemplar</th>
+                              <th style={{ width: '14%' }}>Disparador</th>
+                              <th style={{ width: '8%' }} className="text-center">Acción</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sancionesEspeciales.map((esp, i) => {
+                              const esTardanza = esp.sancionPrincipal === 'Tardanza';
+                              return (
+                                <tr key={esp.id || i}>
+                                  <td>
+                                    <div className="form-check form-switch">
+                                      <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        checked={esp.estado === 'Activo'}
+                                        disabled={esModerador}
+                                        onChange={(e) => {
+                                          const checked = e.target.checked;
+                                          setSancionesEspeciales((prev) =>
+                                            prev.map((item, idx) =>
+                                              idx === i ? { ...item, estado: checked ? 'Activo' : 'Inactivo' } : item
+                                            )
+                                          );
+                                        }}
+                                      />
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      className="form-control form-control-sm fw-semibold"
+                                      value={esp.nombre}
+                                      disabled={esModerador}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setSancionesEspeciales((prev) =>
+                                          prev.map((item, idx) => (idx === i ? { ...item, nombre: val } : item))
+                                        );
+                                      }}
+                                    />
+                                  </td>
+                                  <td>
+                                    <select
+                                      className="form-select form-select-sm fw-medium"
+                                      value={esp.sancionPrincipal}
+                                      disabled={esModerador}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setSancionesEspeciales((prev) =>
+                                          prev.map((item, idx) =>
+                                            idx === i ? { ...item, sancionPrincipal: val } : item
+                                          )
+                                        );
+                                      }}
+                                    >
+                                      {catalogo.map((cat) => (
+                                        <option key={cat.infraccion} value={cat.infraccion}>
+                                          {cat.infraccion}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  <td>
+                                    <span className="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                      <i className="bi bi-slash-circle me-1"></i> Pérdida 100% del Día
+                                    </span>
+                                  </td>
+                                  <td>
+                                    {esTardanza ? (
+                                      <span className="badge bg-secondary-subtle text-dark border">
+                                        Superar Tolerancia
+                                      </span>
+                                    ) : (
+                                      <div className="d-flex align-items-center gap-1">
+                                        <span className="small text-muted">Falta #</span>
+                                        <input
+                                          type="number"
+                                          min="1"
+                                          className="form-control form-control-sm text-center fw-bold px-1"
+                                          style={{ width: '48px' }}
+                                          value={esp.disparadorFrecuencia || 1}
+                                          disabled={esModerador}
+                                          onChange={(e) => {
+                                            const val = parseInt(e.target.value) || 1;
+                                            setSancionesEspeciales((prev) =>
+                                              prev.map((item, idx) =>
+                                                idx === i ? { ...item, disparadorFrecuencia: val } : item
+                                              )
+                                            );
+                                          }}
+                                        />
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="text-center">
+                                    <button
+                                      type="button"
+                                      className="btn btn-outline-danger btn-sm p-1 px-2"
+                                      title="Eliminar Sanción Especial"
+                                      disabled={esModerador || cargando}
+                                      onClick={() => handleEliminarSancionEspecialFila(i)}
+                                    >
+                                      <i className="bi bi-trash"></i>
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -970,7 +1251,16 @@ export default function ModSanciones({
                               <td>
                                 <strong>{s.colaborador}</strong>
                               </td>
-                              <td>{s.concepto}</td>
+                              <td>
+                                {s.concepto.includes('Sanción Especial') ? (
+                                  <span className="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                    <i className="bi bi-lightning-fill text-warning me-1"></i>
+                                    {s.concepto}
+                                  </span>
+                                ) : (
+                                  s.concepto
+                                )}
+                              </td>
                               <td className="fw-bold text-danger">S/ {parseFloat(s.monto).toFixed(2)}</td>
                               <td>
                                 <span className="text-muted">{s.detalle || '-'}</span>
