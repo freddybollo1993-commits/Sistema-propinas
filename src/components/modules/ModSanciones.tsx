@@ -401,6 +401,14 @@ export default function ModSanciones({
 
   const handleAgregarSancionEspecial = () => {
     const primeraInfraccion = catalogo[0]?.infraccion || 'Tardanza';
+    const nuevoCriterio =
+      primeraInfraccion === 'Tardanza'
+        ? 'TOLERANCIA'
+        : primeraInfraccion === 'Break'
+        ? 'DEMORA'
+        : 'FRECUENCIA';
+
+    setSubTabConfig('especiales');
     setSancionesEspeciales((prev) => [
       ...prev,
       {
@@ -408,7 +416,7 @@ export default function ModSanciones({
         sancionPrincipal: primeraInfraccion,
         estado: 'Activo',
         tipoEfecto: 'PERDIDA_DIA',
-        criterioDisparador: 'TOLERANCIA_O_FRECUENCIA',
+        criterioDisparador: nuevoCriterio,
         disparadorFrecuencia: 1,
       },
     ]);
@@ -630,9 +638,13 @@ export default function ModSanciones({
                           <div>
                             <strong>Castigo Ejemplar Vinculado:</strong> {modEsp.nombre}
                             <div className="text-muted" style={{ fontSize: '0.73rem' }}>
-                              {sancInfraccion === 'Tardanza'
-                                ? 'Al superar la tolerancia de tardanza, confisca el 100% de la propina de la fecha en lugar del monto clásico.'
-                                : `Aplica a partir de la falta #${modEsp.disparadorFrecuencia}. Confisca el 100% de la propina del día.`}
+                              {modEsp.criterioDisparador === 'TOLERANCIA'
+                                ? 'Al superar la tolerancia configurada, confisca el 100% de la propina de la fecha en lugar del monto clásico.'
+                                : modEsp.criterioDisparador === 'DEMORA'
+                                ? 'Al incurrir en exceso de tiempo de break, confisca el 100% de la propina de la fecha en lugar del monto clásico.'
+                                : modEsp.criterioDisparador === 'INMEDIATO'
+                                ? 'Aplica de inmediato desde la 1ª falta registrada. Confisca el 100% de la propina de la fecha.'
+                                : `Aplica a partir de la falta #${modEsp.disparadorFrecuencia || 1}. Confisca el 100% de la propina del día.`}
                             </div>
                           </div>
                         </div>
@@ -769,28 +781,40 @@ export default function ModSanciones({
 
                     {!esModerador && (
                       subTabConfig === 'principales' ? (
-                        <button
-                          className="btn btn-primary btn-sm px-3"
-                          onClick={handleGuardarReglasCatalogo}
-                          disabled={cargando}
-                        >
-                          <i className="bi bi-save me-1"></i> Guardar Reglas
-                        </button>
-                      ) : (
-                        <div className="d-flex gap-1">
+                        <div className="d-flex align-items-center gap-2">
                           <button
-                            className="btn btn-outline-success btn-sm"
+                            type="button"
+                            className="btn btn-outline-success btn-sm fw-semibold"
                             onClick={handleAgregarSancionEspecial}
                             disabled={cargando}
                           >
-                            <i className="bi bi-plus-lg me-1"></i> Nueva
+                            <i className="bi bi-plus-lg me-1"></i> + Sanción Especial
                           </button>
                           <button
-                            className="btn btn-warning btn-sm text-dark fw-bold px-3"
+                            className="btn btn-primary btn-sm px-3 fw-semibold"
+                            onClick={handleGuardarReglasCatalogo}
+                            disabled={cargando}
+                          >
+                            <i className="bi bi-save me-1"></i> Guardar Reglas
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="d-flex align-items-center gap-2">
+                          <button
+                            type="button"
+                            className="btn btn-success btn-sm fw-bold px-3 shadow-sm"
+                            onClick={handleAgregarSancionEspecial}
+                            disabled={cargando}
+                          >
+                            <i className="bi bi-plus-circle-fill me-1"></i> + Agregar Sanción Especial
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-warning btn-sm text-dark fw-bold px-3 shadow-sm"
                             onClick={handleGuardarSancionesEspeciales}
                             disabled={cargando}
                           >
-                            <i className="bi bi-save me-1"></i> Guardar
+                            <i className="bi bi-save me-1"></i> Guardar Cambios
                           </button>
                         </div>
                       )
@@ -970,10 +994,21 @@ export default function ModSanciones({
                   </div>
                 ) : (
                   <div>
-                    <div className="alert alert-light border py-2 px-3 small mb-2 text-muted">
-                      <i className="bi bi-info-circle text-primary me-1"></i>
-                      <strong>Sanciones Especiales (Castigos Ejemplares):</strong> Modifican la sanción base asociada.
-                      Al activarse, confiscan el <strong>100% de la propina de la fecha</strong> en vez de la tarifa clásica. Se aplican hasta que el colaborador alcance la frecuencia máxima quincenal (llegando a la pérdida del 100% total).
+                    <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2 p-2 bg-light border rounded">
+                      <div className="text-muted small">
+                        <i className="bi bi-info-circle-fill text-primary me-1"></i>
+                        <strong>Regla de Castigo Ejemplar:</strong> Confisca el <strong>100% de la propina de la fecha</strong> según el disparador configurado.
+                      </div>
+                      {!esModerador && (
+                        <button
+                          type="button"
+                          className="btn btn-success btn-sm fw-semibold shadow-sm"
+                          onClick={handleAgregarSancionEspecial}
+                          disabled={cargando}
+                        >
+                          <i className="bi bi-plus-circle-fill me-1"></i> + Agregar Sanción Especial
+                        </button>
+                      )}
                     </div>
 
                     {sancionesEspeciales.length === 0 ? (
@@ -983,11 +1018,11 @@ export default function ModSanciones({
                         <div className="mt-2">
                           <button
                             type="button"
-                            className="btn btn-sm btn-outline-success"
+                            className="btn btn-sm btn-success fw-semibold"
                             onClick={handleAgregarSancionEspecial}
                             disabled={esModerador}
                           >
-                            <i className="bi bi-plus-lg me-1"></i> Crear Primera Sanción Especial
+                            <i className="bi bi-plus-circle-fill me-1"></i> + Agregar Sanción Especial
                           </button>
                         </div>
                       </div>
@@ -998,15 +1033,25 @@ export default function ModSanciones({
                             <tr>
                               <th style={{ width: '8%' }}>Activo</th>
                               <th style={{ width: '26%' }}>Nombre del Modificador</th>
-                              <th style={{ width: '26%' }}>Sanción Principal Asociada</th>
-                              <th style={{ width: '18%' }}>Castigo Ejemplar</th>
-                              <th style={{ width: '14%' }}>Disparador</th>
-                              <th style={{ width: '8%' }} className="text-center">Acción</th>
+                              <th style={{ width: '24%' }}>Sanción Principal Asociada</th>
+                              <th style={{ width: '16%' }}>Castigo Ejemplar</th>
+                              <th style={{ width: '20%' }}>Disparador Configurable</th>
+                              <th style={{ width: '6%' }} className="text-center">Acción</th>
                             </tr>
                           </thead>
                           <tbody>
                             {sancionesEspeciales.map((esp, i) => {
+                              const sancionAsociada = catalogo.find(
+                                (c) => c.infraccion === esp.sancionPrincipal
+                              );
                               const esTardanza = esp.sancionPrincipal === 'Tardanza';
+                              const esBreak = esp.sancionPrincipal === 'Break';
+                              const tolMin = sancionAsociada?.toleranciaMin || 15;
+                              const frecMax = sancionAsociada?.frecuenciaMax || 1;
+                              const criterioActual =
+                                esp.criterioDisparador ||
+                                (esTardanza ? 'TOLERANCIA' : esBreak ? 'DEMORA' : 'FRECUENCIA');
+
                               return (
                                 <tr key={esp.id || i}>
                                   <td>
@@ -1028,10 +1073,12 @@ export default function ModSanciones({
                                     </div>
                                   </td>
                                   <td>
+                                    {/* ÚNICO CAMPO DE TEXTO EDITABLE: NOMBRE DEL MODIFICADOR */}
                                     <input
                                       type="text"
                                       className="form-control form-control-sm fw-semibold"
                                       value={esp.nombre}
+                                      placeholder="Nombre del modificador..."
                                       disabled={esModerador}
                                       onChange={(e) => {
                                         const val = e.target.value;
@@ -1043,14 +1090,25 @@ export default function ModSanciones({
                                   </td>
                                   <td>
                                     <select
-                                      className="form-select form-select-sm fw-medium"
+                                      className="form-select form-select-sm fw-semibold text-primary"
                                       value={esp.sancionPrincipal}
                                       disabled={esModerador}
                                       onChange={(e) => {
-                                        const val = e.target.value;
+                                        const nuevaSancion = e.target.value;
+                                        let nuevoCriterio = 'FRECUENCIA';
+                                        if (nuevaSancion === 'Tardanza') nuevoCriterio = 'TOLERANCIA';
+                                        else if (nuevaSancion === 'Break') nuevoCriterio = 'DEMORA';
+
                                         setSancionesEspeciales((prev) =>
                                           prev.map((item, idx) =>
-                                            idx === i ? { ...item, sancionPrincipal: val } : item
+                                            idx === i
+                                              ? {
+                                                  ...item,
+                                                  sancionPrincipal: nuevaSancion,
+                                                  criterioDisparador: nuevoCriterio,
+                                                  disparadorFrecuencia: 1,
+                                                }
+                                              : item
                                           )
                                         );
                                       }}
@@ -1063,36 +1121,81 @@ export default function ModSanciones({
                                     </select>
                                   </td>
                                   <td>
-                                    <span className="badge bg-danger-subtle text-danger border border-danger-subtle">
-                                      <i className="bi bi-slash-circle me-1"></i> Pérdida 100% del Día
-                                    </span>
+                                    <div>
+                                      <span className="badge bg-danger-subtle text-danger border border-danger-subtle fw-semibold">
+                                        <i className="bi bi-slash-circle me-1"></i> Pérdida 100% del Día
+                                      </span>
+                                      <div className="text-muted" style={{ fontSize: '0.68rem' }}>
+                                        Confisca propina de la fecha
+                                      </div>
+                                    </div>
                                   </td>
                                   <td>
-                                    {esTardanza ? (
-                                      <span className="badge bg-secondary-subtle text-dark border">
-                                        Superar Tolerancia
-                                      </span>
-                                    ) : (
-                                      <div className="d-flex align-items-center gap-1">
-                                        <span className="small text-muted">Falta #</span>
-                                        <input
-                                          type="number"
-                                          min="1"
-                                          className="form-control form-control-sm text-center fw-bold px-1"
-                                          style={{ width: '48px' }}
-                                          value={esp.disparadorFrecuencia || 1}
-                                          disabled={esModerador}
-                                          onChange={(e) => {
-                                            const val = parseInt(e.target.value) || 1;
-                                            setSancionesEspeciales((prev) =>
-                                              prev.map((item, idx) =>
-                                                idx === i ? { ...item, disparadorFrecuencia: val } : item
-                                              )
-                                            );
-                                          }}
-                                        />
-                                      </div>
-                                    )}
+                                    {/* DISPARADOR SEGÚN LA SANCIÓN PRINCIPAL ASOCIADA */}
+                                    <div className="d-flex flex-column gap-1">
+                                      <select
+                                        className="form-select form-select-sm fw-medium"
+                                        value={criterioActual}
+                                        disabled={esModerador}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setSancionesEspeciales((prev) =>
+                                            prev.map((item, idx) =>
+                                              idx === i ? { ...item, criterioDisparador: val } : item
+                                            )
+                                          );
+                                        }}
+                                      >
+                                        {esTardanza && (
+                                          <option value="TOLERANCIA">
+                                            Superar Tolerancia ({tolMin} min)
+                                          </option>
+                                        )}
+                                        {esBreak && (
+                                          <option value="DEMORA">
+                                            Superar tiempo de Break
+                                          </option>
+                                        )}
+                                        <option value="FRECUENCIA">
+                                          Por número de falta (#)
+                                        </option>
+                                        <option value="INMEDIATO">
+                                          Desde la 1ª ocurrencia (#1)
+                                        </option>
+                                      </select>
+
+                                      {criterioActual === 'FRECUENCIA' && (
+                                        <div className="d-flex align-items-center gap-1 mt-1">
+                                          <span className="text-muted small" style={{ fontSize: '0.72rem' }}>
+                                            Falta #:
+                                          </span>
+                                          <input
+                                            type="number"
+                                            min="1"
+                                            max={frecMax}
+                                            className="form-control form-control-sm text-center fw-bold px-1"
+                                            style={{ width: '48px', height: '28px' }}
+                                            value={esp.disparadorFrecuencia || 1}
+                                            disabled={esModerador}
+                                            onChange={(e) => {
+                                              const val = parseInt(e.target.value) || 1;
+                                              setSancionesEspeciales((prev) =>
+                                                prev.map((item, idx) =>
+                                                  idx === i ? { ...item, disparadorFrecuencia: val } : item
+                                                )
+                                              );
+                                            }}
+                                          />
+                                          <span
+                                            className="badge bg-secondary-subtle text-dark border small"
+                                            style={{ fontSize: '0.68rem' }}
+                                            title={`Tope quincenal configurado en ${esp.sancionPrincipal}`}
+                                          >
+                                            tope: {frecMax}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
                                   </td>
                                   <td className="text-center">
                                     <button

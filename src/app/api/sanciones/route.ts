@@ -157,16 +157,23 @@ export async function POST(request: Request) {
 
     if (modificadorEspecial) {
       let disparaModificador = false;
+      const criterio = modificadorEspecial.criterioDisparador || 'TOLERANCIA';
 
-      // Disparador 1: Para Tardanza, se dispara cuando supera la tolerancia activa
-      if (payload.infraccion === 'Tardanza') {
+      if (payload.infraccion === 'Tardanza' && (criterio === 'TOLERANCIA' || criterio === 'TOLERANCIA_O_FRECUENCIA')) {
         const tiempoIng = parseFloat(payload.tiempoTardanza) || 0;
         const tolMin = reglaTardanza?.toleranciaMin || 0;
         if (tiempoIng > tolMin || !reglaTardanza?.toleranciaActiva) {
           disparaModificador = true;
         }
+      } else if (payload.infraccion === 'Break' && criterio === 'DEMORA') {
+        const tiempoDemora = parseFloat(payload.tiempoBreak) || 0;
+        if (tiempoDemora > 0) {
+          disparaModificador = true;
+        }
+      } else if (criterio === 'INMEDIATO') {
+        disparaModificador = true;
       } else {
-        // Disparador 2: Para otras sanciones (ej. Uso de Celular), según la casilla disparadorFrecuencia
+        // Disparador por casilla de frecuencia (comparada con la reincidencia previa)
         const historialPrevia = await prisma.sancionAdelanto.count({
           where: {
             colaborador: payload.colaborador,
@@ -174,7 +181,8 @@ export async function POST(request: Request) {
             estado: 'Aprobado',
           },
         });
-        if (historialPrevia + 1 >= (modificadorEspecial.disparadorFrecuencia || 1)) {
+        const frecDisparo = modificadorEspecial.disparadorFrecuencia || 1;
+        if (historialPrevia + 1 >= frecDisparo) {
           disparaModificador = true;
         }
       }
