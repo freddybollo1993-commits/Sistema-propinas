@@ -414,7 +414,7 @@ export default function ModSanciones({
       {
         nombre: 'Pérdida de propina del día',
         sancionPrincipal: primeraInfraccion,
-        estado: 'Activo',
+        estado: 'Inactivo',
         tipoEfecto: 'PERDIDA_DIA',
         criterioDisparador: nuevoCriterio,
         disparadorFrecuencia: 1,

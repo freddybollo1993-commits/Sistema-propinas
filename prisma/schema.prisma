@@ -163,7 +163,7 @@ model SancionEspecial {
   id                   Int      @id @default(autoincrement())
   nombre               String   // Ej: "Pérdida de propina del día"
   sancionPrincipal     String   // Ej: "Tardanza", "Uso de Celular"
-  estado               String   @default("Activo") // Activo / Inactivo
+  estado               String   @default("Inactivo") // Inactivo por defecto
   tipoEfecto           String   @default("PERDIDA_DIA") // PERDIDA_DIA, etc.
   criterioDisparador   String   @default("TOLERANCIA_O_FRECUENCIA")
   disparadorFrecuencia Int      @default(1)

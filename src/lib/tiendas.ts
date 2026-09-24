@@ -154,12 +154,12 @@ export async function inicializarTiendaConPlantilla(tiendaId: string, creadoPor:
     });
   }
 
-  // 3. Sanciones Especiales por defecto (Pérdida de día para Tardanza y Celular)
+  // 3. Sanciones Especiales por defecto (Pérdida de día para Tardanza y Celular - Inactivas por defecto)
   const sancionesEspecialesBase = [
     {
       nombre: 'Pérdida de propina del día',
       sancionPrincipal: 'Tardanza',
-      estado: 'Activo',
+      estado: 'Inactivo',
       tipoEfecto: 'PERDIDA_DIA',
       criterioDisparador: 'TOLERANCIA',
       disparadorFrecuencia: 1,
@@ -167,7 +167,7 @@ export async function inicializarTiendaConPlantilla(tiendaId: string, creadoPor:
     {
       nombre: 'Pérdida de propina del día',
       sancionPrincipal: 'Uso de Celular',
-      estado: 'Activo',
+      estado: 'Inactivo',
       tipoEfecto: 'PERDIDA_DIA',
       criterioDisparador: 'FRECUENCIA',
       disparadorFrecuencia: 1,

@@ -58,7 +58,7 @@ export async function POST(request: Request) {
             data: {
               nombre: item.nombre || 'Pérdida de propina del día',
               sancionPrincipal: item.sancionPrincipal,
-              estado: item.estado || 'Activo',
+              estado: item.estado || 'Inactivo',
               tipoEfecto: item.tipoEfecto || 'PERDIDA_DIA',
               criterioDisparador: item.criterioDisparador || 'TOLERANCIA_O_FRECUENCIA',
               disparadorFrecuencia: parseInt(item.disparadorFrecuencia || 1),
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
         data: {
           nombre: nombre || 'Pérdida de propina del día',
           sancionPrincipal: sancionPrincipal || 'Tardanza',
-          estado: estado || 'Activo',
+          estado: estado || 'Inactivo',
           tipoEfecto: tipoEfecto || 'PERDIDA_DIA',
           criterioDisparador: criterioDisparador || 'TOLERANCIA_O_FRECUENCIA',
           disparadorFrecuencia: parseInt(disparadorFrecuencia || 1),
