@@ -12,6 +12,7 @@ interface NavbarTopProps {
   activeTiendaId?: string;
   onSelectTienda?: (tiendaId: string) => void;
   onOpenCrearTienda?: () => void;
+  onOpenCatalogo?: () => void;
 }
 
 export default function NavbarTop({
@@ -23,6 +24,7 @@ export default function NavbarTop({
   activeTiendaId = '',
   onSelectTienda,
   onOpenCrearTienda,
+  onOpenCatalogo,
 }: NavbarTopProps) {
   const getBadgeClass = (rol?: string) => {
     if (rol === 'Administrador') return 'bg-danger';
@@ -54,8 +56,18 @@ export default function NavbarTop({
 
         {/* Selector de Tienda para SuperAdmin / Usuario Maestro */}
         {currentUser?.esMaestro ? (
-          <div className="d-flex align-items-center gap-1">
-            <div className="input-group input-group-sm" style={{ maxWidth: '240px' }}>
+          <div className="d-flex align-items-center gap-1 flex-wrap">
+            <button
+              type="button"
+              className="btn btn-warning btn-sm px-2 py-1 shadow-sm d-flex align-items-center gap-1 text-dark fw-bold"
+              onClick={onOpenCatalogo}
+              title="Abrir Catálogo General de Todas las Tiendas"
+            >
+              <i className="bi bi-grid-3x3-gap-fill"></i>
+              <span className="d-none d-sm-inline">Catálogo</span>
+            </button>
+
+            <div className="input-group input-group-sm" style={{ maxWidth: '230px' }}>
               <span
                 className="input-group-text bg-primary text-white border-primary py-1 px-2"
                 title="Sede Activa"

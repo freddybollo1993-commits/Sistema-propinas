@@ -34,13 +34,22 @@ export async function GET(request: Request) {
     const limiteStr = searchParams.get('limite');
     const limite = limiteStr !== null ? parseInt(limiteStr) : 0;
 
-    // 1. Obtener todas las tiendas
+    // 1. Obtener todas las tiendas operativas (excluyendo la tienda de pruebas / beta)
     const tiendasDb = await prisma.tienda.findMany({
-      where: { estado: 'Activo' },
+      where: {
+        estado: 'Activo',
+        NOT: [
+          { slug: { contains: 'beta', mode: 'insensitive' } },
+          { id: 'tienda-principal' },
+          { nombre: { contains: 'BETA', mode: 'insensitive' } },
+          { nombre: { contains: 'Pruebas', mode: 'insensitive' } },
+        ],
+      },
       orderBy: { nombre: 'asc' },
     });
     const sedesList = tiendasDb.map((t) => t.nombre);
     const tiendasMap = new Map(tiendasDb.map((t) => [t.id, t.nombre]));
+    const activeTiendaIds = tiendasDb.map((t) => t.id);
 
     // 2. Filtro de Tienda
     let targetTiendaId: string | null = null;
@@ -54,11 +63,11 @@ export async function GET(request: Request) {
       if (found) targetTiendaId = found.id;
     }
 
-    // 3. Obtener registros de propinas con detalles
+    // 3. Obtener registros de propinas con detalles (solo de tiendas operativas)
     const registrosDb = await prisma.registroPropina.findMany({
       where: {
         estado: { notIn: ['Anulado', 'Eliminado'] },
-        ...(targetTiendaId ? { tiendaId: targetTiendaId } : {}),
+        tiendaId: targetTiendaId ? targetTiendaId : { in: activeTiendaIds },
         ...(fInicio || fFin
           ? {
               fecha: {
@@ -75,12 +84,12 @@ export async function GET(request: Request) {
       orderBy: { fecha: 'desc' },
     });
 
-    // 4. Obtener sanciones aprobadas
+    // 4. Obtener sanciones aprobadas (solo de tiendas operativas)
     const sancionesDb = await prisma.sancionAdelanto.findMany({
       where: {
         estado: 'Aprobado',
         concepto: { contains: 'Sanción', mode: 'insensitive' },
-        ...(targetTiendaId ? { tiendaId: targetTiendaId } : {}),
+        tiendaId: targetTiendaId ? targetTiendaId : { in: activeTiendaIds },
         ...(fInicio || fFin
           ? {
               fecha: {

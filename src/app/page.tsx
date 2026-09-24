@@ -10,6 +10,7 @@ import ModalNuevaTienda from '@/components/ModalNuevaTienda';
 
 import ModDashboard from '@/components/modules/ModDashboard';
 import ModCentralNeuralgica from '@/components/modules/ModCentralNeuralgica';
+import MasterStoreHub from '@/components/MasterStoreHub';
 import ModRegistroPropinas from '@/components/modules/ModRegistroPropinas';
 import ModPersonal from '@/components/modules/ModPersonal';
 import ModSanciones from '@/components/modules/ModSanciones';
@@ -73,7 +74,7 @@ export default function HomePage() {
           setActiveTiendaId(data.user.tiendaId);
         }
         if (data.user.esMaestro) {
-          setCurrentModule('CentralNeuralgica');
+          setCurrentModule('CatalogoTiendas');
         }
       } else {
         setCurrentUser(null);
@@ -204,7 +205,7 @@ export default function HomePage() {
           }
           cargarTiendas();
           cargarCicloActivo();
-          setCurrentModule(user.esMaestro ? 'CentralNeuralgica' : 'Dashboard');
+          setCurrentModule(user.esMaestro ? 'CatalogoTiendas' : 'Dashboard');
         }}
       />
     );
@@ -246,6 +247,7 @@ export default function HomePage() {
           activeTiendaId={activeTiendaId}
           onSelectTienda={handleSelectTienda}
           onOpenCrearTienda={() => setModalNuevaTiendaShow(true)}
+          onOpenCatalogo={() => setCurrentModule('CatalogoTiendas')}
         />
 
         {/* Notificación de Modo Moderador */}
@@ -263,6 +265,15 @@ export default function HomePage() {
         {/* Contenido Dinámico del Módulo Seleccionado */}
         <main className="main-content">
           <div key={`${currentModule}-${activeTiendaId}-${refreshKey}`}>
+            {currentModule === 'CatalogoTiendas' && (
+              <MasterStoreHub
+                currentUser={currentUser}
+                tiendas={tiendas}
+                onSelectTienda={handleSelectTienda}
+                onNavigateToModule={(mod) => setCurrentModule(mod as ModuleName)}
+                onOpenCrearTienda={() => setModalNuevaTiendaShow(true)}
+              />
+            )}
             {currentModule === 'Dashboard' && <ModDashboard cicloInfo={cicloInfo} />}
             {currentModule === 'CentralNeuralgica' && (
               <ModCentralNeuralgica
