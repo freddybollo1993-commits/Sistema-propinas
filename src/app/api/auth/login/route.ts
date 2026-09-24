@@ -16,13 +16,20 @@ export async function POST(request: Request) {
     const cleanUser = String(user).trim().toLowerCase();
     const cleanPass = String(pass).trim();
 
-    // Búsqueda por correo o por ID (ej. USR-MASTER, USR-001)
+    // Búsqueda por correo, usuario corto (ej. admin.san-borja) o por ID (ej. USR-MASTER)
+    const orConditions: any[] = [
+      { email: { equals: cleanUser, mode: 'insensitive' } },
+      { id: { equals: cleanUser, mode: 'insensitive' } },
+    ];
+    if (!cleanUser.includes('@')) {
+      orConditions.push({ email: { equals: `${cleanUser}@propinas.pe`, mode: 'insensitive' } });
+      orConditions.push({ email: { equals: `${cleanUser}@empresa.com`, mode: 'insensitive' } });
+      orConditions.push({ email: { startsWith: `${cleanUser}@`, mode: 'insensitive' } });
+    }
+
     const usuario = await prisma.usuario.findFirst({
       where: {
-        OR: [
-          { email: { equals: cleanUser, mode: 'insensitive' } },
-          { id: { equals: cleanUser, mode: 'insensitive' } },
-        ],
+        OR: orConditions,
       },
       include: {
         tienda: true,

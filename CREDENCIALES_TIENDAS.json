@@ -1,0 +1,233 @@
+[
+  {
+    "tienda": "Barranco",
+    "slug": "barranco",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.barranco@propinas.pe",
+    "adminPin": "47879C",
+    "superLogin": "super.barranco@propinas.pe",
+    "superPin": "695A44",
+    "modLogin": "mod.barranco@propinas.pe",
+    "modPin": "5F029B"
+  },
+  {
+    "tienda": "Comas",
+    "slug": "comas",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.comas@propinas.pe",
+    "adminPin": "D32631",
+    "superLogin": "super.comas@propinas.pe",
+    "superPin": "215F38",
+    "modLogin": "mod.comas@propinas.pe",
+    "modPin": "531DBA"
+  },
+  {
+    "tienda": "El Polo",
+    "slug": "el-polo",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.el-polo@propinas.pe",
+    "adminPin": "9BA3A7",
+    "superLogin": "super.el-polo@propinas.pe",
+    "superPin": "79AC9D",
+    "modLogin": "mod.el-polo@propinas.pe",
+    "modPin": "8DC18D"
+  },
+  {
+    "tienda": "Keneddy",
+    "slug": "keneddy",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.keneddy@propinas.pe",
+    "adminPin": "538D48",
+    "superLogin": "super.keneddy@propinas.pe",
+    "superPin": "87C931",
+    "modLogin": "mod.keneddy@propinas.pe",
+    "modPin": "F59267"
+  },
+  {
+    "tienda": "Plaza",
+    "slug": "plaza",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.plaza@propinas.pe",
+    "adminPin": "20AEB7",
+    "superLogin": "super.plaza@propinas.pe",
+    "superPin": "5E01E6",
+    "modLogin": "mod.plaza@propinas.pe",
+    "modPin": "203FBA"
+  },
+  {
+    "tienda": "San Borja",
+    "slug": "san-borja",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.san-borja@propinas.pe",
+    "adminPin": "1A5075",
+    "superLogin": "super.san-borja@propinas.pe",
+    "superPin": "B5FFDD",
+    "modLogin": "mod.san-borja@propinas.pe",
+    "modPin": "6FA313"
+  },
+  {
+    "tienda": "Santa Anita",
+    "slug": "santa-anita",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.santa-anita@propinas.pe",
+    "adminPin": "326860",
+    "superLogin": "super.santa-anita@propinas.pe",
+    "superPin": "83FAF2",
+    "modLogin": "mod.santa-anita@propinas.pe",
+    "modPin": "FB4B40"
+  },
+  {
+    "tienda": "San Juan de Lurigancho (SJL)",
+    "slug": "san-juan-de-lurigancho-sjl",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.san-juan-de-lurigancho-sjl@propinas.pe",
+    "adminPin": "97ADF0",
+    "superLogin": "super.san-juan-de-lurigancho-sjl@propinas.pe",
+    "superPin": "4FAFBB",
+    "modLogin": "mod.san-juan-de-lurigancho-sjl@propinas.pe",
+    "modPin": "7C7BB7"
+  },
+  {
+    "tienda": "28 de Julio",
+    "slug": "28-de-julio",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.28-de-julio@propinas.pe",
+    "adminPin": "331918",
+    "superLogin": "super.28-de-julio@propinas.pe",
+    "superPin": "3AC3B1",
+    "modLogin": "mod.28-de-julio@propinas.pe",
+    "modPin": "42CB6C"
+  },
+  {
+    "tienda": "Jesús María",
+    "slug": "jesus-maria",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.jesus-maria@propinas.pe",
+    "adminPin": "B3BA01",
+    "superLogin": "super.jesus-maria@propinas.pe",
+    "superPin": "D8E46C",
+    "modLogin": "mod.jesus-maria@propinas.pe",
+    "modPin": "A2B760"
+  },
+  {
+    "tienda": "La Molina",
+    "slug": "la-molina",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.la-molina@propinas.pe",
+    "adminPin": "CD0D05",
+    "superLogin": "super.la-molina@propinas.pe",
+    "superPin": "64B319",
+    "modLogin": "mod.la-molina@propinas.pe",
+    "modPin": "EEF396"
+  },
+  {
+    "tienda": "Lince",
+    "slug": "lince",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.lince@propinas.pe",
+    "adminPin": "793547",
+    "superLogin": "super.lince@propinas.pe",
+    "superPin": "097BAD",
+    "modLogin": "mod.lince@propinas.pe",
+    "modPin": "CDC3D6"
+  },
+  {
+    "tienda": "Magdalena",
+    "slug": "magdalena",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.magdalena@propinas.pe",
+    "adminPin": "5BA162",
+    "superLogin": "super.magdalena@propinas.pe",
+    "superPin": "65AC2B",
+    "modLogin": "mod.magdalena@propinas.pe",
+    "modPin": "A46176"
+  },
+  {
+    "tienda": "Minka",
+    "slug": "minka",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.minka@propinas.pe",
+    "adminPin": "D9E7E4",
+    "superLogin": "super.minka@propinas.pe",
+    "superPin": "AA0FBE",
+    "modLogin": "mod.minka@propinas.pe",
+    "modPin": "052550"
+  },
+  {
+    "tienda": "Punta Hermosa",
+    "slug": "punta-hermosa",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.punta-hermosa@propinas.pe",
+    "adminPin": "82785B",
+    "superLogin": "super.punta-hermosa@propinas.pe",
+    "superPin": "4A3283",
+    "modLogin": "mod.punta-hermosa@propinas.pe",
+    "modPin": "42768E"
+  },
+  {
+    "tienda": "Punta Mar (Fondo Mancomunado)",
+    "slug": "punta-mar",
+    "modalidad": "FONDO_MANCOMUNADO",
+    "adminLogin": "admin.punta-mar@propinas.pe",
+    "adminPin": "2B3789",
+    "superLogin": "super.punta-mar@propinas.pe",
+    "superPin": "4B157F",
+    "modLogin": "mod.punta-mar@propinas.pe",
+    "modPin": "7BDBFD"
+  },
+  {
+    "tienda": "Puruchuko",
+    "slug": "puruchuko",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.puruchuko@propinas.pe",
+    "adminPin": "EAD05E",
+    "superLogin": "super.puruchuko@propinas.pe",
+    "superPin": "E5CB7D",
+    "modLogin": "mod.puruchuko@propinas.pe",
+    "modPin": "14B8EB"
+  },
+  {
+    "tienda": "San José",
+    "slug": "san-jose",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.san-jose@propinas.pe",
+    "adminPin": "1FF5CA",
+    "superLogin": "super.san-jose@propinas.pe",
+    "superPin": "EA734D",
+    "modLogin": "mod.san-jose@propinas.pe",
+    "modPin": "9A7AEB"
+  },
+  {
+    "tienda": "Shirest",
+    "slug": "shirest",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.shirest@propinas.pe",
+    "adminPin": "FDFFDD",
+    "superLogin": "super.shirest@propinas.pe",
+    "superPin": "56656E",
+    "modLogin": "mod.shirest@propinas.pe",
+    "modPin": "44C1BA"
+  },
+  {
+    "tienda": "Surco",
+    "slug": "surco",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.surco@propinas.pe",
+    "adminPin": "C5275A",
+    "superLogin": "super.surco@propinas.pe",
+    "superPin": "6DA13E",
+    "modLogin": "mod.surco@propinas.pe",
+    "modPin": "9C6452"
+  },
+  {
+    "tienda": "Villa",
+    "slug": "villa",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.villa@propinas.pe",
+    "adminPin": "5D9C54",
+    "superLogin": "super.villa@propinas.pe",
+    "superPin": "4097C9",
+    "modLogin": "mod.villa@propinas.pe",
+    "modPin": "A84C2D"
+  }
+]

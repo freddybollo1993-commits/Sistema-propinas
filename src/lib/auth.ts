@@ -26,9 +26,13 @@ export async function hashPassword(password: string): Promise<string> {
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   // Soporte directo para hash bcrypt o texto plano en migración inicial si aplica
   if (hash.startsWith('$2a$') || hash.startsWith('$2b$')) {
-    return await bcrypt.compare(password, hash);
+    const matchDirect = await bcrypt.compare(password, hash);
+    if (matchDirect) return true;
+    const matchUpper = await bcrypt.compare(password.toUpperCase(), hash);
+    if (matchUpper) return true;
+    return await bcrypt.compare(password.toLowerCase(), hash);
   }
-  return password === hash;
+  return password.toLowerCase() === hash.toLowerCase();
 }
 
 export async function createSessionToken(user: SessionUser): Promise<string> {

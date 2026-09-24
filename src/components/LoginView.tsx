@@ -10,6 +10,7 @@ interface LoginViewProps {
 export default function LoginView({ onLoginSuccess }: LoginViewProps) {
   const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
+  const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
 
@@ -78,7 +79,7 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
             <label className="form-label small fw-semibold text-secondary">
-              Usuario o Correo Corporativo
+              Usuario o Correo de Tienda
             </label>
             <div className="input-group">
               <span className="input-group-text bg-light text-secondary">
@@ -87,7 +88,7 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
               <input
                 type="text"
                 className="form-control"
-                placeholder="admin@empresa.com o USR-MASTER"
+                placeholder="ej. admin.san-borja o master@empresa.com"
                 value={user}
                 onChange={(e) => setUser(e.target.value)}
                 required
@@ -99,21 +100,30 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
 
           <div className="mb-4">
             <label className="form-label small fw-semibold text-secondary">
-              Contraseña / Clave de Acceso
+              Contraseña / Clave Hexadecimal
             </label>
             <div className="input-group">
               <span className="input-group-text bg-light text-secondary">
                 <i className="bi bi-shield-lock"></i>
               </span>
               <input
-                type="password"
+                type={showPass ? 'text' : 'password'}
                 className="form-control"
-                placeholder="••••"
+                placeholder="ej. 1A5075 o PIN"
                 value={pass}
                 onChange={(e) => setPass(e.target.value)}
                 required
                 autoComplete="current-password"
+                style={{ letterSpacing: showPass ? '1.5px' : 'normal', fontWeight: showPass ? 600 : 'normal' }}
               />
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() => setShowPass(!showPass)}
+                title={showPass ? 'Ocultar clave' : 'Mostrar clave'}
+              >
+                <i className={`bi ${showPass ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+              </button>
             </div>
           </div>
 
