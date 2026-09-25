@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import prisma from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, hashPassword } from '@/lib/auth';
 import { inicializarTiendaConPlantilla } from '@/lib/tiendas';
 import { logAuditoria } from '@/lib/auditoria';
 
@@ -95,16 +98,110 @@ export async function POST(request: Request) {
     // 2. Inicializar con la plantilla base oficial clonada (catálogo, sanciones especiales, ciclo y modo)
     await inicializarTiendaConPlantilla(nuevaTienda.id, user.nombre);
 
+    // 3. Generar credenciales de acceso seguras (Admin, Supervisor, Moderador)
+    const genPin = () => crypto.randomBytes(3).toString('hex').toUpperCase();
+    const adminPin = genPin();
+    const superPin = genPin();
+    const modPin = genPin();
+
+    const adminEmail = `admin.${nuevaTienda.slug}@propinas.pe`;
+    const superEmail = `super.${nuevaTienda.slug}@propinas.pe`;
+    const modEmail = `mod.${nuevaTienda.slug}@propinas.pe`;
+
+    const adminHash = await hashPassword(adminPin);
+    const superHash = await hashPassword(superPin);
+    const modHash = await hashPassword(modPin);
+
+    const slugUpper = nuevaTienda.slug.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+
+    await prisma.usuario.createMany({
+      data: [
+        {
+          id: `USR-ADM-${slugUpper}`,
+          nombre: `Admin ${nuevaTienda.nombre}`,
+          email: adminEmail,
+          passwordHash: adminHash,
+          rol: 'Administrador',
+          estado: 'Activo',
+          tiendaId: nuevaTienda.id,
+        },
+        {
+          id: `USR-SUP-${slugUpper}`,
+          nombre: `Supervisor ${nuevaTienda.nombre}`,
+          email: superEmail,
+          passwordHash: superHash,
+          rol: 'Supervisor',
+          estado: 'Activo',
+          tiendaId: nuevaTienda.id,
+        },
+        {
+          id: `USR-MOD-${slugUpper}`,
+          nombre: `Moderador ${nuevaTienda.nombre}`,
+          email: modEmail,
+          passwordHash: modHash,
+          rol: 'Moderador',
+          estado: 'Activo',
+          tiendaId: nuevaTienda.id,
+        },
+      ],
+    });
+
+    const credsTienda = {
+      tienda: nuevaTienda.nombre,
+      slug: nuevaTienda.slug,
+      modalidad: 'CLASICO',
+      adminLogin: adminEmail,
+      adminPin: adminPin,
+      superLogin: superEmail,
+      superPin: superPin,
+      modLogin: modEmail,
+      modPin: modPin,
+    };
+
+    // Guardar credenciales en ConfiguracionSistema
+    await prisma.configuracionSistema.upsert({
+      where: {
+        clave_tiendaId: {
+          clave: 'CREDENCIALES_TIENDA',
+          tiendaId: nuevaTienda.id,
+        },
+      },
+      update: { valor: JSON.stringify(credsTienda) },
+      create: {
+        clave: 'CREDENCIALES_TIENDA',
+        valor: JSON.stringify(credsTienda),
+        tiendaId: nuevaTienda.id,
+      },
+    });
+
+    // Intentar actualizar CREDENCIALES_TIENDAS.json si el filesystem lo permite
+    try {
+      const jsonPath = path.join(process.cwd(), 'CREDENCIALES_TIENDAS.json');
+      if (fs.existsSync(jsonPath)) {
+        const fileContent = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+        const idx = fileContent.findIndex((c: any) => c.slug === nuevaTienda.slug);
+        if (idx >= 0) {
+          fileContent[idx] = credsTienda;
+        } else {
+          fileContent.push(credsTienda);
+        }
+        fs.writeFileSync(jsonPath, JSON.stringify(fileContent, null, 2), 'utf8');
+      }
+    } catch (fsErr) {
+      console.warn('No se pudo escribir en CREDENCIALES_TIENDAS.json (ambiente solo lectura):', fsErr);
+    }
+
     await logAuditoria(
       'Creación de Tienda',
-      `Nueva tienda/sucursal creada: "${nuevaTienda.nombre}" (${nuevaTienda.slug}) con plantilla base estandarizada`,
+      `Nueva tienda/sucursal creada: "${nuevaTienda.nombre}" (${nuevaTienda.slug}) con usuarios y plantilla base estandarizada`,
       user.nombre
     );
 
     return NextResponse.json({
       success: true,
-      message: `Restaurante/Tienda "${nuevaTienda.nombre}" creado exitosamente con la plantilla base estandarizada.`,
+      message: `Restaurante/Tienda "${nuevaTienda.nombre}" creado exitosamente con usuarios y credenciales configuradas.`,
       tienda: nuevaTienda,
+      credenciales: credsTienda,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

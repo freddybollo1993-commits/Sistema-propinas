@@ -5,6 +5,7 @@ import { SessionUser } from '@/lib/auth';
 
 export type ModuleName =
   | 'CatalogoTiendas'
+  | 'CredencialesTiendas'
   | 'Dashboard'
   | 'CentralNeuralgica'
   | 'RegistroPropinas'
@@ -40,7 +41,10 @@ export default function Sidebar({
 
   const menuItems: { id: ModuleName; label: string; icon: string; adminOnly?: boolean; maestroOnly?: boolean }[] = [
     ...(currentUser?.esMaestro
-      ? ([{ id: 'CatalogoTiendas', label: 'Catálogo de Tiendas', icon: 'bi-grid-3x3-gap-fill', maestroOnly: true }] as any)
+      ? ([
+          { id: 'CatalogoTiendas', label: 'Catálogo de Tiendas', icon: 'bi-grid-3x3-gap-fill', maestroOnly: true },
+          { id: 'CredencialesTiendas', label: 'Credenciales de Tiendas', icon: 'bi-key-fill', maestroOnly: true },
+        ] as any)
       : []),
     { id: 'Dashboard', label: 'Dashboard Local', icon: 'bi-grid-1x2' },
     { id: 'CentralNeuralgica', label: 'Central Neurálgica (BI)', icon: 'bi-hdd-network' },

@@ -13,6 +13,7 @@ interface NavbarTopProps {
   onSelectTienda?: (tiendaId: string) => void;
   onOpenCrearTienda?: () => void;
   onOpenCatalogo?: () => void;
+  onOpenCredenciales?: () => void;
 }
 
 export default function NavbarTop({
@@ -25,6 +26,7 @@ export default function NavbarTop({
   onSelectTienda,
   onOpenCrearTienda,
   onOpenCatalogo,
+  onOpenCredenciales,
 }: NavbarTopProps) {
   const getBadgeClass = (rol?: string) => {
     if (rol === 'Administrador') return 'bg-danger';
@@ -66,6 +68,18 @@ export default function NavbarTop({
               <i className="bi bi-grid-3x3-gap-fill"></i>
               <span className="d-none d-sm-inline">Catálogo</span>
             </button>
+
+            {onOpenCredenciales && (
+              <button
+                type="button"
+                className="btn btn-dark btn-sm px-2 py-1 shadow-sm d-flex align-items-center gap-1 text-warning fw-bold border border-warning border-opacity-50"
+                onClick={onOpenCredenciales}
+                title="Directorio de Credenciales de Todas las Tiendas"
+              >
+                <i className="bi bi-key-fill"></i>
+                <span className="d-none d-md-inline small">Credenciales</span>
+              </button>
+            )}
 
             <div className="input-group input-group-sm" style={{ maxWidth: '230px' }}>
               <span

@@ -104,6 +104,15 @@ export default function MasterStoreHub({
 
                 <button
                   type="button"
+                  className="btn btn-warning text-dark fw-bold px-3 py-2 shadow-sm d-flex align-items-center gap-2"
+                  onClick={() => onNavigateToModule('CredencialesTiendas')}
+                >
+                  <i className="bi bi-key-fill fs-5"></i>
+                  <span>Credenciales de Tiendas</span>
+                </button>
+
+                <button
+                  type="button"
                   className="btn btn-outline-light fw-semibold px-3 py-2 shadow-sm d-flex align-items-center gap-2"
                   onClick={onOpenCrearTienda}
                 >

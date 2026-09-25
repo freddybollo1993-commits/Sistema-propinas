@@ -1,5 +1,16 @@
 [
   {
+    "tienda": "Sede Principal (BETA / Pruebas)",
+    "slug": "sede-principal-beta",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.beta@propinas.pe",
+    "adminPin": "ADMIN2026",
+    "superLogin": "supervisor.beta@propinas.pe",
+    "superPin": "SUPER2026",
+    "modLogin": "moderador.beta@propinas.pe",
+    "modPin": "MOD2026"
+  },
+  {
     "tienda": "Barranco",
     "slug": "barranco",
     "modalidad": "CLASICO",
@@ -229,5 +240,16 @@
     "superPin": "4097C9",
     "modLogin": "mod.villa@propinas.pe",
     "modPin": "A84C2D"
+  },
+  {
+    "tienda": "Los Olivos",
+    "slug": "los-olivos",
+    "modalidad": "CLASICO",
+    "adminLogin": "admin.los-olivos@propinas.pe",
+    "adminPin": "0EB134",
+    "superLogin": "super.los-olivos@propinas.pe",
+    "superPin": "BA57FF",
+    "modLogin": "mod.los-olivos@propinas.pe",
+    "modPin": "6A05A8"
   }
 ]

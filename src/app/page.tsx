@@ -19,6 +19,7 @@ import ModFechasActivas from '@/components/modules/ModFechasActivas';
 import ModLiquidacion from '@/components/modules/ModLiquidacion';
 import ModAuditoria from '@/components/modules/ModAuditoria';
 import ModUsuarios from '@/components/modules/ModUsuarios';
+import ModCredencialesTiendas from '@/components/modules/ModCredencialesTiendas';
 
 export default function HomePage() {
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
@@ -248,6 +249,7 @@ export default function HomePage() {
           onSelectTienda={handleSelectTienda}
           onOpenCrearTienda={() => setModalNuevaTiendaShow(true)}
           onOpenCatalogo={() => setCurrentModule('CatalogoTiendas')}
+          onOpenCredenciales={() => setCurrentModule('CredencialesTiendas')}
         />
 
         {/* Notificación de Modo Moderador */}
@@ -272,6 +274,13 @@ export default function HomePage() {
                 onSelectTienda={handleSelectTienda}
                 onNavigateToModule={(mod) => setCurrentModule(mod as ModuleName)}
                 onOpenCrearTienda={() => setModalNuevaTiendaShow(true)}
+              />
+            )}
+            {currentModule === 'CredencialesTiendas' && (
+              <ModCredencialesTiendas
+                currentUser={currentUser}
+                onSelectTienda={handleSelectTienda}
+                onNavigateToModule={(mod) => setCurrentModule(mod as ModuleName)}
               />
             )}
             {currentModule === 'Dashboard' && <ModDashboard cicloInfo={cicloInfo} />}
