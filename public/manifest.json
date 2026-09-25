@@ -1,0 +1,32 @@
+{
+  "name": "Sistema de Gestión y Registro de Propinas - Shimaya Ramen",
+  "short_name": "Propinas Shimaya",
+  "description": "Sistema integral de prorrateo, disciplina, liquidación y fondo mancomunado de propinas para Shimaya Ramen",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#f5f0ea",
+  "theme_color": "#0d6efd",
+  "orientation": "portrait-primary",
+  "categories": ["business", "finance"],
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -58,12 +58,12 @@ export default function Sidebar({
     <aside className={`sidebar ${isOpenMobile ? 'mobile-open' : ''} no-print`} id="appSidebar">
       <div className="sidebar-brand">
         <div className="d-flex align-items-center gap-2">
-          <div
-            className="bg-primary text-white rounded p-1 d-flex align-items-center justify-content-center"
-            style={{ width: '32px', height: '32px' }}
-          >
-            <i className="bi bi-cash-coin fs-6"></i>
-          </div>
+          <img
+            src="/icons/icon-192x192.png"
+            alt="Logo Shimaya"
+            className="rounded-circle shadow-sm"
+            style={{ width: '36px', height: '36px', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.2)' }}
+          />
           <span className="fs-6 fw-bold">Gestión de Propinas</span>
         </div>
         <button

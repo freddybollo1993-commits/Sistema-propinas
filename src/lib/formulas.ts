@@ -391,6 +391,14 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
       reglasActivas['Abandono de estación'] = true;
       reglasActivas['Abandono de estacion'] = true;
     }
+    if (c.infraccion === 'Inasistencias a capacitación / reunión' && esActiva) {
+      reglasActivas['Inasistencia a capacitación / reunión'] = true;
+      reglasActivas['Inasistencia a capacitacion / reunion'] = true;
+      reglasActivas['Inasistencias a capacitacion / reunion'] = true;
+      mapLimites['Inasistencia a capacitación / reunión'] = c.frecuenciaMax || 1;
+      mapLimites['Inasistencia a capacitacion / reunion'] = c.frecuenciaMax || 1;
+      mapLimites['Inasistencias a capacitacion / reunion'] = c.frecuenciaMax || 1;
+    }
   });
 
   // 5. Sanciones y adelantos aprobados de la tienda
@@ -463,6 +471,12 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
         etiquetaConteo.toLowerCase() === 'abandono de estacion'
       ) {
         etiquetaConteo = 'Abandono de trabajo';
+      } else if (
+        etiquetaConteo.toLowerCase() === 'inasistencia a capacitación / reunión' ||
+        etiquetaConteo.toLowerCase() === 'inasistencia a capacitacion / reunion' ||
+        etiquetaConteo.toLowerCase() === 'inasistencias a capacitacion / reunion'
+      ) {
+        etiquetaConteo = 'Inasistencias a capacitación / reunión';
       } else if (etiquetaConteo.includes('Tardanza')) {
         etiquetaConteo = 'Tardanza';
         const reglaTard = catalogo.find((c) => c.infraccion === 'Tardanza');

@@ -314,6 +314,22 @@ export async function POST(request: Request) {
           }
         }
       }
+    } else {
+      const reglaGenerica = catalogo.find((c) => c.infraccion === payload.infraccion);
+      if (reglaGenerica && reglaGenerica.estado === 'Activo') {
+        const maxPermitido = reglaGenerica.frecuenciaMax || 1;
+        const faltas = historial.filter((h) =>
+          h.concepto.includes(payload.infraccion)
+        ).length;
+
+        if (faltas > maxPermitido) {
+          await logAuditoria(
+            'Alerta Crítica: Reincidencia Sanción',
+            `${payload.colaborador} superó la frecuencia permitida de ${maxPermitido} faltas en ${payload.infraccion}. Total acumuladas: ${faltas}. Aplica pérdida del 100% de propinas.`,
+            'Sistema'
+          );
+        }
+      }
     }
 
     return NextResponse.json({

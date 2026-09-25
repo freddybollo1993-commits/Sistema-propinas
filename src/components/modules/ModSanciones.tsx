@@ -977,7 +977,7 @@ export default function ModSanciones({
                                     const val = parseInt(e.target.value) || 1;
                                     setCatalogo((prev) =>
                                       prev.map((item, idx) => {
-                                        if (isInasistencia && item.infraccion.includes('Inasistencia')) {
+                                        if (isInasistencia && item.infraccion.includes('Inasistencia injustificada')) {
                                           return { ...item, frecuenciaMax: val };
                                         }
                                         return idx === i ? { ...item, frecuenciaMax: val } : item;

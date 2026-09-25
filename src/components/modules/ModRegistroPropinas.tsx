@@ -17,6 +17,48 @@ interface WorkerRow {
   propinaCalculada: number;
 }
 
+export function getAreaGroup(area: string) {
+  const a = (area || '').trim().toLowerCase();
+  const isApoyo = a.includes('apoyo');
+  const isSalon = a.includes('salón') || a.includes('salon');
+  const isCocina = a.includes('cocina');
+
+  if (isSalon) {
+    return {
+      groupOrder: 1,
+      subOrder: isApoyo ? 2 : 1,
+      groupKey: 'salon' as const,
+      groupTitle: 'PERSONAL DE SALÓN (Incluye Apoyos de Salón)',
+      fondoBadge: 'Fondo 60%',
+      badgeClass: 'bg-success text-white',
+      headerClass: 'bg-success-subtle text-success-emphasis',
+      iconClass: 'bi-shop',
+    };
+  }
+  if (isCocina) {
+    return {
+      groupOrder: 2,
+      subOrder: isApoyo ? 2 : 1,
+      groupKey: 'cocina' as const,
+      groupTitle: 'PERSONAL DE COCINA (Incluye Apoyos de Cocina)',
+      fondoBadge: 'Fondo 40%',
+      badgeClass: 'bg-warning text-dark',
+      headerClass: 'bg-warning-subtle text-warning-emphasis',
+      iconClass: 'bi-fire',
+    };
+  }
+  return {
+    groupOrder: 3,
+    subOrder: isApoyo ? 2 : 1,
+    groupKey: 'otros' as const,
+    groupTitle: 'OTROS COLABORADORES',
+    fondoBadge: '',
+    badgeClass: 'bg-secondary text-white',
+    headerClass: 'bg-secondary-subtle text-secondary-emphasis',
+    iconClass: 'bi-person-badge',
+  };
+}
+
 export default function ModRegistroPropinas({
   currentUser,
   onOpenEliminarMaster,
@@ -81,7 +123,15 @@ export default function ModRegistroPropinas({
             horas: 12,
             prevHoras: 12,
             propinaCalculada: 0,
-          }));
+          }))
+          .sort((a, b) => {
+            const gA = getAreaGroup(a.area);
+            const gB = getAreaGroup(b.area);
+            if (gA.groupOrder !== gB.groupOrder) return gA.groupOrder - gB.groupOrder;
+            if (gA.subOrder !== gB.subOrder) return gA.subOrder - gB.subOrder;
+            return a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' });
+          });
+
         setColaboradores(activos);
       }
     } catch (e) {
@@ -419,76 +469,108 @@ export default function ModRegistroPropinas({
                   colaboradores.map((c, idx) => {
                     const propina = getPropinaCalculada(c);
                     const esApoyo = c.area.includes('Apoyo');
+                    const infoGrupo = getAreaGroup(c.area);
+
+                    const prevWorker = idx > 0 ? colaboradores[idx - 1] : null;
+                    const prevGrupo = prevWorker ? getAreaGroup(prevWorker.area) : null;
+                    const mostrarCabeceraGrupo = idx === 0 || infoGrupo.groupKey !== prevGrupo?.groupKey;
+
                     return (
-                      <tr
-                        key={c.nombre}
-                        className={!c.activo ? 'table-light opacity-50' : ''}
-                      >
-                        <td>
-                          <div className="form-check form-switch d-flex align-items-center gap-2 m-0">
+                      <React.Fragment key={c.nombre}>
+                        {mostrarCabeceraGrupo && (
+                          <tr className="table-light">
+                            <td
+                              colSpan={5}
+                              className={`py-2 px-3 fw-bold border-top border-bottom ${infoGrupo.headerClass}`}
+                            >
+                              <div className="d-flex align-items-center justify-content-between">
+                                <span className="d-flex align-items-center gap-2">
+                                  <i className={`bi ${infoGrupo.iconClass}`}></i>
+                                  <span>{infoGrupo.groupTitle}</span>
+                                </span>
+                                {infoGrupo.fondoBadge && (
+                                  <span
+                                    className={`badge ${infoGrupo.badgeClass}`}
+                                    style={{ fontSize: '0.75rem' }}
+                                  >
+                                    {infoGrupo.fondoBadge}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        <tr
+                          className={!c.activo ? 'table-light opacity-50' : ''}
+                        >
+                          <td>
+                            <div className="form-check form-switch d-flex align-items-center gap-2 m-0">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                checked={c.activo}
+                                onChange={() => handleToggleAsistencia(idx)}
+                                id={`sw_${idx}`}
+                              />
+                              <label
+                                className={`form-check-label small fw-semibold ${
+                                  c.activo ? 'text-success' : 'text-muted'
+                                }`}
+                                htmlFor={`sw_${idx}`}
+                              >
+                                {c.activo ? (
+                                  <>
+                                    <i className="bi bi-check-circle me-1"></i>Laborando
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="bi bi-moon-stars me-1"></i>Descanso
+                                  </>
+                                )}
+                              </label>
+                            </div>
+                          </td>
+                          <td>
+                            <strong className="text-dark">{c.nombre}</strong>
+                          </td>
+                          <td>
+                            <span
+                              className={`badge ${
+                                esApoyo
+                                  ? 'bg-warning text-dark border border-warning'
+                                  : infoGrupo.groupKey === 'salon'
+                                  ? 'bg-success-subtle text-success border border-success-subtle'
+                                  : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
+                              }`}
+                            >
+                              {c.area}
+                            </span>
+                          </td>
+                          <td>
                             <input
-                              className="form-check-input"
-                              type="checkbox"
-                              checked={c.activo}
-                              onChange={() => handleToggleAsistencia(idx)}
-                              id={`sw_${idx}`}
+                              type="number"
+                              step="0.5"
+                              min={c.activo ? '0.5' : '0'}
+                              max="24"
+                              className="form-control form-control-sm"
+                              value={c.horas}
+                              disabled={!c.activo}
+                              onChange={(e) => handleHorasChange(idx, parseFloat(e.target.value) || 0)}
+                              required={c.activo}
                             />
-                            <label
-                              className={`form-check-label small fw-semibold ${
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              className={`form-control form-control-sm fw-bold ${
                                 c.activo ? 'text-success' : 'text-muted'
                               }`}
-                              htmlFor={`sw_${idx}`}
-                            >
-                              {c.activo ? (
-                                <>
-                                  <i className="bi bi-check-circle me-1"></i>Laborando
-                                </>
-                              ) : (
-                                <>
-                                  <i className="bi bi-moon-stars me-1"></i>Descanso
-                                </>
-                              )}
-                            </label>
-                          </div>
-                        </td>
-                        <td>
-                          <strong className="text-dark">{c.nombre}</strong>
-                        </td>
-                        <td>
-                          <span
-                            className={`badge ${
-                              esApoyo
-                                ? 'bg-warning text-dark border border-warning'
-                                : 'bg-light text-dark border'
-                            }`}
-                          >
-                            {c.area}
-                          </span>
-                        </td>
-                        <td>
-                          <input
-                            type="number"
-                            step="0.5"
-                            min={c.activo ? '0.5' : '0'}
-                            max="24"
-                            className="form-control form-control-sm"
-                            value={c.horas}
-                            disabled={!c.activo}
-                            onChange={(e) => handleHorasChange(idx, parseFloat(e.target.value) || 0)}
-                            required={c.activo}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="text"
-                            className={`form-control form-control-sm fw-bold ${
-                              c.activo ? 'text-success' : 'text-muted'
-                            }`}
-                            value={c.activo ? `S/ ${propina.toFixed(2)}` : 'S/ 0.00 (Descanso)'}
-                            readOnly
-                          />
-                        </td>
-                      </tr>
+                              value={c.activo ? `S/ ${propina.toFixed(2)}` : 'S/ 0.00 (Descanso)'}
+                              readOnly
+                            />
+                          </td>
+                        </tr>
+                      </React.Fragment>
                     );
                   })
                 )}

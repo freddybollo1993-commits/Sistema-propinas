@@ -76,12 +76,12 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
         style={{ width: '100%', maxWidth: '440px', borderRadius: '20px' }}
       >
         <div className="text-center mb-4">
-          <div
-            className="bg-primary text-white rounded-circle d-inline-flex justify-content-center align-items-center mb-3 shadow"
-            style={{ width: '70px', height: '70px' }}
-          >
-            <i className="bi bi-buildings fs-2"></i>
-          </div>
+          <img
+            src="/icons/icon-512x512.png"
+            alt="Logo Shimaya Banquero"
+            className="rounded-circle d-inline-block mb-3 shadow"
+            style={{ width: '85px', height: '85px', objectFit: 'cover', border: '3px solid #f0f4f8' }}
+          />
           <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 mb-2 fw-semibold">
             Portal Único Multi-Restaurante
           </span>

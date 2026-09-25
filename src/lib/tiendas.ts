@@ -136,6 +136,17 @@ export async function inicializarTiendaConPlantilla(tiendaId: string, creadoPor:
       multiplicador: 0,
       multiplicadorActivo: false,
     },
+    {
+      infraccion: 'Inasistencias a capacitación / reunión',
+      estado: 'Activo',
+      monto: 0,
+      frecuenciaMax: 1,
+      consecuencia: 'Pérdida del 100% de propinas acumuladas',
+      toleranciaMin: 0,
+      toleranciaActiva: false,
+      multiplicador: 0,
+      multiplicadorActivo: false,
+    },
   ];
 
   for (const r of defaultRules) {
