@@ -31,6 +31,7 @@ export default function ModCentralNeuralgica({ currentUser, onSelectTienda }: Mo
 
   // Modal Auditoría Sanciones
   const [modalSancionesSede, setModalSancionesSede] = useState<any | null>(null);
+  const [generandoPdf, setGenerandoPdf] = useState(false);
 
   // Modal Directorio Sedes
   const [modalDirectorioOpen, setModalDirectorioOpen] = useState(false);
@@ -267,6 +268,274 @@ export default function ModCentralNeuralgica({ currentUser, onSelectTienda }: Mo
     setBusquedaTexto('');
     setSelectorPeriodo('ultimos30');
     cargarDatos({ sede: '', inicio: '', fin: '', limite: 30 });
+  };
+
+  const handleGenerarPdfSanciones = async () => {
+    if (!modalSancionesSede) return;
+    try {
+      setGenerandoPdf(true);
+
+      const { default: jsPDF } = await import('jspdf');
+      const autoTableModule = await import('jspdf-autotable');
+      const autoTable = (autoTableModule.default || autoTableModule) as any;
+
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const sedeNombre = modalSancionesSede.sede || 'Tienda';
+      const sanciones = modalSancionesSede.sanciones || [];
+
+      // Determinar período visualizado
+      let periodoTexto = '';
+      if (fInicio && fFin) {
+        periodoTexto = `${fInicio} al ${fFin}`;
+      } else if (fInicio) {
+        periodoTexto = `Desde ${fInicio}`;
+      } else if (fFin) {
+        periodoTexto = `Hasta ${fFin}`;
+      } else if (selectorPeriodo === 'quincenaActual') {
+        periodoTexto = 'Quincena Actual';
+      } else if (selectorPeriodo === 'quincenaAnterior') {
+        periodoTexto = 'Quincena Anterior';
+      } else if (selectorPeriodo === 'mesActual') {
+        periodoTexto = 'Mes Actual';
+      } else if (selectorPeriodo === 'mesAnterior') {
+        periodoTexto = 'Mes Anterior';
+      } else {
+        periodoTexto = 'Últimos 30 registros consolidados';
+      }
+
+      const fechasSanciones = sanciones
+        .map((s: any) => s.fecha)
+        .filter(Boolean)
+        .sort();
+      const rangoReal =
+        fechasSanciones.length > 0
+          ? `${fechasSanciones[0]} al ${fechasSanciones[fechasSanciones.length - 1]}`
+          : 'Sin registros';
+
+      const totalMontoPerdido = sanciones.reduce(
+        (acc: number, s: any) => acc + (parseFloat(s.monto) || 0),
+        0
+      );
+
+      // 1. Franja Superior Corporativa Takumi
+      doc.setFillColor(15, 23, 42); // slate-900
+      doc.rect(0, 0, 297, 24, 'F');
+
+      // Línea de acento roja
+      doc.setFillColor(220, 38, 38); // red-600
+      doc.rect(0, 24, 297, 2, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(255, 255, 255);
+      doc.text('TAKUMI • CENTRAL ANALÍTICA & AUDITORÍA CORPORATIVA', 14, 11);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(203, 213, 225); // slate-300
+      doc.text('REPORTE OFICIAL DE SANCIONES DISCIPLINARIAS Y PÉRDIDA MONETARIA', 14, 18);
+
+      const ahora = new Date();
+      const fechaEmisionStr =
+        ahora.toLocaleDateString('es-PE', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        }) +
+        ' ' +
+        ahora.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+
+      doc.setFontSize(7.5);
+      doc.setTextColor(226, 232, 240);
+      doc.text(`Emisión: ${fechaEmisionStr}`, 283, 11, { align: 'right' });
+      doc.text(
+        `Generado por: ${currentUser?.nombre || currentUser?.email || 'Administración Central'}`,
+        283,
+        18,
+        { align: 'right' }
+      );
+
+      // 2. Tarjetas de Resumen
+      // Tarjeta 1: Tienda / Sede
+      doc.setDrawColor(226, 232, 240);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(14, 30, 65, 18, 2, 2, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.text('TIENDA / SEDE', 18, 35);
+      doc.setFontSize(10.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(sedeNombre, 18, 43);
+
+      // Tarjeta 2: Período
+      doc.roundedRect(83, 30, 68, 18, 2, 2, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.text('PERÍODO EN EVALUACIÓN', 87, 35);
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(periodoTexto, 87, 41);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Rango reg: ${rangoReal}`, 87, 46);
+
+      // Tarjeta 3: Total Sanciones y Colaboradores
+      doc.roundedRect(155, 30, 60, 18, 2, 2, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.text('TOTAL SANCIONES', 159, 35);
+      doc.setFontSize(11);
+      doc.setTextColor(220, 38, 38);
+      doc.text(`${sanciones.length} falta(s)`, 159, 43);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 116, 139);
+      doc.text(`${modalSancionesSede.totalColaboradores || 0} colab. afectados`, 159, 46.5);
+
+      // Tarjeta 4: Dinero Perdido Total
+      doc.setFillColor(254, 242, 242);
+      doc.setDrawColor(254, 202, 202);
+      doc.roundedRect(219, 30, 64, 18, 2, 2, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(185, 28, 28);
+      doc.text('DINERO TOTAL PERDIDO / DESCONTADO', 223, 35);
+      doc.setFontSize(12);
+      doc.setTextColor(185, 28, 28);
+      doc.text(`S/ ${totalMontoPerdido.toFixed(2)}`, 223, 43.5);
+
+      // 3. Filas de la Tabla
+      const tableRows = sanciones.map((sanc: any, index: number) => {
+        const montoNum = parseFloat(sanc.monto) || 0;
+        const dineroPerdidoStr = montoNum > 0 ? `S/ ${montoNum.toFixed(2)}` : 'S/ 0.00';
+        return [
+          String(index + 1),
+          sanc.colaborador || '--',
+          sanc.fecha || '--',
+          sanc.concepto || 'Sanción Disciplinaria',
+          sanc.detalle || 'Sin detalle especificado',
+          sanc.usuario || 'Admin',
+          dineroPerdidoStr,
+        ];
+      });
+
+      autoTable(doc, {
+        head: [
+          [
+            '#',
+            'Trabajador',
+            'Fecha',
+            'Tipo de Sanción',
+            'Detalle / Motivo',
+            'Usuario Generador',
+            'Dinero Perdido',
+          ],
+        ],
+        body:
+          tableRows.length > 0
+            ? tableRows
+            : [['-', 'Sin registros', '-', '-', 'No se encontraron sanciones registradas en este período', '-', 'S/ 0.00']],
+        foot: [
+          [
+            '',
+            'TOTAL CONSOLIDADO',
+            '',
+            '',
+            `Total de infracciones: ${sanciones.length}`,
+            '',
+            `S/ ${totalMontoPerdido.toFixed(2)}`,
+          ],
+        ],
+        startY: 53,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [185, 28, 28],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 8.5,
+          halign: 'center',
+          valign: 'middle',
+          cellPadding: 2.5,
+        },
+        bodyStyles: {
+          fontSize: 8,
+          textColor: [30, 41, 59],
+          valign: 'middle',
+          cellPadding: 2.5,
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252],
+        },
+        footStyles: {
+          fillColor: [241, 245, 249],
+          textColor: [15, 23, 42],
+          fontStyle: 'bold',
+          fontSize: 8.5,
+          valign: 'middle',
+          cellPadding: 3,
+        },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 10 },
+          1: { halign: 'left', cellWidth: 46, fontStyle: 'bold' },
+          2: { halign: 'center', cellWidth: 24 },
+          3: { halign: 'left', cellWidth: 42 },
+          4: { halign: 'left', cellWidth: 78 },
+          5: { halign: 'center', cellWidth: 35 },
+          6: { halign: 'right', cellWidth: 34, fontStyle: 'bold', textColor: [185, 28, 28] },
+        },
+        margin: { top: 20, left: 14, right: 14, bottom: 18 },
+      });
+
+      // Pie de página y encabezados para páginas subsiguientes
+      const totalPages = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        if (i > 1) {
+          doc.setFillColor(15, 23, 42);
+          doc.rect(0, 0, 297, 12, 'F');
+          doc.setFillColor(220, 38, 38);
+          doc.rect(0, 12, 297, 1, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.setTextColor(255, 255, 255);
+          doc.text(`TAKUMI • REPORTE DE SANCIONES - ${sedeNombre.toUpperCase()} (Continuación)`, 14, 8);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7.5);
+          doc.setTextColor(203, 213, 225);
+          doc.text(`Período: ${periodoTexto}`, 283, 8, { align: 'right' });
+        }
+
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(148, 163, 184);
+        doc.setDrawColor(226, 232, 240);
+        doc.line(14, 200, 283, 200);
+        doc.text(
+          'Central Analítica • Sistema de Control de Propinas Takumi • Documento Oficial de Auditoría Interna',
+          14,
+          204
+        );
+        doc.text(`Página ${i} de ${totalPages}`, 283, 204, { align: 'right' });
+      }
+
+      const sanitizedSede = sedeNombre.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const sanitizedFecha = ahora.toISOString().split('T')[0];
+      doc.save(`Sanciones_${sanitizedSede}_${sanitizedFecha}.pdf`);
+      setGenerandoPdf(false);
+    } catch (err) {
+      console.error('Error al generar PDF de sanciones:', err);
+      alert('Ocurrió un error al generar el documento PDF.');
+      setGenerandoPdf(false);
+    }
   };
 
   const registrosFiltrados = (datos?.registros || []).filter((r: any) => {
@@ -1043,15 +1312,27 @@ export default function ModCentralNeuralgica({ currentUser, onSelectTienda }: Mo
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex={-1}>
           <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div className="modal-content shadow-lg border-0">
-              <div className="modal-header bg-danger text-white">
-                <h5 className="modal-title fw-bold">
+              <div className="modal-header bg-danger text-white d-flex justify-content-between align-items-center">
+                <h5 className="modal-title fw-bold mb-0">
                   <i className="bi bi-shield-exclamation me-2"></i>Auditoría de Sanciones - {modalSancionesSede.sede}
                 </h5>
-                <button
-                  type="button"
-                  className="btn-close btn-close-white"
-                  onClick={() => setModalSancionesSede(null)}
-                ></button>
+                <div className="d-flex align-items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-light btn-sm fw-bold text-danger d-flex align-items-center gap-1 shadow-sm px-3"
+                    onClick={handleGenerarPdfSanciones}
+                    disabled={generandoPdf}
+                    title="Generar y descargar documento PDF oficial con la totalidad de sanciones del período visualizado"
+                  >
+                    <i className={`bi ${generandoPdf ? 'bi-arrow-repeat spin' : 'bi-file-earmark-pdf-fill'} text-danger`}></i>
+                    {generandoPdf ? 'Generando...' : 'Generar PDF'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-close btn-close-white"
+                    onClick={() => setModalSancionesSede(null)}
+                  ></button>
+                </div>
               </div>
               <div className="modal-body p-4">
                 {/* Resumen */}
@@ -1078,9 +1359,20 @@ export default function ModCentralNeuralgica({ currentUser, onSelectTienda }: Mo
                   </div>
                 </div>
 
-                <h6 className="fw-bold text-dark mb-2">
-                  <i className="bi bi-list-check me-1"></i> Listado Detallado de Faltas Registradas:
-                </h6>
+                <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                  <h6 className="fw-bold text-dark mb-0">
+                    <i className="bi bi-list-check me-1"></i> Listado Detallado de Faltas Registradas:
+                  </h6>
+                  <button
+                    type="button"
+                    className="btn btn-outline-danger btn-sm fw-semibold d-flex align-items-center gap-1 shadow-sm"
+                    onClick={handleGenerarPdfSanciones}
+                    disabled={generandoPdf}
+                  >
+                    <i className={`bi ${generandoPdf ? 'bi-arrow-repeat spin' : 'bi-file-earmark-pdf-fill'}`}></i>
+                    {generandoPdf ? 'Generando PDF...' : 'Generar Documento PDF'}
+                  </button>
+                </div>
                 <div className="table-responsive">
                   <table className="table table-bordered table-hover align-middle mb-0">
                     <thead className="table-light small">
@@ -1129,14 +1421,29 @@ export default function ModCentralNeuralgica({ currentUser, onSelectTienda }: Mo
                   </table>
                 </div>
               </div>
-              <div className="modal-footer bg-light">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setModalSancionesSede(null)}
-                >
-                  Cerrar
-                </button>
+              <div className="modal-footer bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div className="small text-muted">
+                  <i className="bi bi-file-earmark-pdf-fill text-danger me-1"></i>
+                  Exporta la totalidad de sanciones ({modalSancionesSede.cantidad}) en PDF con: trabajador, fecha, detalle, tipo, usuario y dinero perdido.
+                </div>
+                <div className="d-flex gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-danger fw-bold d-flex align-items-center gap-2 shadow-sm"
+                    onClick={handleGenerarPdfSanciones}
+                    disabled={generandoPdf}
+                  >
+                    <i className={`bi ${generandoPdf ? 'bi-arrow-repeat spin' : 'bi-file-earmark-pdf-fill'}`}></i>
+                    {generandoPdf ? 'Generando Documento PDF...' : 'Generar Documento PDF'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setModalSancionesSede(null)}
+                  >
+                    Cerrar
+                  </button>
+                </div>
               </div>
             </div>
           </div>

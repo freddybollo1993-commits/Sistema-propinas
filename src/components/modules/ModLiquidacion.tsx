@@ -6,11 +6,13 @@ import { SessionUser } from '@/lib/auth';
 interface ModLiquidacionProps {
   currentUser: SessionUser | null;
   cicloInfo: { inicio: string; fin: string; estado: string } | null;
+  activeTiendaNombre?: string;
 }
 
 export default function ModLiquidacion({
   currentUser,
   cicloInfo,
+  activeTiendaNombre,
 }: ModLiquidacionProps) {
   const [fInicio, setFInicio] = useState('');
   const [fFin, setFFin] = useState('');
@@ -24,6 +26,17 @@ export default function ModLiquidacion({
     fechaEmision: string;
     periodoTexto: string;
   }>({ show: false, colaborador: null, fechaEmision: '', periodoTexto: '' });
+
+  useEffect(() => {
+    if (boletaModal.show) {
+      document.body.classList.add('boleta-modal-abierto');
+    } else {
+      document.body.classList.remove('boleta-modal-abierto');
+    }
+    return () => {
+      document.body.classList.remove('boleta-modal-abierto');
+    };
+  }, [boletaModal.show]);
 
   useEffect(() => {
     if (cicloInfo) {
@@ -105,15 +118,20 @@ export default function ModLiquidacion({
     }
     stylePage.innerHTML = '@page { size: A4 landscape; margin: 5mm 7mm; }';
 
-    window.print();
-
-    setTimeout(() => {
+    const cleanup = () => {
       document.body.classList.remove('imprimiendo-planilla');
-    }, 1000);
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup, { once: true });
+    setTimeout(cleanup, 15000);
+
+    window.print();
   };
 
   // Impresión Boleta A4 Portrait
   const handleImprimirBoleta = () => {
+    if (!boletaModal.colaborador) return;
+
     document.body.classList.add('imprimiendo-boleta');
     document.body.classList.remove('imprimiendo-planilla');
 
@@ -123,13 +141,55 @@ export default function ModLiquidacion({
       stylePage.id = 'dynamicPageStyle';
       document.head.appendChild(stylePage);
     }
-    stylePage.innerHTML = '@page { size: A4 portrait; margin: 6mm 8mm; }';
+    stylePage.innerHTML = '@page { size: A4 portrait; margin: 5mm 6mm; }';
+
+    const cleanup = () => {
+      document.body.classList.remove('imprimiendo-boleta');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup, { once: true });
+    setTimeout(cleanup, 15000);
 
     window.print();
+  };
+
+  // Impresión Directa desde fila de tabla sin pasar por modal
+  const handleImprimirBoletaDirecta = (c: any) => {
+    const ahora = new Date();
+    const fechaEmision =
+      ahora.toLocaleDateString('es-PE') +
+      ' ' +
+      ahora.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+    const periodoTexto = fInicio && fFin ? `${fInicio} al ${fFin}` : 'Ciclo Completo';
+
+    setBoletaModal({
+      show: false,
+      colaborador: c,
+      fechaEmision,
+      periodoTexto,
+    });
 
     setTimeout(() => {
-      document.body.classList.remove('imprimiendo-boleta');
-    }, 1000);
+      document.body.classList.add('imprimiendo-boleta');
+      document.body.classList.remove('imprimiendo-planilla');
+
+      let stylePage = document.getElementById('dynamicPageStyle');
+      if (!stylePage) {
+        stylePage = document.createElement('style');
+        stylePage.id = 'dynamicPageStyle';
+        document.head.appendChild(stylePage);
+      }
+      stylePage.innerHTML = '@page { size: A4 portrait; margin: 5mm 6mm; }';
+
+      const cleanup = () => {
+        document.body.classList.remove('imprimiendo-boleta');
+        window.removeEventListener('afterprint', cleanup);
+      };
+      window.addEventListener('afterprint', cleanup, { once: true });
+      setTimeout(cleanup, 15000);
+
+      window.print();
+    }, 60);
   };
 
   const esFondo = datos?.modoActivo === 'FONDO_MANCOMUNADO';
@@ -385,13 +445,24 @@ export default function ModLiquidacion({
                       </td>
                       <td className="fw-bold text-primary fs-6 font-mono">S/ {c.montoNeto.toFixed(2)}</td>
                       <td className="text-center">
-                        <button
-                          type="button"
-                          className="btn btn-outline-primary btn-sm py-1 px-2 shadow-xs"
-                          onClick={() => handleAbrirBoleta(c)}
-                        >
-                          <i className="bi bi-file-text me-1"></i> Boleta
-                        </button>
+                        <div className="d-inline-flex gap-1">
+                          <button
+                            type="button"
+                            className="btn btn-outline-primary btn-sm py-1 px-2 shadow-xs"
+                            onClick={() => handleAbrirBoleta(c)}
+                            title="Ver Boleta Detallada"
+                          >
+                            <i className="bi bi-file-text me-1"></i> Boleta
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm py-1 px-2 shadow-xs"
+                            onClick={() => handleImprimirBoletaDirecta(c)}
+                            title="Imprimir Boleta Directa (1 Hoja A4)"
+                          >
+                            <i className="bi bi-printer-fill"></i>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -956,6 +1027,324 @@ export default function ModLiquidacion({
           </div>
         </div>
       </div>
+
+      {/* ========================================================= */}
+      {/* CONTENEDOR DE IMPRESIÓN OFICIAL: BOLETA INDIVIDUAL EN 1 HOJA A4 */}
+      {/* ========================================================= */}
+      {boletaModal.colaborador && (
+        <div id="printBoletaA4" style={{ display: 'none' }}>
+          <div className="boleta-a4-individual">
+            {/* Cabecera Institucional Oficial */}
+            <div
+              className="d-flex justify-content-between align-items-start border-bottom pb-1 mb-2"
+              style={{ borderBottom: '2px solid #0f172a !important' }}
+            >
+              <div>
+                <div className="d-flex align-items-center gap-2 mb-1">
+                  <span className="fw-black text-danger" style={{ fontSize: '1.05rem', fontFamily: 'Noto Sans JP', fontWeight: 900 }}>嶋屋</span>
+                  <span className="fw-bold text-dark" style={{ fontSize: '9.5pt', letterSpacing: '0.05em' }}>SHIMAYA RAMEN</span>
+                  <span className="badge bg-light text-dark border px-1 py-0" style={{ fontSize: '6.5pt' }}>OFICIAL</span>
+                </div>
+                <h5
+                  className="fw-bold mb-0 text-uppercase text-dark"
+                  style={{ fontSize: '11pt', letterSpacing: '0.5px' }}
+                >
+                  BOLETA DE LIQUIDACIÓN DE PROPINAS
+                </h5>
+                <span className="text-muted" style={{ fontSize: '7pt' }}>
+                  COMPROBANTE OFICIAL DE ENTREGA QUINCENAL • SISTEMA DE GESTIÓN TAKUMI
+                </span>
+              </div>
+              <div className="text-end" style={{ fontSize: '7.5pt' }}>
+                <div>
+                  <strong>Sede / Restaurante:</strong> <span>{activeTiendaNombre || currentUser?.tiendaNombre || 'Sede Principal'}</span>
+                </div>
+                <div>
+                  <strong>Periodo Liquidado:</strong> <span>{boletaModal.periodoTexto}</span>
+                </div>
+                <div>
+                  <strong>Fecha y Hora de Emisión:</strong> <span>{boletaModal.fechaEmision}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Ficha del Colaborador */}
+            <table className="table-info-colab">
+              <tbody>
+                <tr>
+                  <td className="lbl">Colaborador:</td>
+                  <td className="val-name">{boletaModal.colaborador.colaborador}</td>
+                  <td className="lbl">Área:</td>
+                  <td className="val">{boletaModal.colaborador.area}</td>
+                  <td className="lbl">Días Trab.:</td>
+                  <td className="val">{boletaModal.colaborador.diasTrabajados} días</td>
+                  <td className="lbl">Horas Acum.:</td>
+                  <td className="val">
+                    {boletaModal.colaborador.horasTrabajadas.toFixed(1)} hrs
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            {/* Contenedor 2 Columnas Bento */}
+            <div className="boleta-grid-2col">
+              {/* COLUMNA IZQUIERDA: 1. Jornadas Diarias + 2. Resumen Contable */}
+              <div className="boleta-col-izq">
+                {/* 1. Jornadas Diarias */}
+                <div className="mb-2">
+                  <div className="boleta-box-title d-flex justify-content-between">
+                    <span>
+                      <i className="bi bi-calendar-check me-1"></i> 1. Jornadas y Propinas Diarias
+                    </span>
+                    <span className="fw-bold text-primary">
+                      S/ {boletaModal.colaborador.propinaBruta.toFixed(2)}
+                    </span>
+                  </div>
+                  <table className="tabla-boleta-dias">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '28%' }}>Fecha</th>
+                        <th style={{ width: '27%' }}>Turno / ID</th>
+                        <th style={{ width: '20%' }}>Horas</th>
+                        <th style={{ width: '25%' }} className="text-end">
+                          Propina (S/)
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {boletaModal.colaborador.detalleDias.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="text-center text-muted py-1" style={{ fontSize: '7pt' }}>
+                            No registra jornadas trabajadas en este ciclo.
+                          </td>
+                        </tr>
+                      ) : (
+                        boletaModal.colaborador.detalleDias.map((d: any, idx: number) => (
+                          <tr key={idx}>
+                            <td>{d.fecha}</td>
+                            <td>Reg #{d.idRegistro}</td>
+                            <td className="text-center">{d.horas.toFixed(1)} hrs</td>
+                            <td className="text-end fw-semibold text-primary">
+                              S/ {d.propina.toFixed(2)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <th colSpan={2} style={{ textAlign: 'right' }}>
+                          TOTAL BRUTO:
+                        </th>
+                        <th>{boletaModal.colaborador.horasTrabajadas.toFixed(1)}h</th>
+                        <th className="text-end text-primary">
+                          S/ {boletaModal.colaborador.propinaBruta.toFixed(2)}
+                        </th>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                {/* 2. Resumen Contable */}
+                <div className="mb-2">
+                  <div
+                    className="boleta-box-title d-flex justify-content-between"
+                    style={{ background: '#e2e8f0', color: '#0f172a' }}
+                  >
+                    <span>
+                      <i className="bi bi-calculator me-1"></i> Resumen Contable de Liquidación
+                    </span>
+                    <span className="small text-muted">Cálculo Oficial</span>
+                  </div>
+                  <table className="tabla-boleta-totales">
+                    <tbody>
+                      <tr>
+                        <td>(+) Propina Bruta Acumulada:</td>
+                        <td className="text-end fw-bold">
+                          {boletaModal.colaborador.perdidaTotal
+                            ? 'S/ 0.00 (Retenido 100%)'
+                            : `S/ ${boletaModal.colaborador.propinaBruta.toFixed(2)}`}
+                        </td>
+                      </tr>
+                      <tr className="text-danger">
+                        <td>(-) Deducciones por Sanciones:</td>
+                        <td className="text-end">
+                          - S/ {boletaModal.colaborador.sanciones.toFixed(2)}
+                        </td>
+                      </tr>
+                      <tr className="text-danger">
+                        <td>(-) Deducciones por Adelantos:</td>
+                        <td className="text-end">
+                          - S/ {boletaModal.colaborador.adelantos.toFixed(2)}
+                        </td>
+                      </tr>
+                      {!esFondo && (
+                        <tr className="text-success">
+                          <td>(+) Bonificación Equitativa:</td>
+                          <td className="text-end">
+                            + S/ {boletaModal.colaborador.bonoRedistribucion.toFixed(2)}
+                          </td>
+                        </tr>
+                      )}
+                      <tr className="row-neto-final">
+                        <td className="lbl-neto">MONTO NETO A PERCIBIR (S/):</td>
+                        <td className="text-end val-neto">
+                          S/ {boletaModal.colaborador.montoNeto.toFixed(2)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* COLUMNA DERECHA: Sanciones, Adelantos y Fondo/Bono */}
+              <div className="boleta-col-der">
+                {/* 3. Sanciones Disciplinarias */}
+                <div className="mb-2">
+                  <div className="boleta-box-title text-danger d-flex justify-content-between">
+                    <span>
+                      <i className="bi bi-exclamation-octagon-fill me-1"></i> 2. Sanciones Disciplinarias
+                    </span>
+                    <span className="fw-bold text-danger">
+                      - S/ {boletaModal.colaborador.sanciones.toFixed(2)}
+                    </span>
+                  </div>
+                  <table className="tabla-boleta-sub">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '28%' }}>Fecha</th>
+                        <th style={{ width: '47%' }}>Infracción</th>
+                        <th style={{ width: '25%' }} className="text-end">
+                          Monto
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {boletaModal.colaborador.detalleSanciones.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="text-center text-success py-1" style={{ fontSize: '7pt' }}>
+                            <i className="bi bi-check-circle me-1"></i>Sin sanciones en el periodo (S/ 0.00).
+                          </td>
+                        </tr>
+                      ) : (
+                        boletaModal.colaborador.detalleSanciones.map((s: any, idx: number) => (
+                          <tr key={idx}>
+                            <td>{s.fecha}</td>
+                            <td>
+                              <strong className="text-danger">{s.infraccion}</strong>
+                            </td>
+                            <td className="text-end fw-semibold text-danger">
+                              - S/ {parseFloat(s.monto).toFixed(2)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* 4. Adelantos de Propinas */}
+                <div className="mb-2">
+                  <div
+                    className="boleta-box-title d-flex justify-content-between"
+                    style={{ color: '#b45309' }}
+                  >
+                    <span>
+                      <i className="bi bi-cash-stack me-1"></i> 3. Adelantos de Propinas
+                    </span>
+                    <span className="fw-bold" style={{ color: '#b45309' }}>
+                      - S/ {boletaModal.colaborador.adelantos.toFixed(2)}
+                    </span>
+                  </div>
+                  <table className="tabla-boleta-sub">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '28%' }}>Fecha</th>
+                        <th style={{ width: '47%' }}>Concepto / Detalle</th>
+                        <th style={{ width: '25%' }} className="text-end">
+                          Monto
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {boletaModal.colaborador.detalleAdelantos.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="text-center text-muted py-1" style={{ fontSize: '7pt' }}>
+                            Sin adelantos registrados en el ciclo (S/ 0.00).
+                          </td>
+                        </tr>
+                      ) : (
+                        boletaModal.colaborador.detalleAdelantos.map((a: any, idx: number) => (
+                          <tr key={idx}>
+                            <td>{a.fecha}</td>
+                            <td>
+                              <strong>{a.concepto}</strong>
+                            </td>
+                            <td className="text-end fw-semibold text-danger">
+                              - S/ {parseFloat(a.monto).toFixed(2)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* 5. Bonificación / Fondo */}
+                <div className="mb-2">
+                  <div className="boleta-box-title text-success d-flex justify-content-between">
+                    <span>
+                      <i className="bi bi-gift-fill me-1"></i>{' '}
+                      {esFondo ? '4. Fondo Mancomunado' : '4. Bono Redistribución'}
+                    </span>
+                    <span className="fw-bold text-success">
+                      {esFondo
+                        ? 'Fondo Común'
+                        : `+ S/ ${boletaModal.colaborador.bonoRedistribucion.toFixed(2)}`}
+                    </span>
+                  </div>
+                  <div
+                    className="p-1 px-2 text-muted border border-top-0 bg-light"
+                    style={{ fontSize: '7pt' }}
+                  >
+                    {boletaModal.colaborador.motivoBono}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* SECCIÓN DE FIRMAS DE CONFORMIDAD */}
+            <div className="boleta-firmas-container mt-2">
+              <div className="row-firmas-boleta">
+                <div className="box-firma-boleta">
+                  <div className="linea-firma-boleta"></div>
+                  <div className="fw-bold" style={{ fontSize: '8pt', color: '#0f172a' }}>
+                    RECIBIDO CONFORME
+                  </div>
+                  <div className="text-muted" style={{ fontSize: '7pt' }}>
+                    Firma del Trabajador: <strong>{boletaModal.colaborador.colaborador}</strong>
+                  </div>
+                  <div style={{ fontSize: '7pt', color: '#475569' }}>
+                    DNI: _________________________ Fecha: ___/___/2026
+                  </div>
+                </div>
+                <div className="box-firma-boleta">
+                  <div className="linea-firma-boleta"></div>
+                  <div className="fw-bold" style={{ fontSize: '8pt', color: '#0f172a' }}>
+                    ENTREGADO Y AUTORIZADO
+                  </div>
+                  <div className="text-muted" style={{ fontSize: '7pt' }}>
+                    Administración • {activeTiendaNombre || currentUser?.tiendaNombre || 'Restaurante'}
+                  </div>
+                  <div style={{ fontSize: '7pt', color: '#475569' }}>
+                    Sello y Firma del Administrador
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

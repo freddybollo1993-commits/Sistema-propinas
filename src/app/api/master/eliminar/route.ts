@@ -187,11 +187,11 @@ export async function POST(request: Request) {
       }
 
       const idUsr = String(idOParam).trim();
-      if (idUsr === 'USR-MASTER') {
+      if (idUsr === 'USR-MASTER' || idUsr === 'USR-RRHH') {
         return NextResponse.json(
           {
             success: false,
-            message: 'Violación de seguridad: El Usuario Maestro no puede ser eliminado.',
+            message: 'Violación de seguridad: Las cuentas Maestras no pueden ser eliminadas.',
           },
           { status: 403 }
         );
@@ -202,12 +202,23 @@ export async function POST(request: Request) {
           OR: [
             { id: idUsr },
             { email: { equals: idUsr, mode: 'insensitive' } },
+            { nombre: { equals: idUsr, mode: 'insensitive' } },
           ],
         },
       });
 
       if (!usr) {
         return NextResponse.json({ success: false, message: 'Usuario no encontrado.' }, { status: 404 });
+      }
+
+      if (usr.esMaestro || usr.id === 'USR-MASTER' || usr.id === 'USR-RRHH') {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Violación de seguridad: Las cuentas Maestras no pueden ser eliminadas.',
+          },
+          { status: 403 }
+        );
       }
 
       await prisma.usuario.delete({

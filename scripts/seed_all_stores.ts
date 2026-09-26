@@ -67,6 +67,31 @@ async function main() {
     },
   });
 
+  // Asegurar Usuario Maestro RRHH SHIMAYA RAMEN
+  const rrhhPass = await hashPassword('RRHH2026');
+  await prisma.usuario.upsert({
+    where: { id: 'USR-RRHH' },
+    update: {
+      nombre: 'RRHH SHIMAYA RAMEN',
+      email: 'rrhh@shimayaramen.pe',
+      passwordHash: rrhhPass,
+      rol: 'Administrador',
+      estado: 'Activo',
+      esMaestro: true,
+      tiendaId: null,
+    },
+    create: {
+      id: 'USR-RRHH',
+      nombre: 'RRHH SHIMAYA RAMEN',
+      email: 'rrhh@shimayaramen.pe',
+      passwordHash: rrhhPass,
+      rol: 'Administrador',
+      estado: 'Activo',
+      esMaestro: true,
+      tiendaId: null,
+    },
+  });
+
   // Usuario Admin para Beta
   const betaPass = await hashPassword('1234');
   await prisma.usuario.upsert({

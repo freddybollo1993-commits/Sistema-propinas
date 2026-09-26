@@ -82,6 +82,29 @@ async function main() {
     },
   });
 
+  // 3.1 Crear o actualizar Usuario Maestro RRHH SHIMAYA RAMEN (USR-RRHH)
+  const rrhhPasswordHash = await bcrypt.hash('RRHH2026', 10);
+  await prisma.usuario.upsert({
+    where: { email: 'rrhh@shimayaramen.pe' },
+    update: {
+      nombre: 'RRHH SHIMAYA RAMEN',
+      rol: 'Administrador',
+      estado: 'Activo',
+      esMaestro: true,
+      tiendaId: null,
+    },
+    create: {
+      id: 'USR-RRHH',
+      nombre: 'RRHH SHIMAYA RAMEN',
+      email: 'rrhh@shimayaramen.pe',
+      passwordHash: rrhhPasswordHash,
+      rol: 'Administrador',
+      estado: 'Activo',
+      esMaestro: true,
+      tiendaId: null,
+    },
+  });
+
   // 4. Crear Administrador asignado a la Sede Principal
   const adminPasswordHash = await bcrypt.hash('1234', 10);
   await prisma.usuario.upsert({

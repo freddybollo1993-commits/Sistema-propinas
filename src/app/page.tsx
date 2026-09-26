@@ -321,7 +321,11 @@ export default function HomePage() {
               />
             )}
             {currentModule === 'Liquidacion' && (
-              <ModLiquidacion currentUser={currentUser} cicloInfo={cicloInfo} />
+              <ModLiquidacion
+                currentUser={currentUser}
+                cicloInfo={cicloInfo}
+                activeTiendaNombre={activeTiendaNombre}
+              />
             )}
             {currentModule === 'Auditoria' && <ModAuditoria />}
             {currentModule === 'Usuarios' && (

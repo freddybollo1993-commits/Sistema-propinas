@@ -16,15 +16,22 @@ export async function POST(request: Request) {
     const cleanUser = String(user).trim().toLowerCase();
     const cleanPass = String(pass).trim();
 
-    // Búsqueda por correo, usuario corto (ej. admin.san-borja) o por ID (ej. USR-MASTER)
+    // Búsqueda por correo, usuario corto (ej. admin.san-borja, rrhh), por ID (ej. USR-MASTER, USR-RRHH) o por Nombre Completo (ej. RRHH SHIMAYA RAMEN)
     const orConditions: any[] = [
       { email: { equals: cleanUser, mode: 'insensitive' } },
       { id: { equals: cleanUser, mode: 'insensitive' } },
+      { nombre: { equals: cleanUser, mode: 'insensitive' } },
     ];
     if (!cleanUser.includes('@')) {
       orConditions.push({ email: { equals: `${cleanUser}@propinas.pe`, mode: 'insensitive' } });
       orConditions.push({ email: { equals: `${cleanUser}@empresa.com`, mode: 'insensitive' } });
+      orConditions.push({ email: { equals: `${cleanUser}@shimayaramen.pe`, mode: 'insensitive' } });
       orConditions.push({ email: { startsWith: `${cleanUser}@`, mode: 'insensitive' } });
+    } else {
+      const userPrefix = cleanUser.split('@')[0];
+      if (userPrefix) {
+        orConditions.push({ email: { startsWith: `${userPrefix}@`, mode: 'insensitive' } });
+      }
     }
 
     const usuario = await prisma.usuario.findFirst({

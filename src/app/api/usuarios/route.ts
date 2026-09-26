@@ -50,12 +50,12 @@ export async function POST(request: Request) {
 
     const payload = await request.json();
 
-    if (payload.id === 'USR-MASTER' && user?.id !== 'USR-MASTER') {
+    if ((payload.id === 'USR-MASTER' || payload.id === 'USR-RRHH') && !user?.esMaestro) {
       return NextResponse.json(
         {
           success: false,
           message:
-            'La Cuenta Maestra (USR-MASTER) está protegida y es inmutable por política de seguridad.',
+            'Las Cuentas Maestras Corporativas están protegidas y son inmutables por política de seguridad.',
         },
         { status: 403 }
       );
