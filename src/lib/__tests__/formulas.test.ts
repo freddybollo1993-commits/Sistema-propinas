@@ -82,4 +82,25 @@ describe("Motor de Cálculo de Prorrateo de Propinas (60% Salón / 40% Cocina)",
 		expect(meseroCero?.propinaAsignada).toBe(0);
 		expect(meseroActivo?.propinaAsignada).toBe(300);
 	});
+
+	it("debe distribuir exactamente 50% para Salón y 50% para Cocina en Modo Especial 50/50", () => {
+		const montoTotal = 1000;
+		const participantes: ParticipantInput[] = [
+			{ colaborador: "Mesero Especial 1", area: "Salón", horas: 8 },
+			{ colaborador: "Cocinero Especial 1", area: "Cocina", horas: 8 },
+		];
+
+		const resultado = calcularProrrateoEnMemoria(montoTotal, participantes, 0.5);
+
+		expect(resultado.fondoSalon).toBe(500);
+		expect(resultado.fondoCocina).toBe(500);
+		expect(resultado.totalHorasSalon).toBe(8);
+		expect(resultado.totalHorasCocina).toBe(8);
+
+		const mesero = resultado.detalles.find((d) => d.colaborador === "Mesero Especial 1");
+		const cocinero = resultado.detalles.find((d) => d.colaborador === "Cocinero Especial 1");
+
+		expect(mesero?.propinaAsignada).toBe(500);
+		expect(cocinero?.propinaAsignada).toBe(500);
+	});
 });

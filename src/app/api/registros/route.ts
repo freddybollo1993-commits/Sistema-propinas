@@ -73,8 +73,23 @@ export async function POST(request: Request) {
 
     const fecha = payload.fecha || new Date().toISOString().split('T')[0];
 
-    // Cálculo y Prorrateo estricto 60% Salón / 40% Cocina
-    const calculo = calcularProrrateoEnMemoria(montoTotal, participantes);
+    // Modo de distribución: por defecto Regular 60% / 40%, o Modo Especial 50% / 50%
+    const modoDistribucion = payload.modoDistribucion === '50_50' ? '50_50' : '60_40';
+    const justificacionIngresada = (payload.justificacion || '').trim();
+
+    if (modoDistribucion === '50_50' && !justificacionIngresada) {
+      return NextResponse.json(
+        { success: false, message: 'Debe ingresar una justificación obligatoria para utilizar el modo especial 50% / 50%.' },
+        { status: 400 }
+      );
+    }
+
+    const porcentajeSalon = modoDistribucion === '50_50' ? 0.5 : 0.6;
+    const calculo = calcularProrrateoEnMemoria(montoTotal, participantes, porcentajeSalon);
+
+    const justificacionGuardar = modoDistribucion === '50_50'
+      ? `[Modo Especial 50/50]: ${justificacionIngresada}`
+      : null;
 
     // Guardar atómicamente el registro y sus detalles en base de datos
     const nuevoRegistro = await prisma.$transaction(async (tx) => {
@@ -85,6 +100,7 @@ export async function POST(request: Request) {
           fondoSalon: calculo.fondoSalon,
           fondoCocina: calculo.fondoCocina,
           estado: 'Activo',
+          justificacion: justificacionGuardar,
           tiendaId,
         },
       });
@@ -103,9 +119,13 @@ export async function POST(request: Request) {
       return reg;
     });
 
+    const descAuditoria = modoDistribucion === '50_50'
+      ? `Nuevo turno registrado en Modo Especial 50/50: S/ ${montoTotal.toFixed(2)} (${calculo.detalles.length} colaboradores) el ${fecha}. Justificación: ${justificacionIngresada}`
+      : `Nuevo turno registrado en Modo Regular 60/40: S/ ${montoTotal.toFixed(2)} (${calculo.detalles.length} colaboradores) el ${fecha}`;
+
     await logAuditoria(
       'Registro de Propinas',
-      `Nuevo turno registrado: S/ ${montoTotal.toFixed(2)} (${calculo.detalles.length} colaboradores) el ${fecha}`,
+      descAuditoria,
       usuarioActual,
       tiendaId
     );

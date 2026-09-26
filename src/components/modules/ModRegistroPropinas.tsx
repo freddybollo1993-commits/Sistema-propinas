@@ -17,11 +17,14 @@ interface WorkerRow {
   propinaCalculada: number;
 }
 
-export function getAreaGroup(area: string) {
+export function getAreaGroup(area: string, modoDistribucion: '60_40' | '50_50' = '60_40') {
   const a = (area || '').trim().toLowerCase();
   const isApoyo = a.includes('apoyo');
   const isSalon = a.includes('salón') || a.includes('salon');
   const isCocina = a.includes('cocina');
+
+  const badgeSalon = modoDistribucion === '50_50' ? 'Fondo 50%' : 'Fondo 60%';
+  const badgeCocina = modoDistribucion === '50_50' ? 'Fondo 50%' : 'Fondo 40%';
 
   if (isSalon) {
     return {
@@ -29,7 +32,7 @@ export function getAreaGroup(area: string) {
       subOrder: isApoyo ? 2 : 1,
       groupKey: 'salon' as const,
       groupTitle: 'PERSONAL DE SALÓN (Incluye Apoyos de Salón)',
-      fondoBadge: 'Fondo 60%',
+      fondoBadge: badgeSalon,
       badgeClass: 'bg-success text-white',
       headerClass: 'bg-success-subtle text-success-emphasis',
       iconClass: 'bi-shop',
@@ -41,7 +44,7 @@ export function getAreaGroup(area: string) {
       subOrder: isApoyo ? 2 : 1,
       groupKey: 'cocina' as const,
       groupTitle: 'PERSONAL DE COCINA (Incluye Apoyos de Cocina)',
-      fondoBadge: 'Fondo 40%',
+      fondoBadge: badgeCocina,
       badgeClass: 'bg-warning text-dark',
       headerClass: 'bg-warning-subtle text-warning-emphasis',
       iconClass: 'bi-fire',
@@ -68,6 +71,10 @@ export default function ModRegistroPropinas({
   const [montoTotal, setMontoTotal] = useState('');
   const [colaboradores, setColaboradores] = useState<WorkerRow[]>([]);
   const [cargando, setCargando] = useState(false);
+
+  // Modalidad de fondos: Regular 60/40 (predeterminada en todas las tiendas) o Modo Especial 50/50
+  const [modoDistribucion, setModoDistribucion] = useState<'60_40' | '50_50'>('60_40');
+  const [justificacionModo, setJustificacionModo] = useState('');
 
   // Historial
   const [historial, setHistorial] = useState<any[]>([]);
@@ -158,10 +165,12 @@ export default function ModRegistroPropinas({
     }
   };
 
-  // Cálculo en vivo del prorrateo 60/40
+  // Cálculo en vivo del prorrateo según modalidad (Regular 60/40 o Especial 50/50)
+  const pctSalon = modoDistribucion === '50_50' ? 0.5 : 0.6;
+  const pctCocina = modoDistribucion === '50_50' ? 0.5 : 0.4;
   const monto = parseFloat(montoTotal) || 0;
-  const fondoSalon = monto * 0.6;
-  const fondoCocina = monto * 0.4;
+  const fondoSalon = monto * pctSalon;
+  const fondoCocina = monto * pctCocina;
 
   let totalHorasSalon = 0;
   let totalHorasCocina = 0;
@@ -219,6 +228,11 @@ export default function ModRegistroPropinas({
       return;
     }
 
+    if (modoDistribucion === '50_50' && !justificacionModo.trim()) {
+      alert('Debe ingresar una justificación obligatoria para utilizar el Modo Especial 50% / 50%.');
+      return;
+    }
+
     const participantes = colaboradores
       .filter((c) => c.activo && c.horas > 0)
       .map((c) => ({
@@ -241,6 +255,8 @@ export default function ModRegistroPropinas({
           fecha,
           montoTotal: monto,
           participantes,
+          modoDistribucion,
+          justificacion: modoDistribucion === '50_50' ? justificacionModo.trim() : '',
         }),
       });
       const data = await res.json();
@@ -249,6 +265,8 @@ export default function ModRegistroPropinas({
       alert(data.message);
       if (data.success) {
         setMontoTotal('');
+        setModoDistribucion('60_40');
+        setJustificacionModo('');
         cargarPlantillaPersonal();
       }
     } catch (err: any) {
@@ -410,19 +428,156 @@ export default function ModRegistroPropinas({
             </div>
           </div>
 
+          {/* Selector de Modalidad de Distribución de Fondos */}
+          <div className="card border-0 shadow-xs mb-4 p-3 bg-light rounded-3">
+            <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+              <div>
+                <label className="form-label small fw-bold text-slate-800 mb-0 d-flex align-items-center gap-2">
+                  <i className="bi bi-sliders text-danger"></i>
+                  <span>Modalidad de Distribución de Fondos</span>
+                </label>
+                <span className="text-secondary small d-block" style={{ fontSize: '0.8rem' }}>
+                  Por defecto, todas las tiendas operan con el Sistema Regular 60% Salón / 40% Cocina.
+                </span>
+              </div>
+              {modoDistribucion === '50_50' ? (
+                <span className="badge bg-danger text-white border border-danger fw-bold px-2 py-1">
+                  <i className="bi bi-exclamation-circle-fill me-1"></i> Modo Especial 50% / 50% Activo
+                </span>
+              ) : (
+                <span className="badge bg-success-subtle text-success border border-success-subtle fw-semibold px-2 py-1">
+                  <i className="bi bi-shield-check me-1"></i> Sistema Regular 60% / 40% (Predeterminado)
+                </span>
+              )}
+            </div>
+
+            <div className="row g-2 mb-2">
+              {/* Opción 1: Regular 60/40 */}
+              <div className="col-12 col-md-6">
+                <div
+                  className={`p-3 rounded-3 border h-100 cursor-pointer transition-all ${
+                    modoDistribucion === '60_40'
+                      ? 'bg-white border-primary shadow-xs'
+                      : 'bg-white bg-opacity-50 border-secondary-subtle opacity-75'
+                  }`}
+                  style={{
+                    cursor: 'pointer',
+                    borderLeft: modoDistribucion === '60_40' ? '4px solid #0d6efd' : undefined,
+                  }}
+                  onClick={() => {
+                    setModoDistribucion('60_40');
+                  }}
+                >
+                  <div className="form-check d-flex align-items-start gap-2 mb-0">
+                    <input
+                      className="form-check-input mt-1"
+                      type="radio"
+                      name="modoDistribucion"
+                      id="modoReg6040"
+                      checked={modoDistribucion === '60_40'}
+                      onChange={() => setModoDistribucion('60_40')}
+                    />
+                    <label className="form-check-label w-100 cursor-pointer" htmlFor="modoReg6040" style={{ cursor: 'pointer' }}>
+                      <div className="d-flex justify-content-between align-items-center">
+                        <strong className="text-slate-900">Sistema Regular (60% / 40%)</strong>
+                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle small">
+                          Estándar Ley
+                        </span>
+                      </div>
+                      <div className="text-secondary small mt-1" style={{ fontSize: '0.78rem' }}>
+                        60% Salón y 40% Cocina. Modalidad oficial predeterminada de la empresa para todas las tiendas.
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Opción 2: Especial 50/50 */}
+              <div className="col-12 col-md-6">
+                <div
+                  className={`p-3 rounded-3 border h-100 cursor-pointer transition-all ${
+                    modoDistribucion === '50_50'
+                      ? 'bg-white border-danger shadow-xs'
+                      : 'bg-white bg-opacity-50 border-secondary-subtle opacity-75'
+                  }`}
+                  style={{
+                    cursor: 'pointer',
+                    borderLeft: modoDistribucion === '50_50' ? '4px solid #dc2626' : undefined,
+                  }}
+                  onClick={() => {
+                    setModoDistribucion('50_50');
+                  }}
+                >
+                  <div className="form-check d-flex align-items-start gap-2 mb-0">
+                    <input
+                      className="form-check-input mt-1"
+                      type="radio"
+                      name="modoDistribucion"
+                      id="modoEsp5050"
+                      checked={modoDistribucion === '50_50'}
+                      onChange={() => setModoDistribucion('50_50')}
+                    />
+                    <label className="form-check-label w-100 cursor-pointer" htmlFor="modoEsp5050" style={{ cursor: 'pointer' }}>
+                      <div className="d-flex justify-content-between align-items-center">
+                        <strong className="text-danger">Modo Especial (50% / 50%)</strong>
+                        <span className="badge bg-danger-subtle text-danger border border-danger-subtle small fw-bold">
+                          Requiere Justificación
+                        </span>
+                      </div>
+                      <div className="text-secondary small mt-1" style={{ fontSize: '0.78rem' }}>
+                        50% Salón y 50% Cocina. Fondo equitativo que requiere ingresar una justificación obligatoria.
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Campo Justificación Obligatoria cuando se elige 50/50 */}
+            {modoDistribucion === '50_50' && (
+              <div className="mt-2 p-3 bg-danger bg-opacity-10 rounded-3 border border-danger border-opacity-25">
+                <div className="d-flex align-items-center gap-2 mb-2 text-danger fw-bold small">
+                  <i className="bi bi-pencil-fill"></i>
+                  <span>Justificación Obligatoria del Modo Especial 50/50 *</span>
+                </div>
+                <p className="text-secondary small mb-2" style={{ fontSize: '0.8rem' }}>
+                  Por políticas de control corporativo, debes justificar por qué se utilizó la división 50% - 50% en este turno (ej. acuerdo extraordinario de equipo, evento especial, cobertura temporal, etc.).
+                </p>
+                <textarea
+                  className="form-control form-control-sm border-danger-subtle"
+                  rows={2}
+                  placeholder="Escribe aquí la justificación obligatoria del por qué se utilizó el modo especial 50% / 50%..."
+                  value={justificacionModo}
+                  onChange={(e) => setJustificacionModo(e.target.value)}
+                  required
+                ></textarea>
+                {!justificacionModo.trim() && (
+                  <span className="text-danger small mt-1 d-block fw-semibold" style={{ fontSize: '0.75rem' }}>
+                    * Campo requerido para poder congelar y registrar las propinas en modo 50/50.
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Resumen de Fondos por Área Bento Cards */}
           <div className="row g-3 mb-4">
             <div className="col-md-6">
               <div
                 className="p-3 rounded-3 border bg-white d-flex justify-content-between align-items-center shadow-xs"
-                style={{ borderLeft: '5px solid #10b981 !important' }}
+                style={{ borderLeft: modoDistribucion === '50_50' ? '5px solid #dc2626 !important' : '5px solid #10b981 !important' }}
               >
                 <div>
-                  <div className="d-flex align-items-center gap-2 mb-1">
-                    <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-0 fw-bold small">
-                      FONDO SALÓN (60%)
+                  <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                    <span className={`badge ${modoDistribucion === '50_50' ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-success-subtle text-success border border-success-subtle'} px-2 py-0 fw-bold small`}>
+                      FONDO SALÓN ({(pctSalon * 100).toFixed(0)}%)
                     </span>
                     <i className="bi bi-shop text-success"></i>
+                    {modoDistribucion === '50_50' && (
+                      <span className="badge bg-secondary-subtle text-dark border small" style={{ fontSize: '0.68rem' }}>
+                        Modo Especial
+                      </span>
+                    )}
                   </div>
                   <div className="text-secondary small">
                     Total Horas Salón: <span className="fw-bold font-mono text-dark">{totalHorasSalon.toFixed(1)}</span> hrs
@@ -439,14 +594,19 @@ export default function ModRegistroPropinas({
             <div className="col-md-6">
               <div
                 className="p-3 rounded-3 border bg-white d-flex justify-content-between align-items-center shadow-xs"
-                style={{ borderLeft: '5px solid #f59e0b !important' }}
+                style={{ borderLeft: modoDistribucion === '50_50' ? '5px solid #dc2626 !important' : '5px solid #f59e0b !important' }}
               >
                 <div>
-                  <div className="d-flex align-items-center gap-2 mb-1">
-                    <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-0 fw-bold small">
-                      FONDO COCINA (40%)
+                  <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                    <span className={`badge ${modoDistribucion === '50_50' ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'} px-2 py-0 fw-bold small`}>
+                      FONDO COCINA ({(pctCocina * 100).toFixed(0)}%)
                     </span>
                     <i className="bi bi-fire text-warning"></i>
+                    {modoDistribucion === '50_50' && (
+                      <span className="badge bg-secondary-subtle text-dark border small" style={{ fontSize: '0.68rem' }}>
+                        Modo Especial
+                      </span>
+                    )}
                   </div>
                   <div className="text-secondary small">
                     Total Horas Cocina: <span className="fw-bold font-mono text-dark">{totalHorasCocina.toFixed(1)}</span> hrs
@@ -513,10 +673,10 @@ export default function ModRegistroPropinas({
                   colaboradores.map((c, idx) => {
                     const propina = getPropinaCalculada(c);
                     const esApoyo = c.area.includes('Apoyo');
-                    const infoGrupo = getAreaGroup(c.area);
+                    const infoGrupo = getAreaGroup(c.area, modoDistribucion);
 
                     const prevWorker = idx > 0 ? colaboradores[idx - 1] : null;
-                    const prevGrupo = prevWorker ? getAreaGroup(prevWorker.area) : null;
+                    const prevGrupo = prevWorker ? getAreaGroup(prevWorker.area, modoDistribucion) : null;
                     const mostrarCabeceraGrupo = idx === 0 || infoGrupo.groupKey !== prevGrupo?.groupKey;
 
                     return (
@@ -696,6 +856,17 @@ export default function ModRegistroPropinas({
                         <td>{r.fecha}</td>
                         <td className="fw-bold text-primary">S/ {r.montoTotal.toFixed(2)}</td>
                         <td>
+                          <div className="d-flex align-items-center gap-1 mb-1">
+                            {Math.abs(r.fondoSalon - r.fondoCocina) < 0.05 && r.montoTotal > 0 ? (
+                              <span className="badge bg-danger-subtle text-danger border border-danger-subtle small fw-bold">
+                                <i className="bi bi-percent me-1"></i>50% / 50% Especial
+                              </span>
+                            ) : (
+                              <span className="badge bg-light text-secondary border small">
+                                60% / 40% Regular
+                              </span>
+                            )}
+                          </div>
                           <small className="text-success">
                             Salón: S/ {r.fondoSalon.toFixed(2)}
                           </small>
@@ -788,21 +959,40 @@ export default function ModRegistroPropinas({
                               </>
                             )
                           ) : (
-                            <button
-                              type="button"
-                              className="btn btn-outline-warning btn-sm py-0 px-2"
-                              onClick={() =>
-                                setModalAnular({
-                                  show: true,
-                                  idReg: r.idRegistro,
-                                  fecha: r.fecha,
-                                  monto: r.montoTotal,
-                                  justificacion: '',
-                                })
-                              }
-                            >
-                              <i className="bi bi-slash-circle me-1"></i>Anular
-                            </button>
+                            <>
+                              {r.justificacion && (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-info btn-sm py-0 px-2 me-1"
+                                  title="Ver justificación registrada para este registro"
+                                  onClick={() =>
+                                    setModalVerJust({
+                                      show: true,
+                                      idReg: r.idRegistro,
+                                      justificacion: r.justificacion,
+                                      validador: r.validador || 'Modo Especial 50/50',
+                                    })
+                                  }
+                                >
+                                  <i className="bi bi-chat-left-text me-1"></i>Justificación
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="btn btn-outline-warning btn-sm py-0 px-2"
+                                onClick={() =>
+                                  setModalAnular({
+                                    show: true,
+                                    idReg: r.idRegistro,
+                                    fecha: r.fecha,
+                                    monto: r.montoTotal,
+                                    justificacion: '',
+                                  })
+                                }
+                              >
+                                <i className="bi bi-slash-circle me-1"></i>Anular
+                              </button>
+                            </>
                           )}
 
                           {puedeEliminar && (
@@ -935,9 +1125,23 @@ export default function ModRegistroPropinas({
           <div className="modal fade show d-block" tabIndex={-1} style={{ zIndex: 100015 }}>
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content border-0 shadow">
-                <div className="modal-header bg-secondary text-white">
+                <div
+                  className={`modal-header ${
+                    modalVerJust.justificacion?.includes('50/50') ? 'bg-danger' : 'bg-secondary'
+                  } text-white`}
+                >
                   <h6 className="modal-title fw-bold">
-                    Detalle de Anulación - Registro #{modalVerJust.idReg}
+                    {modalVerJust.justificacion?.includes('50/50') ? (
+                      <>
+                        <i className="bi bi-percent me-2"></i>
+                        Justificación de Modo Especial 50% / 50% - Registro #{modalVerJust.idReg}
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-info-circle me-2"></i>
+                        Detalle de Registro / Anulación - Registro #{modalVerJust.idReg}
+                      </>
+                    )}
                   </h6>
                   <button
                     type="button"
@@ -949,15 +1153,19 @@ export default function ModRegistroPropinas({
                 </div>
                 <div className="modal-body p-4">
                   <div className="mb-3">
-                    <label className="small text-muted fw-bold">Motivo Registrado:</label>
+                    <label className="small text-muted fw-bold">
+                      {modalVerJust.justificacion?.includes('50/50')
+                        ? 'Justificación Registrada de Distribución 50% - 50%:'
+                        : 'Motivo Registrado:'}
+                    </label>
                     <div className="p-3 bg-light rounded border small text-dark">
                       {modalVerJust.justificacion || '(Sin justificación detallada)'}
                     </div>
                   </div>
                   <div>
-                    <label className="small text-muted fw-bold">Responsable / Validación:</label>
+                    <label className="small text-muted fw-bold">Responsable / Origen:</label>
                     <div className="small fw-semibold text-primary">
-                      {modalVerJust.validador || '(No asignado)'}
+                      {modalVerJust.validador || '(Registro Directo)'}
                     </div>
                   </div>
                 </div>

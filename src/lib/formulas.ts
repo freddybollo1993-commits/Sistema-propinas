@@ -15,11 +15,13 @@ export interface ProrrateoCalculado {
 }
 
 /**
- * Calcula el prorrateo de propinas en tiempo real según regla 60% Salón y 40% Cocina
+ * Calcula el prorrateo de propinas en tiempo real según regla regular (60% Salón y 40% Cocina)
+ * o según modo especial (ej. 50% Salón / 50% Cocina).
  */
 export function calcularProrrateoEnMemoria(
   montoTotal: number,
-  participantes: ParticipantInput[]
+  participantes: ParticipantInput[],
+  porcentajeSalon: number = 0.6
 ): {
   fondoSalon: number;
   fondoCocina: number;
@@ -27,8 +29,10 @@ export function calcularProrrateoEnMemoria(
   totalHorasCocina: number;
   detalles: ProrrateoCalculado[];
 } {
-  const fondoSalon = montoTotal * 0.6;
-  const fondoCocina = montoTotal * 0.4;
+  const pctSalon = typeof porcentajeSalon === 'number' && porcentajeSalon > 0 ? porcentajeSalon : 0.6;
+  const pctCocina = Math.round((1 - pctSalon) * 100) / 100;
+  const fondoSalon = Math.round(montoTotal * pctSalon * 100) / 100;
+  const fondoCocina = Math.round(montoTotal * pctCocina * 100) / 100;
 
   let totalHorasSalon = 0;
   let totalHorasCocina = 0;
