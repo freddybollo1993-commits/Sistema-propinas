@@ -138,21 +138,31 @@ export default function ModLiquidacion({
   return (
     <div className="container-fluid p-0">
       {/* Filtro de Periodo */}
-      <div className="card p-3 mb-4 shadow-sm border-0 bg-white no-print">
+      {/* Filtro de Periodo */}
+      <div className="card p-4 mb-4 shadow-sm border-0 bg-white no-print" style={{ borderRadius: '16px' }}>
         <div className="row align-items-center g-3">
-          <div className="col-md-5">
-            <h5 className="fw-bold mb-1">
-              <i className="bi bi-file-earmark-spreadsheet text-primary me-2"></i>
-              Reportería y Liquidación de Propinas
-            </h5>
-            <p className="text-muted small mb-0">
-              Consolidado administrativo por horas efectivas y emisión de boletas individuales.
+          <div className="col-lg-5">
+            <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+              <span className="hanko-stamp">
+                精算・明細
+              </span>
+              <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0 fw-bold">
+                CIERRE Y LIQUIDACIÓN
+              </span>
+            </div>
+            <h4 className="fw-bold mb-1 text-slate-900 d-flex align-items-center gap-2" style={{ letterSpacing: '-0.02em' }}>
+              <i className="bi bi-file-earmark-spreadsheet text-danger"></i>
+              <span>Reportería y Liquidación de Propinas</span>
+              <span className="text-danger-subtle" style={{ fontSize: '1rem', fontFamily: 'Noto Sans JP', fontWeight: 700 }}>精算書</span>
+            </h4>
+            <p className="text-secondary small mb-0">
+              Consolidado de horas efectivas, balance de deducciones y emisión de boletas individuales.
             </p>
           </div>
-          <div className="col-md-7">
-            <form className="row g-2 justify-content-md-end align-items-center" onSubmit={handleFiltrar}>
+          <div className="col-lg-7">
+            <form className="row g-2 justify-content-lg-end align-items-center" onSubmit={handleFiltrar}>
               <div className="col-auto">
-                <span className="small fw-semibold text-secondary">Periodo:</span>
+                <span className="small fw-bold text-secondary">Periodo:</span>
               </div>
               <div className="col-auto">
                 <input
@@ -162,9 +172,7 @@ export default function ModLiquidacion({
                   onChange={(e) => setFInicio(e.target.value)}
                 />
               </div>
-              <div className="col-auto">
-                <span className="text-muted small">a</span>
-              </div>
+              <div className="col-auto text-muted small fw-semibold">a</div>
               <div className="col-auto">
                 <input
                   type="date"
@@ -174,17 +182,17 @@ export default function ModLiquidacion({
                 />
               </div>
               <div className="col-auto">
-                <button type="submit" className="btn btn-primary btn-sm px-3" disabled={cargando}>
-                  <i className="bi bi-funnel me-1"></i> Filtrar
+                <button type="submit" className="btn btn-primary btn-sm px-3 shadow-xs" disabled={cargando}>
+                  <i className="bi bi-funnel-fill me-1"></i> Filtrar
                 </button>
               </div>
               <div className="col-auto">
-                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={handleRestablecerCiclo}>
-                  Ciclo Activo
+                <button type="button" className="btn btn-outline-secondary btn-sm shadow-xs" onClick={handleRestablecerCiclo}>
+                  <i className="bi bi-arrow-counterclockwise me-1"></i> Ciclo Activo
                 </button>
               </div>
               <div className="col-auto">
-                <button type="button" className="btn btn-outline-primary btn-sm" onClick={handleVerTodo}>
+                <button type="button" className="btn btn-outline-primary btn-sm shadow-xs" onClick={handleVerTodo}>
                   Ver Todo
                 </button>
               </div>
@@ -195,95 +203,105 @@ export default function ModLiquidacion({
 
       {/* Banner de Fondo Mancomunado si aplica */}
       {esFondo && fondoLiq && (
-        <div className="alert alert-success d-flex justify-content-between align-items-center py-2 px-3 mb-4 shadow-sm no-print">
+        <div className="alert alert-success d-flex justify-content-between align-items-center py-3 px-4 mb-4 shadow-xs rounded-3 no-print border-0" style={{ background: '#ecfdf5', borderLeft: '5px solid #10b981 !important' }}>
           <div>
-            <i className="bi bi-piggy-bank-fill me-2 fs-5"></i>
-            <strong>Modalidad Fondo Mancomunado Activa:</strong> Las sanciones alimentan el fondo común del equipo.
+            <i className="bi bi-piggy-bank-fill text-success me-2 fs-5"></i>
+            <strong className="text-emerald-900">Modalidad Fondo Mancomunado Activa:</strong>{' '}
+            <span className="text-secondary small">Las sanciones alimentan el fondo común del equipo.</span>
           </div>
-          <span className="badge bg-success fs-6">
-            Saldo Acumulado: S/ {(fondoLiq.saldoDisponibleActual || 0).toFixed(2)}
+          <span className="badge bg-success fs-6 font-mono px-3 py-1">
+            Saldo Disponible: S/ {(fondoLiq.saldoDisponibleActual || 0).toFixed(2)}
           </span>
         </div>
       )}
 
-      {/* Resumen Consolidado de Administración Interna */}
-      <div className="card p-4 mb-4 bg-light border-0 shadow-sm no-print">
-        <h6 className="fw-bold text-uppercase small text-muted mb-3">
-          <i className="bi bi-calculator me-1"></i> Resumen Consolidado de Administración Interna
-        </h6>
-        <div className="row text-center g-3">
-          <div className="col-md-2 col-6">
-            <div className="p-2 bg-white rounded border h-100">
-              <div className="small text-muted">Horas Computadas</div>
-              <div className="fw-bold fs-6 mt-1 text-dark">
-                {datos?.horasSalon || 0} hrs Salón / {datos?.horasCocina || 0} hrs Cocina
+      {/* Resumen Consolidado de Administración Interna Bento Cards */}
+      <div className="row g-3 mb-4 no-print">
+        <div className="col-xl-3 col-md-6 col-12">
+          <div className="stat-kpi-card h-100">
+            <div className="d-flex justify-content-between align-items-start mb-2">
+              <span className="stat-label">Horas Computadas</span>
+              <div className="stat-icon-wrapper bg-slate-100 text-slate-700">
+                <i className="bi bi-clock-history"></i>
               </div>
             </div>
+            <div className="fs-5 fw-bold text-dark font-mono mt-1">
+              {datos?.horasSalon || 0}h <span className="text-secondary small">Salón</span> / {datos?.horasCocina || 0}h <span className="text-secondary small">Cocina</span>
+            </div>
+            <div className="text-muted small mt-2">Total de horas registradas en el ciclo</div>
           </div>
-          <div className="col-md-2 col-6">
-            <div className="p-2 bg-white rounded border h-100">
-              <div className="small text-muted">Total Bruto Propinas</div>
-              <div className="fw-bold fs-5 mt-1 text-primary">
-                S/ {(datos?.totalBruto || 0).toFixed(2)}
+        </div>
+
+        <div className="col-xl-3 col-md-6 col-12">
+          <div className="stat-kpi-card h-100">
+            <div className="d-flex justify-content-between align-items-start mb-2">
+              <span className="stat-label">Total Bruto Propinas</span>
+              <div className="stat-icon-wrapper bg-primary-subtle text-primary">
+                <i className="bi bi-cash-stack"></i>
               </div>
             </div>
+            <div className="stat-value kpi-amount text-primary">
+              S/ {(datos?.totalBruto || 0).toFixed(2)}
+            </div>
+            <div className="text-muted small mt-2">Monto antes de retenciones</div>
           </div>
-          <div className="col-md-3 col-6">
-            <div className="p-2 bg-white rounded border h-100">
-              <div className="small text-muted">Total Deducciones</div>
-              <div className="fw-bold fs-5 mt-1 text-danger">
-                S/ {(datos?.totalDeducciones || 0).toFixed(2)}
+        </div>
+
+        <div className="col-xl-3 col-md-6 col-12">
+          <div className="stat-kpi-card h-100">
+            <div className="d-flex justify-content-between align-items-start mb-2">
+              <span className="stat-label text-danger">Total Deducciones</span>
+              <div className="stat-icon-wrapper bg-danger-subtle text-danger">
+                <i className="bi bi-dash-circle"></i>
               </div>
-              <div className="small text-muted">(Sanciones + Adelantos)</div>
             </div>
+            <div className="stat-value kpi-amount text-danger">
+              S/ {(datos?.totalDeducciones || 0).toFixed(2)}
+            </div>
+            <div className="text-muted small mt-2">Sanciones disciplinarias + adelantos</div>
           </div>
-          <div className="col-md-2 col-6">
-            <div className="p-2 bg-white rounded border h-100">
-              <div className="small text-muted">
-                {esFondo ? 'Fondo Mancomunado' : 'Fondo Redistribuido'}
-              </div>
-              <div className="fw-bold fs-5 mt-1 text-success">
-                S/{' '}
-                {esFondo && fondoLiq
-                  ? (fondoLiq.totalIngresosCiclo || 0).toFixed(2)
-                  : (datos?.totalRedistribuido || 0).toFixed(2)}
+        </div>
+
+        <div className="col-xl-3 col-md-6 col-12">
+          <div className="stat-kpi-card h-100" style={{ borderLeft: '4px solid #2563eb' }}>
+            <div className="d-flex justify-content-between align-items-start mb-2">
+              <span className="stat-label text-primary">Neto General a Pagar</span>
+              <div className="stat-icon-wrapper bg-primary text-white">
+                <i className="bi bi-wallet2"></i>
               </div>
             </div>
-          </div>
-          <div className="col-md-3 col-12">
-            <div className="p-2 bg-white rounded border border-primary h-100">
-              <div className="small fw-bold text-primary text-uppercase">NETO GENERAL A PAGAR</div>
-              <div className="fw-bold fs-4 mt-1 text-primary">
-                S/ {(datos?.totalNetoGeneral || 0).toFixed(2)}
-              </div>
+            <div className="stat-value kpi-amount text-primary">
+              S/ {(datos?.totalNetoGeneral || 0).toFixed(2)}
             </div>
+            <div className="text-muted small mt-2">Total distribuible a colaboradores</div>
           </div>
         </div>
       </div>
 
       {/* Tabla de Liquidación por Colaborador */}
-      <div className="card p-4 shadow-sm border-0 bg-white no-print">
-        <div className="d-flex justify-content-between align-items-center mb-3">
+      {/* Tabla de Liquidación por Colaborador */}
+      <div className="card p-4 shadow-sm border-0 bg-white no-print" style={{ borderRadius: '16px' }}>
+        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
           <div>
-            <h6 className="fw-bold mb-0 text-dark">
+            <h6 className="fw-bold mb-0 text-slate-900">
               <i className="bi bi-table text-primary me-2"></i>
               Desglose Individual por Colaborador
             </h6>
-            <span className="text-muted small">
-              Todos los colaboradores activos se encuentran sincronizados automáticamente.
+            <span className="text-secondary small">
+              Todos los colaboradores activos se encuentran sincronizados automáticamente con sus turnos computados.
             </span>
           </div>
-          <div>
+          <div className="d-flex gap-2">
             <button
               type="button"
-              className="btn btn-success btn-sm fw-semibold shadow-sm me-2"
+              className="btn btn-success btn-sm fw-bold shadow-xs"
               onClick={handleImprimirPlanilla}
             >
-              <i className="bi bi-printer-fill me-1"></i> Imprimir Hoja de Liquidación A4
+              <i className="bi bi-printer-fill me-1"></i> Imprimir Planilla A4
             </button>
             <button
               type="button"
-              className="btn btn-outline-secondary btn-sm"
+              className="btn btn-outline-secondary btn-sm shadow-xs"
               onClick={() => cargarLiquidacion({ inicio: fInicio, fin: fFin })}
             >
               <i className="bi bi-arrow-clockwise me-1"></i> Actualizar
@@ -291,26 +309,26 @@ export default function ModLiquidacion({
           </div>
         </div>
 
-        <div className="table-responsive">
+        <div className="table-responsive shadow-xs" style={{ borderRadius: '12px' }}>
           <table className="table table-hover align-middle small mb-0">
-            <thead className="table-light">
+            <thead>
               <tr>
-                <th>Colaborador</th>
-                <th>Área</th>
-                <th>Días Trab.</th>
-                <th>Horas Trab.</th>
-                <th>Propina Bruta</th>
-                <th>Deducciones (Sanc. + Adel.)</th>
-                <th>{esFondo ? 'Fondo Común' : 'Bono Redistribución'}</th>
-                <th>Monto Neto Final</th>
-                <th className="text-center">Comprobante</th>
+                <th style={{ width: '22%' }}>Colaborador</th>
+                <th style={{ width: '12%' }}>Área</th>
+                <th style={{ width: '10%' }}>Días</th>
+                <th style={{ width: '10%' }}>Horas</th>
+                <th style={{ width: '12%' }}>Propina Bruta</th>
+                <th style={{ width: '12%' }}>Deducciones</th>
+                <th style={{ width: '10%' }}>{esFondo ? 'Fondo Común' : 'Bono'}</th>
+                <th style={{ width: '12%' }}>Neto Final</th>
+                <th style={{ width: '10%' }} className="text-center">Comprobante</th>
               </tr>
             </thead>
             <tbody>
               {!datos?.lista || datos.lista.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center text-muted py-4">
-                    No hay colaboradores registrados en el sistema.
+                  <td colSpan={9} className="text-center text-muted py-5">
+                    No hay colaboradores con turnos registrados en este periodo.
                   </td>
                 </tr>
               ) : (
@@ -319,10 +337,10 @@ export default function ModLiquidacion({
                   return (
                     <tr key={c.colaborador}>
                       <td>
-                        <strong>{c.colaborador}</strong>
+                        <strong className="text-slate-900">{c.colaborador}</strong>
                         {c.perdidaTotal && (
                           <span
-                            className="badge bg-danger ms-1"
+                            className="badge bg-danger ms-2"
                             title="Pérdida de 100% por reincidencia de sanciones"
                           >
                             100% Retenido
@@ -333,43 +351,43 @@ export default function ModLiquidacion({
                         <span
                           className={`badge ${
                             esApoyo
-                              ? 'bg-warning text-dark border border-warning'
-                              : 'bg-light text-dark border'
+                              ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
+                              : 'bg-light text-slate-700 border'
                           }`}
                         >
                           {c.area}
                         </span>
                       </td>
-                      <td>{c.diasTrabajados} días</td>
-                      <td>{c.horasTrabajadas.toFixed(1)} hrs</td>
-                      <td className="text-primary fw-semibold">S/ {c.propinaBruta.toFixed(2)}</td>
-                      <td className="text-danger">S/ {c.deducciones.toFixed(2)}</td>
+                      <td className="font-mono">{c.diasTrabajados} d</td>
+                      <td className="font-mono">{c.horasTrabajadas.toFixed(1)} hrs</td>
+                      <td className="font-mono text-slate-800 fw-semibold">S/ {c.propinaBruta.toFixed(2)}</td>
+                      <td className="font-mono text-danger">S/ {c.deducciones.toFixed(2)}</td>
                       <td>
                         {esFondo ? (
                           <span
-                            className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25"
+                            className="badge bg-success-subtle text-success border border-success-subtle"
                             title="Sanciones destinadas al Fondo Mancomunado"
                           >
                             <i className="bi bi-piggy-bank me-1"></i>Fondo
                           </span>
                         ) : esApoyo ? (
-                          <span className="text-muted small">
+                          <span className="text-muted small font-mono">
                             S/ 0.00{' '}
                             <span className="badge bg-light text-secondary border">Apoyo</span>
                           </span>
                         ) : c.bonoRedistribucion > 0 ? (
-                          <span className="text-success fw-semibold">
-                            + S/ {c.bonoRedistribucion.toFixed(2)}
+                          <span className="text-success fw-semibold font-mono">
+                            +S/ {c.bonoRedistribucion.toFixed(2)}
                           </span>
                         ) : (
-                          <span className="text-muted small">S/ 0.00</span>
+                          <span className="text-muted small font-mono">S/ 0.00</span>
                         )}
                       </td>
-                      <td className="fw-bold text-dark fs-6">S/ {c.montoNeto.toFixed(2)}</td>
+                      <td className="fw-bold text-primary fs-6 font-mono">S/ {c.montoNeto.toFixed(2)}</td>
                       <td className="text-center">
                         <button
                           type="button"
-                          className="btn btn-outline-primary btn-sm py-0 px-2"
+                          className="btn btn-outline-primary btn-sm py-1 px-2 shadow-xs"
                           onClick={() => handleAbrirBoleta(c)}
                         >
                           <i className="bi bi-file-text me-1"></i> Boleta

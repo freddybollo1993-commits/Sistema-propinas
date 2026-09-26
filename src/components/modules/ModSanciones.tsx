@@ -512,9 +512,18 @@ export default function ModSanciones({
       {/* ENCABEZADO Y SELECTOR DE MODALIDAD */}
       <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2">
         <div>
-          <h5 className="fw-bold mb-1 text-dark">
-            <i className="bi bi-shield-shaded text-danger me-2"></i>
-            Gestión Disciplinaria y Sanciones
+          <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+            <span className="hanko-stamp">
+              規律・減点
+            </span>
+            <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0 fw-bold">
+              CONTROL DISCIPLINARIO
+            </span>
+          </div>
+          <h5 className="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+            <i className="bi bi-shield-shaded text-danger"></i>
+            <span>Gestión Disciplinaria y Sanciones</span>
+            <span className="text-danger-subtle" style={{ fontSize: '0.95rem', fontFamily: 'Noto Sans JP', fontWeight: 700 }}>減点管理</span>
           </h5>
           <p className="text-muted small mb-0">
             Modalidad dual: Modo Clásico (Redistribución por Área) y Modo Fondo Mancomunado (Fondo Común de Trabajadores).

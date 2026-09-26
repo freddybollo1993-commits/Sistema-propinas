@@ -24,63 +24,86 @@ export default function ModAuditoria() {
   };
 
   const getBadgeClass = (accion: string) => {
-    if (accion.includes('Discrepancia') || accion.includes('Alerta') || accion.includes('Eliminación')) {
-      return 'bg-danger text-white';
+    if (accion.includes('Discrepancia') || accion.includes('Alerta') || accion.includes('Eliminación') || accion.includes('Anulación')) {
+      return 'badge-subtle-danger';
     }
-    if (accion.includes('Sanción')) return 'bg-warning text-dark';
-    if (accion.includes('Registro') || accion.includes('Alta')) return 'bg-primary text-white';
-    return 'bg-light text-dark border';
+    if (accion.includes('Sanción') || accion.includes('Falta')) return 'badge-subtle-warning';
+    if (accion.includes('Registro') || accion.includes('Alta') || accion.includes('Aprobado')) return 'badge-subtle-success';
+    return 'badge-subtle-secondary';
   };
 
   return (
-    <div className="card p-4 shadow-sm border-0 bg-white">
-      <div className="d-flex justify-content-between align-items-center mb-3">
+    <div className="card p-4 shadow-sm border-0 bg-white" style={{ borderRadius: '16px' }}>
+      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
-          <h5 className="fw-bold mb-1 text-dark">
-            <i className="bi bi-shield-check text-success me-2"></i>
-            Bitácora de Auditoría y Trazabilidad
-          </h5>
-          <p className="text-muted small mb-0">
-            Historial cronológico inmutable de accesos, conciliaciones y modificaciones del sistema.
+          <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+            <span className="hanko-stamp">
+              監査ログ
+            </span>
+            <span className="badge bg-secondary-subtle text-secondary border px-2 py-0 fw-bold">
+              SEGURIDAD & COMPLIANCE
+            </span>
+          </div>
+          <h4 className="fw-bold mb-1 text-slate-900 d-flex align-items-center gap-2" style={{ letterSpacing: '-0.02em' }}>
+            <i className="bi bi-shield-check text-danger"></i>
+            <span>Bitácora de Auditoría y Trazabilidad</span>
+            <span className="text-danger-subtle" style={{ fontSize: '1rem', fontFamily: 'Noto Sans JP', fontWeight: 700 }}>監査記録</span>
+          </h4>
+          <p className="text-secondary small mb-0">
+            Registro cronológico inmutable de accesos, conciliaciones, modificaciones y eliminaciones.
           </p>
         </div>
         <button
-          className="btn btn-outline-secondary btn-sm"
+          type="button"
+          className="btn btn-outline-secondary btn-sm shadow-xs"
           onClick={cargarAuditoria}
           disabled={cargando}
         >
-          <i className="bi bi-arrow-clockwise me-1"></i> Actualizar
+          {cargando ? (
+            <span className="spinner-border spinner-border-sm me-1"></span>
+          ) : (
+            <i className="bi bi-arrow-clockwise me-1"></i>
+          )}
+          Actualizar
         </button>
       </div>
 
-      <div className="table-responsive">
+      <div className="table-responsive shadow-xs" style={{ borderRadius: '12px' }}>
         <table className="table table-hover align-middle small mb-0">
-          <thead className="table-light">
+          <thead>
             <tr>
-              <th style={{ width: '20%' }}>Fecha y Hora</th>
+              <th style={{ width: '18%' }}>Fecha y Hora</th>
               <th style={{ width: '20%' }}>Usuario Responsable</th>
-              <th style={{ width: '25%' }}>Acción Realizada</th>
-              <th style={{ width: '35%' }}>Detalle del Evento</th>
+              <th style={{ width: '22%' }}>Acción Realizada</th>
+              <th style={{ width: '40%' }}>Detalle del Evento</th>
             </tr>
           </thead>
           <tbody>
             {logs.length === 0 ? (
               <tr>
-                <td colSpan={4} className="text-center text-muted py-3">
-                  No hay registros de auditoría disponibles.
+                <td colSpan={4} className="text-center text-muted py-5">
+                  No hay registros de auditoría disponibles en esta sede.
                 </td>
               </tr>
             ) : (
               logs.map((ev) => (
                 <tr key={ev.id}>
-                  <td>{ev.fecha}</td>
+                  <td className="font-mono text-secondary small">{ev.fecha}</td>
                   <td>
-                    <strong>{ev.usuario}</strong>
+                    <div className="d-flex align-items-center gap-2">
+                      <div
+                        className="rounded-circle bg-light border d-flex align-items-center justify-content-center text-secondary fw-bold"
+                        style={{ width: '28px', height: '28px', fontSize: '0.75rem' }}
+                      >
+                        {(ev.usuario || 'U').charAt(0).toUpperCase()}
+                      </div>
+                      <strong className="text-slate-900">{ev.usuario}</strong>
+                    </div>
                   </td>
                   <td>
                     <span className={`badge ${getBadgeClass(ev.accion)}`}>{ev.accion}</span>
                   </td>
-                  <td>{ev.detalle}</td>
+                  <td className="text-secondary">{ev.detalle}</td>
                 </tr>
               ))
             )}

@@ -286,18 +286,23 @@ export default function ModCentralNeuralgica({ currentUser, onSelectTienda }: Mo
 
   return (
     <div className="container-fluid p-0">
-      {/* Banner / Header Central */}
-      <div className="card border-0 shadow-sm mb-3" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }}>
+      {/* Banner / Header Central Takumi */}
+      <div className="card border-0 shadow-sm mb-3" style={{ background: 'linear-gradient(135deg, #0c1017 0%, #18202e 100%)' }}>
         <div className="card-body p-3 p-md-4 text-white">
           <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
             <div className="d-flex align-items-center gap-3">
-              <div className="bg-primary bg-opacity-25 p-3 rounded-3 text-info border border-info border-opacity-25 shadow-sm">
+              <div className="bg-danger bg-opacity-25 p-3 rounded-3 text-danger-subtle border border-danger border-opacity-25 shadow-sm">
                 <i className="bi bi-hdd-network-fill fs-2"></i>
               </div>
               <div>
-                <div className="d-flex align-items-center gap-2">
+                <div className="d-flex align-items-center gap-2 flex-wrap">
                   <h4 className="fw-bold mb-0 text-white">Central Neurálgica & BI Multi-Tienda</h4>
-                  <span className="badge bg-info text-dark fw-bold">v2.8 Verificada</span>
+                  <span className="hanko-stamp border-danger text-danger bg-danger-subtle" style={{ fontSize: '0.62rem' }}>
+                    統合分析
+                  </span>
+                  <span className="badge bg-danger-subtle text-danger fw-bold border border-danger-subtle" style={{ fontSize: '0.68rem' }}>
+                    v2.8 Verificada
+                  </span>
                 </div>
                 <p className="text-white-50 small mb-0">
                   Torre de Control Corporativa: Ratios Salón/Cocina, Auditoría Disciplinaria, Matriz de Calor y Analítica Predictiva

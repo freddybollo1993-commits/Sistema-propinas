@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import xlsx from 'xlsx';
+import * as xlsx from 'xlsx';
 import prisma from '../src/lib/db';
 import { hashPassword } from '../src/lib/auth';
 

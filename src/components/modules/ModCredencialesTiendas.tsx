@@ -178,23 +178,29 @@ export default function ModCredencialesTiendas({
       <div
         className="card border-0 shadow-sm mb-4"
         style={{
-          background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+          background: 'linear-gradient(135deg, #0c1017 0%, #18202e 60%, #0c1017 100%)',
           color: '#ffffff',
-          borderRadius: '16px',
+          borderRadius: '18px',
         }}
       >
         <div className="card-body p-4 p-md-5">
           <div className="row align-items-center g-4">
             <div className="col-lg-8">
-              <div className="d-flex align-items-center gap-2 mb-2">
-                <span className="badge bg-warning text-dark px-3 py-1 fw-bold text-uppercase" style={{ letterSpacing: '1px' }}>
+              <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                <span className="hanko-stamp border-danger text-danger bg-danger-subtle">
+                  認証情報
+                </span>
+                <span className="badge bg-danger text-white px-3 py-1 fw-bold text-uppercase" style={{ letterSpacing: '1px', fontSize: '0.72rem' }}>
                   <i className="bi bi-key-fill me-1"></i> Credenciales Corporativas
                 </span>
-                <span className="badge bg-info bg-opacity-25 text-info border border-info border-opacity-25 px-2 py-1">
+                <span className="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-25 px-2 py-1" style={{ fontSize: '0.72rem' }}>
                   Exclusivo Usuario Maestro
                 </span>
               </div>
-              <h2 className="fw-bold mb-2 text-white">Directorio de Credenciales por Tienda</h2>
+              <h2 className="fw-bold mb-2 text-white d-flex align-items-center gap-2 flex-wrap">
+                <span>Directorio de Credenciales por Tienda</span>
+                <span className="text-danger-subtle" style={{ fontSize: '1.2rem', fontFamily: 'Noto Sans JP', fontWeight: 700 }}>嶋屋</span>
+              </h2>
               <p className="text-white-50 fs-6 mb-3" style={{ maxWidth: '680px' }}>
                 Acceso centralizado a los usuarios y PINs de todas las tiendas de la cadena.
                 Cada sucursal cuenta con 3 perfiles oficiales independientes: <strong>Administrador</strong>,{' '}

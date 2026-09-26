@@ -7,6 +7,9 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
+    "format": "biome format --write .",
+    "check": "biome check .",
+    "test": "vitest run",
     "db:push": "prisma db push",
     "db:seed": "npx tsx prisma/seed.ts"
   },
@@ -16,19 +19,24 @@
     "bootstrap": "^5.3.3",
     "bootstrap-icons": "^1.11.3",
     "chart.js": "^4.4.4",
+    "exceljs": "^4.4.0",
     "jose": "^5.9.6",
     "next": "^14.2.15",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.14",
     "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^20.14.0",
+    "@types/exceljs": "^0.5.3",
+    "@types/node": "^24.19.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "prisma": "^5.21.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vitest": "^5.0.2"
   }
 }

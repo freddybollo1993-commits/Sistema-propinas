@@ -126,83 +126,115 @@ export default function ModUsuarios({
   };
 
   return (
-    <div className="card p-4 shadow-sm border-0 bg-white">
-      <div className="d-flex justify-content-between align-items-center mb-3">
+    <div className="card p-4 shadow-sm border-0 bg-white" style={{ borderRadius: '16px' }}>
+      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
-          <h5 className="fw-bold mb-1 text-dark">
-            <i className="bi bi-person-gear text-primary me-2"></i>
-            Administración de Usuarios y Accesos
-          </h5>
-          <p className="text-muted small mb-0">
+          <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+            <span className="hanko-stamp">
+              ユーザー権限
+            </span>
+            <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0 fw-bold">
+              ACCESOS & GOBERNANZA
+            </span>
+          </div>
+          <h4 className="fw-bold mb-1 text-slate-900 d-flex align-items-center gap-2" style={{ letterSpacing: '-0.02em' }}>
+            <i className="bi bi-person-gear text-danger"></i>
+            <span>Administración de Usuarios y Accesos</span>
+            <span className="text-danger-subtle" style={{ fontSize: '1rem', fontFamily: 'Noto Sans JP', fontWeight: 700 }}>権限設定</span>
+          </h4>
+          <p className="text-secondary small mb-0">
             Gobernanza de credenciales por tienda (Administrador, Supervisor, Moderador) y salvaguarda de Cuenta Maestra.
           </p>
         </div>
-        <button className="btn btn-primary btn-sm px-3 shadow-sm" onClick={handleAbrirCrear}>
-          <i className="bi bi-person-plus me-1"></i> Nuevo Usuario
+        <button className="btn btn-primary px-3 py-2 shadow-xs rounded-3 fw-bold" onClick={handleAbrirCrear}>
+          <i className="bi bi-person-plus-fill me-1"></i> Nuevo Usuario
         </button>
       </div>
 
-      <div className="alert alert-info py-2 px-3 small border mb-4 d-flex align-items-center gap-2">
-        <i className="bi bi-shield-lock-fill text-primary"></i>
-        <span>
-          <strong>Gobernanza Multi-Restaurante:</strong> Los usuarios asignados a una tienda sólo tendrán acceso y visibilidad de los datos de su respectiva sucursal.
+      <div className="alert alert-info py-3 px-4 small border-0 mb-4 d-flex align-items-center gap-2 rounded-3 shadow-xs" style={{ background: '#eff6ff', borderLeft: '4px solid #2563eb !important' }}>
+        <i className="bi bi-shield-lock-fill text-primary fs-5"></i>
+        <span className="text-slate-700">
+          <strong>Gobernanza Multi-Restaurante:</strong> Los usuarios asignados a una tienda sólo tendrán acceso y visibilidad de los datos de su respectiva sucursal autorizada.
         </span>
       </div>
 
-      <div className="table-responsive">
+      <div className="table-responsive shadow-xs" style={{ borderRadius: '12px' }}>
         <table className="table table-hover align-middle small mb-0">
-          <thead className="table-light">
+          <thead>
             <tr>
-              <th>ID</th>
-              <th>Nombre del Usuario</th>
-              <th>Correo / Login</th>
-              <th>Tienda / Sede</th>
-              <th>Rol Asignado</th>
-              <th>Estado</th>
-              <th className="text-center">Acciones</th>
+              <th style={{ width: '12%' }}>ID</th>
+              <th style={{ width: '22%' }}>Usuario</th>
+              <th style={{ width: '20%' }}>Correo / Login</th>
+              <th style={{ width: '18%' }}>Tienda / Sede</th>
+              <th style={{ width: '10%' }}>Rol</th>
+              <th style={{ width: '8%' }}>Estado</th>
+              <th style={{ width: '10%' }} className="text-end">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {usuarios.map((u) => {
               const esInmutable = u.esMaestro || u.id === 'USR-MASTER';
-              const estadoBadge = u.estado === 'Activo' ? 'bg-success' : 'bg-secondary';
+              const esAdmin = u.rol === 'Administrador';
+              const esSuper = u.rol === 'Supervisor';
+              const esActivo = u.estado === 'Activo';
 
               return (
                 <tr key={u.id}>
                   <td>
-                    <code>{u.id}</code>
+                    <code className="text-secondary small font-mono">{u.id}</code>
                   </td>
                   <td>
-                    <strong>{u.nombre}</strong>
+                    <div className="d-flex align-items-center gap-2">
+                      <div
+                        className="rounded-circle bg-light border d-flex align-items-center justify-content-center text-primary fw-bold"
+                        style={{ width: '32px', height: '32px', fontSize: '0.8rem' }}
+                      >
+                        {u.nombre.charAt(0).toUpperCase()}
+                      </div>
+                      <strong className="text-slate-900">{u.nombre}</strong>
+                    </div>
                   </td>
-                  <td>{u.email}</td>
+                  <td className="font-mono text-secondary small">{u.email}</td>
                   <td>
-                    <span className="badge bg-light text-dark border">
-                      <i className="bi bi-shop me-1 text-secondary"></i>
+                    <span className="badge bg-light text-slate-700 border">
+                      <i className="bi bi-shop me-1 text-primary"></i>
                       {u.tiendaNombre || 'Sede Principal'}
                     </span>
                   </td>
                   <td>
-                    <span className={`badge ${getRolBadge(u.rol)}`}>{u.rol}</span>
+                    <span
+                      className={`badge ${
+                        esAdmin
+                          ? 'badge-subtle-danger'
+                          : esSuper
+                          ? 'badge-subtle-primary'
+                          : 'badge-subtle-warning'
+                      }`}
+                    >
+                      {u.rol}
+                    </span>
                   </td>
                   <td>
-                    <span className={`badge ${estadoBadge}`}>{u.estado}</span>
+                    <span className={`badge ${esActivo ? 'badge-subtle-success' : 'badge-subtle-secondary'}`}>
+                      {u.estado}
+                    </span>
                   </td>
-                  <td className="text-center">
+                  <td className="text-end">
                     {esInmutable ? (
-                      <span className="badge bg-secondary">Inmutable</span>
+                      <span className="badge badge-subtle-secondary">Inmutable</span>
                     ) : (
-                      <>
+                      <div className="d-inline-flex gap-1">
                         <button
-                          className="btn btn-outline-primary btn-sm py-0 px-2"
+                          className="btn btn-outline-primary btn-sm py-1 px-2 shadow-xs"
                           onClick={() => handleAbrirEditar(u)}
+                          title="Editar usuario"
                         >
                           <i className="bi bi-pencil me-1"></i> Editar
                         </button>
 
                         {esMaster && (
                           <button
-                            className="btn btn-outline-danger btn-sm py-0 px-2 ms-1"
+                            className="btn btn-outline-danger btn-sm py-1 px-2 shadow-xs"
                             title="Eliminar cuenta"
                             onClick={() =>
                               onOpenEliminarMaster(
@@ -215,7 +247,7 @@ export default function ModUsuarios({
                             <i className="bi bi-trash3-fill"></i>
                           </button>
                         )}
-                      </>
+                      </div>
                     )}
                   </td>
                 </tr>

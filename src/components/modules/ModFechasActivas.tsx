@@ -64,61 +64,97 @@ export default function ModFechasActivas({
   };
 
   return (
-    <div className="card p-4 shadow-sm border-0 bg-white" style={{ maxWidth: '600px', margin: '0 auto' }}>
-      <div className="text-center mb-3">
+    <div
+      className="card p-4 p-sm-5 shadow-sm border-0 bg-white"
+      style={{ maxWidth: '580px', margin: '20px auto', borderRadius: '20px' }}
+    >
+      <div className="text-center mb-4">
         <div
-          className="bg-primary text-white rounded-circle d-inline-flex justify-content-center align-items-center mb-2"
-          style={{ width: '50px', height: '50px' }}
+          className="bg-danger-subtle text-danger rounded-circle d-inline-flex justify-content-center align-items-center mb-3 shadow-xs"
+          style={{ width: '60px', height: '60px', fontSize: '1.5rem' }}
         >
-          <i className="bi bi-calendar-range fs-4"></i>
+          <i className="bi bi-calendar-range"></i>
         </div>
-        <h5 className="fw-bold mb-1 text-dark">Asignación de Fechas Activas (Ciclo)</h5>
-        <p className="text-muted small">
-          Configuración del periodo operativo oficial que rige la liquidación y las métricas por defecto.
+        <div className="d-flex justify-content-center align-items-center gap-2 mb-2 flex-wrap">
+          <span className="hanko-stamp">
+            締め期間
+          </span>
+          <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0 fw-bold">
+            PARÁMETROS DE SEDE
+          </span>
+        </div>
+        <h4 className="fw-bold mb-1 text-slate-900 d-flex align-items-center justify-content-center gap-2" style={{ letterSpacing: '-0.02em' }}>
+          <span>Fechas Activas del Ciclo</span>
+          <span className="text-danger-subtle" style={{ fontSize: '1rem', fontFamily: 'Noto Sans JP', fontWeight: 700 }}>期間設定</span>
+        </h4>
+        <p className="text-secondary small mb-0">
+          Periodo oficial para el cómputo de recaudaciones, liquidaciones y auditorías de propina.
         </p>
       </div>
 
       <form onSubmit={handleGuardar}>
         <div className="mb-3">
-          <label className="form-label small fw-semibold">Fecha de Inicio del Ciclo</label>
-          <input
-            type="date"
-            className="form-control"
-            value={inicio}
-            onChange={(e) => setInicio(e.target.value)}
-            required
-          />
+          <label className="form-label small fw-bold text-slate-700 mb-1">
+            Fecha de Inicio del Periodo
+          </label>
+          <div className="input-group">
+            <span className="input-group-text bg-white text-secondary border-end-0">
+              <i className="bi bi-calendar-event"></i>
+            </span>
+            <input
+              type="date"
+              className="form-control border-start-0"
+              value={inicio}
+              onChange={(e) => setInicio(e.target.value)}
+              required
+            />
+          </div>
         </div>
 
         <div className="mb-3">
-          <label className="form-label small fw-semibold">Fecha de Fin del Ciclo</label>
-          <input
-            type="date"
-            className="form-control"
-            value={fin}
-            onChange={(e) => setFin(e.target.value)}
-            required
-          />
+          <label className="form-label small fw-bold text-slate-700 mb-1">
+            Fecha de Fin del Periodo
+          </label>
+          <div className="input-group">
+            <span className="input-group-text bg-white text-secondary border-end-0">
+              <i className="bi bi-calendar-check"></i>
+            </span>
+            <input
+              type="date"
+              className="form-control border-start-0"
+              value={fin}
+              onChange={(e) => setFin(e.target.value)}
+              required
+            />
+          </div>
         </div>
 
         <div className="mb-4">
-          <label className="form-label small fw-semibold">Estado del Periodo</label>
+          <label className="form-label small fw-bold text-slate-700 mb-1">Estado Operativo del Ciclo</label>
           <select
             className="form-select"
             value={estado}
             onChange={(e) => setEstado(e.target.value)}
           >
-            <option value="Abierto">Abierto (En curso)</option>
+            <option value="Abierto">Abierto (En curso - Permite capturas)</option>
             <option value="Cerrado">Cerrado (Liquidado y Bloqueado)</option>
           </select>
         </div>
 
         <button
           type="submit"
-          className="btn btn-primary w-100 fw-semibold shadow-sm"
+          className="btn btn-primary w-100 py-2 fs-6 fw-bold shadow-xs rounded-3"
           disabled={cargando}
         >
-          <i className="bi bi-save me-1"></i> Actualizar Ciclo Activo
+          {cargando ? (
+            <>
+              <span className="spinner-border spinner-border-sm me-2"></span> Guardando...
+            </>
+          ) : (
+            <>
+              <i className="bi bi-check2-circle me-1"></i> Guardar y Aplicar Ciclo
+            </>
+          )}
         </button>
       </form>
     </div>

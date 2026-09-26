@@ -66,45 +66,78 @@ export default function MasterStoreHub({
 
   return (
     <div className="container-fluid p-0">
-      {/* Hero Banner Corporativo */}
+      {/* Hero Banner Corporativo Takumi */}
       <div
-        className="card border-0 shadow-sm mb-4"
+        className="card border-0 shadow-lg mb-4 text-white overflow-hidden position-relative"
         style={{
-          background: 'radial-gradient(ellipse at top left, #1e293b, #0f172a)',
-          color: '#ffffff',
-          borderRadius: '16px',
+          background: 'linear-gradient(135deg, #0c1017 0%, #18202e 60%, #0c1017 100%)',
+          borderRadius: '20px',
         }}
       >
-        <div className="card-body p-4 p-md-5">
+        {/* Subtle Ambient Torii Glow */}
+        <div
+          className="position-absolute"
+          style={{
+            top: '-50px',
+            right: '5%',
+            width: '380px',
+            height: '380px',
+            background: 'radial-gradient(circle, rgba(217, 45, 32, 0.22) 0%, rgba(217, 45, 32, 0) 70%)',
+            filter: 'blur(50px)',
+            pointerEvents: 'none',
+          }}
+        ></div>
+
+        {/* Japanese Kanji Watermark In Banner */}
+        <div
+          className="position-absolute kanji-watermark text-white"
+          style={{
+            fontSize: '14rem',
+            right: '20px',
+            bottom: '-40px',
+            zIndex: 0,
+            opacity: 0.03,
+          }}
+        >
+          全店舗
+        </div>
+
+        <div className="card-body p-4 p-md-5 position-relative" style={{ zIndex: 1 }}>
           <div className="row align-items-center g-4">
             <div className="col-lg-8">
-              <div className="d-flex align-items-center gap-2 mb-2">
-                <span className="badge bg-primary px-3 py-1 fw-bold text-uppercase" style={{ letterSpacing: '1px' }}>
-                  <i className="bi bi-shield-lock-fill me-1"></i> Panel Maestro Corporativo
+              <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                <span className="hanko-stamp border-danger text-danger bg-danger-subtle">
+                  <i className="bi bi-shield-lock-fill me-1"></i> 統括ポータル
                 </span>
-                <span className="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 px-2 py-1">
-                  Acceso Total Autorizado
+                <span className="badge bg-danger px-3 py-1 fw-bold text-uppercase" style={{ letterSpacing: '0.08em', fontSize: '0.72rem' }}>
+                  Panel Maestro Corporativo
+                </span>
+                <span className="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 px-2 py-1" style={{ fontSize: '0.72rem' }}>
+                  <span className="pulse-dot me-1" style={{ width: '6px', height: '6px' }}></span> Acceso Total Autorizado
                 </span>
               </div>
-              <h2 className="fw-bold mb-2 text-white">Catálogo de Red y Portal Multi-Tienda</h2>
-              <p className="text-white-50 fs-6 mb-3" style={{ maxWidth: '680px' }}>
-                Bienvenido al hub de supervisión central. Desde aquí puedes acceder a la{' '}
-                <strong>Central Neurálgica (BI)</strong> para monitorear indicadores agregados de la cadena o ingresar directamente al entorno de gestión independiente de cualquier restaurante.
+              <h2 className="fw-bold mb-2 text-white d-flex align-items-center gap-2 flex-wrap" style={{ letterSpacing: '-0.02em' }}>
+                <span>Catálogo de Red y Portal Multi-Tienda</span>
+                <span className="text-danger-subtle" style={{ fontSize: '1.2rem', fontFamily: 'Noto Sans JP', fontWeight: 700 }}>嶋屋</span>
+              </h2>
+              <p className="text-white-50 fs-6 mb-4" style={{ maxWidth: '680px' }}>
+                Hub centralizado de supervisión y gestión. Explora la{' '}
+                <strong className="text-white">Central Neurálgica (BI)</strong> para auditar indicadores de la cadena o accede al entorno operativo aislado de cualquiera de las sedes.
               </p>
 
-              <div className="d-flex align-items-center gap-3 flex-wrap">
+              <div className="d-flex align-items-center gap-2 gap-sm-3 flex-wrap">
                 <button
                   type="button"
-                  className="btn btn-primary fw-bold px-4 py-2 shadow-sm d-flex align-items-center gap-2"
+                  className="btn btn-primary fw-bold px-4 py-2 shadow-sm d-flex align-items-center gap-2 rounded-3"
                   onClick={() => onNavigateToModule('CentralNeuralgica')}
                 >
                   <i className="bi bi-hdd-network-fill fs-5"></i>
-                  <span>Abrir Central Neurálgica (BI)</span>
+                  <span>Central Neurálgica (BI)</span>
                 </button>
 
                 <button
                   type="button"
-                  className="btn btn-warning text-dark fw-bold px-3 py-2 shadow-sm d-flex align-items-center gap-2"
+                  className="btn btn-warning text-dark fw-bold px-3 py-2 shadow-sm d-flex align-items-center gap-2 rounded-3"
                   onClick={() => onNavigateToModule('CredencialesTiendas')}
                 >
                   <i className="bi bi-key-fill fs-5"></i>
@@ -113,7 +146,7 @@ export default function MasterStoreHub({
 
                 <button
                   type="button"
-                  className="btn btn-outline-light fw-semibold px-3 py-2 shadow-sm d-flex align-items-center gap-2"
+                  className="btn btn-outline-light fw-semibold px-3 py-2 shadow-sm d-flex align-items-center gap-2 rounded-3"
                   onClick={onOpenCrearTienda}
                 >
                   <i className="bi bi-plus-circle-fill text-info"></i>
@@ -125,34 +158,34 @@ export default function MasterStoreHub({
             <div className="col-lg-4">
               <div
                 className="p-3 rounded-4 shadow-sm border border-secondary border-opacity-25"
-                style={{ background: 'rgba(255, 255, 255, 0.05)' }}
+                style={{ background: 'rgba(255, 255, 255, 0.04)', backdropFilter: 'blur(8px)' }}
               >
-                <div className="text-white-50 small fw-bold text-uppercase mb-2">
-                  <i className="bi bi-graph-up me-1 text-info"></i> Resumen de Infraestructura
+                <div className="text-white-50 small fw-bold text-uppercase mb-2" style={{ letterSpacing: '0.06em', fontSize: '0.72rem' }}>
+                  <i className="bi bi-graph-up me-1 text-info"></i> Infraestructura de Red
                 </div>
                 <div className="row g-2 text-center">
                   <div className="col-6">
                     <div className="p-2 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25">
-                      <div className="fs-4 fw-bold text-info">{tiendasOperativas.length}</div>
-                      <div className="text-white-50" style={{ fontSize: '0.75rem' }}>Sedes Operativas</div>
+                      <div className="fs-4 fw-bold text-info font-mono">{tiendasOperativas.length}</div>
+                      <div className="text-white-50" style={{ fontSize: '0.74rem' }}>Sedes Operativas</div>
                     </div>
                   </div>
                   <div className="col-6">
                     <div className="p-2 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25">
-                      <div className="fs-4 fw-bold text-warning">{tiendasBeta.length}</div>
-                      <div className="text-white-50" style={{ fontSize: '0.75rem' }}>Sede BETA / Sandbox</div>
+                      <div className="fs-4 fw-bold text-warning font-mono">{tiendasBeta.length}</div>
+                      <div className="text-white-50" style={{ fontSize: '0.74rem' }}>Sedes Sandbox</div>
                     </div>
                   </div>
                   <div className="col-6">
                     <div className="p-2 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25">
-                      <div className="fs-5 fw-bold text-success">{totalColabsGlobal}</div>
-                      <div className="text-white-50" style={{ fontSize: '0.75rem' }}>Colaboradores</div>
+                      <div className="fs-5 fw-bold text-success font-mono">{totalColabsGlobal}</div>
+                      <div className="text-white-50" style={{ fontSize: '0.74rem' }}>Colaboradores</div>
                     </div>
                   </div>
                   <div className="col-6">
                     <div className="p-2 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25">
-                      <div className="fs-5 fw-bold text-primary">{totalRegistrosGlobal}</div>
-                      <div className="text-white-50" style={{ fontSize: '0.75rem' }}>Jornadas Registradas</div>
+                      <div className="fs-5 fw-bold text-primary font-mono">{totalRegistrosGlobal}</div>
+                      <div className="text-white-50" style={{ fontSize: '0.74rem' }}>Jornadas Totales</div>
                     </div>
                   </div>
                 </div>
@@ -162,26 +195,26 @@ export default function MasterStoreHub({
         </div>
       </div>
 
-      {/* CARD DESTACADA: ACCESO A CENTRAL NEURÁLGICA */}
-      <div className="card border-0 shadow-sm mb-4 bg-white" style={{ borderRadius: '14px', borderLeft: '6px solid #0284c7' }}>
+      {/* Card Destacada: Acceso a Central Neurálgica */}
+      <div className="card border-0 shadow-sm mb-4 bg-white" style={{ borderRadius: '16px', borderLeft: '5px solid #2563eb' }}>
         <div className="card-body p-4">
           <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
             <div className="d-flex align-items-center gap-3">
               <div
-                className="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm"
-                style={{ width: '56px', height: '56px' }}
+                className="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center shadow-xs flex-shrink-0"
+                style={{ width: '54px', height: '54px', fontSize: '1.5rem' }}
               >
-                <i className="bi bi-hdd-network-fill fs-3"></i>
+                <i className="bi bi-hdd-network-fill"></i>
               </div>
               <div>
                 <div className="d-flex align-items-center gap-2">
-                  <h5 className="fw-bold mb-0 text-dark">Central Neurálgica & BI Corporativo</h5>
+                  <h5 className="fw-bold mb-0 text-slate-900">Central Neurálgica & BI Corporativo</h5>
                   <span className="badge bg-primary-subtle text-primary border border-primary-subtle">
                     Torre de Control
                   </span>
                 </div>
-                <p className="text-muted small mb-0">
-                  Consolida y analiza las {tiendasOperativas.length} tiendas en producción (excluye automáticamente la tienda de pruebas). Ratios Salón/Cocina, Matriz de Calor y Auditoría Disciplinaria.
+                <p className="text-secondary small mb-0">
+                  Monitoreo de {tiendasOperativas.length} tiendas operativas en tiempo real. Análisis comparativo de ratios Salón/Cocina, Matriz de Calor y Auditoría Disciplinaria.
                 </p>
               </div>
             </div>
@@ -189,15 +222,15 @@ export default function MasterStoreHub({
             <div className="d-flex align-items-center gap-3 flex-wrap">
               {resumenCentral && (
                 <div className="text-end d-none d-md-block pe-3 border-end">
-                  <div className="small text-muted">Recaudación Red:</div>
-                  <div className="fw-bold text-primary fs-5">
+                  <div className="small text-secondary">Recaudación Red:</div>
+                  <div className="fw-bold text-primary fs-5 font-mono">
                     S/ {parseFloat(resumenCentral.totalRed || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
               )}
               <button
                 type="button"
-                className="btn btn-primary fw-bold px-4 py-2 shadow-sm d-flex align-items-center gap-2 rounded-3"
+                className="btn btn-primary fw-bold px-4 py-2 shadow-xs d-flex align-items-center gap-2 rounded-3"
                 onClick={() => onNavigateToModule('CentralNeuralgica')}
               >
                 <span>Acceder a la Central</span>
@@ -209,17 +242,17 @@ export default function MasterStoreHub({
       </div>
 
       {/* Barra de Filtros y Búsqueda del Catálogo */}
-      <div className="card border-0 shadow-sm p-3 mb-4 bg-white" style={{ borderRadius: '12px' }}>
+      <div className="card border-0 shadow-sm p-3 mb-4 bg-white" style={{ borderRadius: '14px' }}>
         <div className="row g-3 align-items-center justify-content-between">
           <div className="col-12 col-md-5">
             <div className="input-group">
-              <span className="input-group-text bg-light border-end-0">
-                <i className="bi bi-search text-secondary"></i>
+              <span className="input-group-text bg-light border-end-0 text-secondary">
+                <i className="bi bi-search"></i>
               </span>
               <input
                 type="text"
                 className="form-control border-start-0"
-                placeholder="Buscar tienda por nombre o slug..."
+                placeholder="Buscar tienda por nombre, slug o dirección..."
                 value={filtroTexto}
                 onChange={(e) => setFiltroTexto(e.target.value)}
               />
@@ -227,25 +260,25 @@ export default function MasterStoreHub({
           </div>
 
           <div className="col-12 col-md-7 d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
-            <span className="small fw-semibold text-secondary">Filtrar catálogo:</span>
-            <div className="btn-group btn-group-sm" role="group">
+            <span className="small fw-bold text-secondary">Filtrar:</span>
+            <div className="segmented-control" role="group">
               <button
                 type="button"
-                className={`btn ${filtroTipo === 'todas' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                className={`segmented-control-btn ${filtroTipo === 'todas' ? 'active' : ''}`}
                 onClick={() => setFiltroTipo('todas')}
               >
                 Todas ({tiendas.length})
               </button>
               <button
                 type="button"
-                className={`btn ${filtroTipo === 'operativas' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                className={`segmented-control-btn ${filtroTipo === 'operativas' ? 'active' : ''}`}
                 onClick={() => setFiltroTipo('operativas')}
               >
                 Operativas ({tiendasOperativas.length})
               </button>
               <button
                 type="button"
-                className={`btn ${filtroTipo === 'beta' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                className={`segmented-control-btn ${filtroTipo === 'beta' ? 'active' : ''}`}
                 onClick={() => setFiltroTipo('beta')}
               >
                 BETA / Pruebas ({tiendasBeta.length})
@@ -260,8 +293,8 @@ export default function MasterStoreHub({
         <div className="mb-4">
           <div className="d-flex align-items-center gap-2 mb-3">
             <i className="bi bi-shop text-primary fs-5"></i>
-            <h5 className="fw-bold mb-0 text-dark">Tiendas y Sucursales Operativas</h5>
-            <span className="badge bg-secondary rounded-pill">{tiendasOperativas.length} tiendas</span>
+            <h5 className="fw-bold mb-0 text-slate-900">Tiendas y Sucursales Operativas</h5>
+            <span className="badge bg-secondary rounded-pill">{tiendasOperativas.length} sedes</span>
           </div>
 
           <div className="row g-3">
@@ -276,24 +309,22 @@ export default function MasterStoreHub({
                     <div
                       className="card h-100 border-0 shadow-sm bg-white"
                       style={{
-                        borderRadius: '14px',
-                        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                        borderRadius: '16px',
+                        transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.transform = 'translateY(-3px)';
-                        e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.08)';
+                        e.currentTarget.style.boxShadow = '0 12px 28px -4px rgba(15, 23, 42, 0.1)';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = 'none';
                         e.currentTarget.style.boxShadow = '';
                       }}
                     >
-                      <div className="card-body p-3 d-flex flex-column justify-content-between">
+                      <div className="card-body p-4 d-flex flex-column justify-content-between">
                         <div>
                           <div className="d-flex justify-content-between align-items-start mb-2">
-                            <span
-                              className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 small fw-semibold"
-                            >
+                            <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 small fw-semibold">
                               <i className="bi bi-shop me-1"></i> Sucursal
                             </span>
 
@@ -308,29 +339,31 @@ export default function MasterStoreHub({
                             )}
                           </div>
 
-                          <h5 className="fw-bold text-dark mb-1 text-truncate" title={tienda.nombre}>
+                          <h5 className="fw-bold text-slate-900 mb-1 text-truncate" title={tienda.nombre}>
                             {tienda.nombre}
                           </h5>
-                          <div className="text-muted small mb-3">
+                          <div className="text-secondary small mb-3">
                             <i className="bi bi-person-badge me-1"></i>
-                            <span className="font-monospace" style={{ fontSize: '0.8rem' }}>{adminUser}</span>
+                            <span className="font-mono text-truncate d-inline-block" style={{ fontSize: '0.78rem', maxWidth: '200px' }}>
+                              {adminUser}
+                            </span>
                           </div>
 
                           <div className="row g-2 mb-3 text-center">
                             <div className="col-6">
-                              <div className="p-2 bg-light rounded-2 border">
-                                <div className="fw-bold text-dark small">
+                              <div className="p-2 bg-light rounded-3 border">
+                                <div className="fw-bold text-dark font-mono small">
                                   {tienda._count?.personal || 0}
                                 </div>
-                                <div className="text-muted" style={{ fontSize: '0.7rem' }}>Colaboradores</div>
+                                <div className="text-secondary" style={{ fontSize: '0.72rem' }}>Colaboradores</div>
                               </div>
                             </div>
                             <div className="col-6">
-                              <div className="p-2 bg-light rounded-2 border">
-                                <div className="fw-bold text-primary small">
+                              <div className="p-2 bg-light rounded-3 border">
+                                <div className="fw-bold text-primary font-mono small">
                                   {tienda._count?.registros || 0}
                                 </div>
-                                <div className="text-muted" style={{ fontSize: '0.7rem' }}>Jornadas</div>
+                                <div className="text-secondary" style={{ fontSize: '0.72rem' }}>Jornadas</div>
                               </div>
                             </div>
                           </div>
@@ -339,7 +372,7 @@ export default function MasterStoreHub({
                         <div>
                           <button
                             type="button"
-                            className="btn btn-primary btn-sm w-100 fw-semibold py-2 shadow-sm rounded-3 d-flex align-items-center justify-content-center gap-1"
+                            className="btn btn-primary btn-sm w-100 fw-bold py-2 shadow-xs rounded-3 d-flex align-items-center justify-content-center gap-1"
                             onClick={() => handleEntrarTienda(tienda.id, 'Dashboard')}
                           >
                             <i className="bi bi-box-arrow-in-right"></i>
@@ -390,7 +423,7 @@ export default function MasterStoreHub({
         <div className="mb-4">
           <div className="d-flex align-items-center gap-2 mb-3">
             <i className="bi bi-flask text-warning fs-5"></i>
-            <h5 className="fw-bold mb-0 text-dark">Entorno de Pruebas & Simulación (Sandbox)</h5>
+            <h5 className="fw-bold mb-0 text-slate-900">Entorno de Pruebas & Simulación (Sandbox)</h5>
             <span className="badge bg-warning text-dark rounded-pill">Aislado de la Central</span>
           </div>
 
@@ -400,9 +433,9 @@ export default function MasterStoreHub({
                 <div
                   className="card border-0 shadow-sm bg-white"
                   style={{
-                    borderRadius: '14px',
+                    borderRadius: '16px',
                     borderLeft: '5px solid #f59e0b',
-                    background: 'linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)',
+                    background: 'linear-gradient(135deg, #ffffff 0%, #fffdf5 100%)',
                   }}
                 >
                   <div className="card-body p-4">
@@ -416,19 +449,19 @@ export default function MasterStoreHub({
                     </div>
 
                     <h4 className="fw-bold text-dark mb-1">{tienda.nombre}</h4>
-                    <p className="text-muted small mb-3">
+                    <p className="text-secondary small mb-3">
                       Esta tienda funciona como <strong>entorno de pruebas aislado</strong>. Cualquier cambio de configuración, registro de turnos o simulación de sanciones efectuado aquí <em>no</em> altera los KPIs ni las estadísticas de las tiendas en producción ni de la Central Neurálgica.
                     </p>
 
                     <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-2 border-top">
-                      <div className="small text-muted">
+                      <div className="small text-secondary">
                         <i className="bi bi-key-fill text-warning me-1"></i>
-                        Usuario: <span className="font-monospace fw-semibold">admin.beta@propinas.pe</span> (PIN: 1234)
+                        Usuario: <span className="font-mono fw-semibold text-dark">admin.beta@propinas.pe</span> (PIN: 1234)
                       </div>
 
                       <button
                         type="button"
-                        className="btn btn-warning fw-bold px-3 py-2 shadow-sm rounded-3 text-dark d-flex align-items-center gap-1"
+                        className="btn btn-warning fw-bold px-3 py-2 shadow-xs rounded-3 text-dark d-flex align-items-center gap-1"
                         onClick={() => handleEntrarTienda(tienda.id, 'Dashboard')}
                       >
                         <i className="bi bi-play-circle-fill"></i>

@@ -314,148 +314,192 @@ export default function ModRegistroPropinas({
   };
 
   return (
-    <div className="card p-4 shadow-sm border-0 bg-white">
-      <div className="d-flex justify-content-between align-items-center mb-3">
+    <div className="card p-4 shadow-sm border-0 bg-white" style={{ borderRadius: '16px' }}>
+      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
-          <h5 className="fw-bold mb-1 text-dark">
-            <i className="bi bi-pencil-square text-primary me-2"></i>
-            Captura y Registro de Propinas
-          </h5>
-          <p className="text-muted small mb-0">
-            Prorrateo estricto por horas efectivas trabajadas según regla 60% Salón y 40% Cocina.
+          <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+            <span className="hanko-stamp">
+              チップ記録
+            </span>
+            <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0 fw-bold">
+              OPERACIONES DIARIAS
+            </span>
+          </div>
+          <h4 className="fw-bold mb-1 text-slate-900 d-flex align-items-center gap-2" style={{ letterSpacing: '-0.02em' }}>
+            <i className="bi bi-pencil-square text-danger"></i>
+            <span>Captura y Registro de Propinas</span>
+            <span className="text-danger-subtle" style={{ fontSize: '1rem', fontFamily: 'Noto Sans JP', fontWeight: 700 }}>配分計算</span>
+          </h4>
+          <p className="text-secondary small mb-0">
+            Prorrateo automatizado por horas efectivas según regla legal: 60% Salón (フロア) y 40% Cocina (厨房).
           </p>
         </div>
-        <span className="badge bg-light text-primary border px-3 py-2">
-          <i className="bi bi-clock-history me-1"></i> Múltiples registros permitidos por día
+        <span className="badge bg-white text-secondary border px-3 py-2 shadow-xs">
+          <i className="bi bi-clock-history text-danger me-1"></i> Múltiples turnos por día permitidos
         </span>
       </div>
 
-      {/* Pestañas internas */}
-      <ul className="nav nav-tabs mb-4">
-        <li className="nav-item">
-          <button
-            type="button"
-            className={`nav-link fw-semibold ${subTab === 'captura' ? 'active' : ''}`}
-            onClick={() => setSubTab('captura')}
-          >
-            <i className="bi bi-calendar2-check me-1"></i> Capturar Nuevo Registro
-          </button>
-        </li>
-        <li className="nav-item">
-          <button
-            type="button"
-            className={`nav-link fw-semibold ${subTab === 'historial' ? 'active' : ''}`}
-            onClick={() => {
-              setSubTab('historial');
-              cargarHistorial();
-            }}
-          >
-            <i className="bi bi-clock-history me-1"></i> Historial y Corrección de Registros
-            {pendientesCount > 0 && (
-              <span className="badge bg-danger ms-1">{pendientesCount}</span>
-            )}
-          </button>
-        </li>
-      </ul>
+      {/* Pestañas de Navegación Segmentada */}
+      <div className="d-flex mb-4 border-bottom pb-2">
+        <ul className="nav nav-tabs border-0 gap-2 mb-0">
+          <li className="nav-item">
+            <button
+              type="button"
+              className={`nav-link ${subTab === 'captura' ? 'active' : ''}`}
+              onClick={() => setSubTab('captura')}
+            >
+              <i className="bi bi-calendar2-check me-1"></i> Capturar Nuevo Registro
+            </button>
+          </li>
+          <li className="nav-item">
+            <button
+              type="button"
+              className={`nav-link ${subTab === 'historial' ? 'active' : ''}`}
+              onClick={() => {
+                setSubTab('historial');
+                cargarHistorial();
+              }}
+            >
+              <i className="bi bi-clock-history me-1"></i> Historial y Corrección
+              {pendientesCount > 0 && (
+                <span className="badge bg-danger rounded-pill ms-2">{pendientesCount}</span>
+              )}
+            </button>
+          </li>
+        </ul>
+      </div>
 
       {/* Sub-vista 1: Captura */}
       {subTab === 'captura' && (
         <form onSubmit={handleGuardarRegistro}>
-          <div className="row g-3 p-3 bg-light rounded border mb-4">
-            <div className="col-md-6">
-              <label className="form-label small fw-semibold">Fecha del Registro</label>
-              <input
-                type="date"
-                className="form-control"
-                value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
-                required
-              />
-            </div>
-            <div className="col-md-6">
-              <label className="form-label small fw-semibold">Monto Total Recaudado (S/)</label>
-              <input
-                type="number"
-                step="any"
-                min="0.01"
-                className="form-control fw-bold text-primary"
-                placeholder="0.00"
-                value={montoTotal}
-                onChange={(e) => setMontoTotal(e.target.value)}
-                required
-              />
+          <div className="p-3 bg-light rounded-3 border mb-4">
+            <div className="row g-3">
+              <div className="col-md-6">
+                <label className="form-label small fw-bold text-slate-700">Fecha del Registro</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-white text-secondary border-end-0">
+                    <i className="bi bi-calendar3"></i>
+                  </span>
+                  <input
+                    type="date"
+                    className="form-control border-start-0"
+                    value={fecha}
+                    onChange={(e) => setFecha(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="col-md-6">
+                <label className="form-label small fw-bold text-slate-700">Monto Total Recaudado (S/)</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-white text-primary border-end-0 fw-bold">
+                    S/
+                  </span>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0.01"
+                    className="form-control border-start-0 fw-bold text-primary font-mono"
+                    placeholder="0.00"
+                    value={montoTotal}
+                    onChange={(e) => setMontoTotal(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Resumen de Fondos por Área */}
+          {/* Resumen de Fondos por Área Bento Cards */}
           <div className="row g-3 mb-4">
             <div className="col-md-6">
-              <div className="p-3 border rounded border-success bg-white d-flex justify-content-between align-items-center shadow-sm">
+              <div
+                className="p-3 rounded-3 border bg-white d-flex justify-content-between align-items-center shadow-xs"
+                style={{ borderLeft: '5px solid #10b981 !important' }}
+              >
                 <div>
-                  <div className="small fw-bold text-success text-uppercase">
-                    Fondo Salón (60%)
+                  <div className="d-flex align-items-center gap-2 mb-1">
+                    <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-0 fw-bold small">
+                      FONDO SALÓN (60%)
+                    </span>
+                    <i className="bi bi-shop text-success"></i>
                   </div>
-                  <div className="text-muted small">
-                    Total Horas Salón: <span className="fw-bold">{totalHorasSalon.toFixed(1)}</span> hrs
+                  <div className="text-secondary small">
+                    Total Horas Salón: <span className="fw-bold font-mono text-dark">{totalHorasSalon.toFixed(1)}</span> hrs
                   </div>
                 </div>
-                <h3 className="fw-bold text-success mb-0">S/ {fondoSalon.toFixed(2)}</h3>
+                <div className="text-end">
+                  <div className="fw-bold text-success fs-4 font-mono">
+                    S/ {fondoSalon.toFixed(2)}
+                  </div>
+                </div>
               </div>
             </div>
+
             <div className="col-md-6">
-              <div className="p-3 border rounded border-warning bg-white d-flex justify-content-between align-items-center shadow-sm">
+              <div
+                className="p-3 rounded-3 border bg-white d-flex justify-content-between align-items-center shadow-xs"
+                style={{ borderLeft: '5px solid #f59e0b !important' }}
+              >
                 <div>
-                  <div className="small fw-bold text-warning text-uppercase">
-                    Fondo Cocina (40%)
+                  <div className="d-flex align-items-center gap-2 mb-1">
+                    <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-0 fw-bold small">
+                      FONDO COCINA (40%)
+                    </span>
+                    <i className="bi bi-fire text-warning"></i>
                   </div>
-                  <div className="text-muted small">
-                    Total Horas Cocina: <span className="fw-bold">{totalHorasCocina.toFixed(1)}</span> hrs
+                  <div className="text-secondary small">
+                    Total Horas Cocina: <span className="fw-bold font-mono text-dark">{totalHorasCocina.toFixed(1)}</span> hrs
                   </div>
                 </div>
-                <h3 className="fw-bold text-warning mb-0">S/ {fondoCocina.toFixed(2)}</h3>
+                <div className="text-end">
+                  <div className="fw-bold text-warning-emphasis fs-4 font-mono">
+                    S/ {fondoCocina.toFixed(2)}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Tabla de Asistencia y Distribución */}
-          <div className="d-flex justify-content-between align-items-center mb-2">
+          <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <div>
-              <h6 className="fw-bold mb-0 text-dark">
+              <h6 className="fw-bold mb-0 text-slate-900">
                 <i className="bi bi-people-fill text-primary me-2"></i>
-                Plantilla del Personal para este Registro
+                Plantilla del Personal para este Turno
               </h6>
-              <span className="text-muted small">
-                Cargado automáticamente desde <strong>Personal</strong>. Desactiva el interruptor en caso de <strong>descanso o ausencia</strong>.
+              <span className="text-secondary small">
+                Personal activo cargado de la sede. Desactiva para marcar colaboradores en <strong>descanso o ausencia</strong>.
               </span>
             </div>
             <div className="d-flex gap-2">
               <button
                 type="button"
-                className="btn btn-outline-secondary btn-sm"
+                className="btn btn-outline-secondary btn-sm shadow-xs"
                 onClick={() => handleMarcarTodos(true)}
               >
                 <i className="bi bi-check-all me-1"></i> Todos Laborando
               </button>
               <button
                 type="button"
-                className="btn btn-outline-primary btn-sm"
+                className="btn btn-outline-primary btn-sm shadow-xs"
                 onClick={cargarPlantillaPersonal}
                 title="Sincronizar cambios de personal"
               >
-                <i className="bi bi-arrow-clockwise me-1"></i> Recargar Personal
+                <i className="bi bi-arrow-clockwise me-1"></i> Recargar
               </button>
             </div>
           </div>
 
-          <div className="table-responsive mb-4">
-            <table className="table table-bordered align-middle small mb-0">
-              <thead className="table-light">
+          <div className="table-responsive mb-4 shadow-xs" style={{ borderRadius: '12px' }}>
+            <table className="table table-hover align-middle small mb-0">
+              <thead>
                 <tr>
-                  <th style={{ width: '20%' }}>Estado en Turno</th>
-                  <th style={{ width: '35%' }}>Colaborador</th>
+                  <th style={{ width: '22%' }}>Estado en Turno</th>
+                  <th style={{ width: '33%' }}>Colaborador</th>
                   <th style={{ width: '15%' }}>Área Asignada</th>
                   <th style={{ width: '15%' }}>Horas Laboradas</th>
-                  <th style={{ width: '15%' }}>Propina Calculada</th>
+                  <th style={{ width: '15%' }} className="text-end">Propina Asignada</th>
                 </tr>
               </thead>
               <tbody>
@@ -491,7 +535,7 @@ export default function ModRegistroPropinas({
                                 {infoGrupo.fondoBadge && (
                                   <span
                                     className={`badge ${infoGrupo.badgeClass}`}
-                                    style={{ fontSize: '0.75rem' }}
+                                    style={{ fontSize: '0.72rem' }}
                                   >
                                     {infoGrupo.fondoBadge}
                                   </span>
@@ -511,16 +555,18 @@ export default function ModRegistroPropinas({
                                 checked={c.activo}
                                 onChange={() => handleToggleAsistencia(idx)}
                                 id={`sw_${idx}`}
+                                style={{ cursor: 'pointer' }}
                               />
                               <label
-                                className={`form-check-label small fw-semibold ${
+                                className={`form-check-label small fw-semibold user-select-none ${
                                   c.activo ? 'text-success' : 'text-muted'
                                 }`}
                                 htmlFor={`sw_${idx}`}
+                                style={{ cursor: 'pointer' }}
                               >
                                 {c.activo ? (
                                   <>
-                                    <i className="bi bi-check-circle me-1"></i>Laborando
+                                    <i className="bi bi-check-circle-fill me-1"></i>Laborando
                                   </>
                                 ) : (
                                   <>
@@ -547,27 +593,29 @@ export default function ModRegistroPropinas({
                             </span>
                           </td>
                           <td>
-                            <input
-                              type="number"
-                              step="0.5"
-                              min={c.activo ? '0.5' : '0'}
-                              max="24"
-                              className="form-control form-control-sm"
-                              value={c.horas}
-                              disabled={!c.activo}
-                              onChange={(e) => handleHorasChange(idx, parseFloat(e.target.value) || 0)}
-                              required={c.activo}
-                            />
+                            <div className="input-group input-group-sm" style={{ maxWidth: '120px' }}>
+                              <input
+                                type="number"
+                                step="0.5"
+                                min={c.activo ? '0.5' : '0'}
+                                max="24"
+                                className="form-control form-control-sm font-mono text-center"
+                                value={c.horas}
+                                disabled={!c.activo}
+                                onChange={(e) => handleHorasChange(idx, parseFloat(e.target.value) || 0)}
+                                required={c.activo}
+                              />
+                              <span className="input-group-text small text-secondary">hrs</span>
+                            </div>
                           </td>
-                          <td>
-                            <input
-                              type="text"
-                              className={`form-control form-control-sm fw-bold ${
-                                c.activo ? 'text-success' : 'text-muted'
+                          <td className="text-end">
+                            <div
+                              className={`fw-bold font-mono ${
+                                c.activo ? 'text-success fs-6' : 'text-muted small'
                               }`}
-                              value={c.activo ? `S/ ${propina.toFixed(2)}` : 'S/ 0.00 (Descanso)'}
-                              readOnly
-                            />
+                            >
+                              {c.activo ? `S/ ${propina.toFixed(2)}` : 'S/ 0.00'}
+                            </div>
                           </td>
                         </tr>
                       </React.Fragment>
@@ -578,10 +626,14 @@ export default function ModRegistroPropinas({
             </table>
           </div>
 
-          <div className="text-end">
+          <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-2">
+            <span className="text-secondary small">
+              <i className="bi bi-info-circle text-primary me-1"></i>
+              Los cálculos se congelan automáticamente al momento de registrar.
+            </span>
             <button
               type="submit"
-              className="btn btn-primary px-4 py-2 fw-semibold shadow-sm"
+              className="btn btn-primary px-4 py-2 fs-6 fw-bold shadow-xs rounded-3"
               disabled={cargando || colaboradores.length === 0}
             >
               <i className="bi bi-check2-circle me-1"></i> Registrar y Congelar Propinas

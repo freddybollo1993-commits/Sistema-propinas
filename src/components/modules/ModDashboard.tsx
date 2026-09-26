@@ -60,6 +60,11 @@ export default function ModDashboard({ cicloInfo }: ModDashboardProps) {
           const labels = datos.puntosRecaudacion?.map((p: any) => p.fecha) || [];
           const values = datos.puntosRecaudacion?.map((p: any) => p.monto) || [];
 
+          // Gradient fill with Torii Lacquer Red
+          const gradient = ctx.createLinearGradient(0, 0, 0, 260);
+          gradient.addColorStop(0, 'rgba(201, 42, 42, 0.22)');
+          gradient.addColorStop(1, 'rgba(201, 42, 42, 0.00)');
+
           lineChartInst.current = new Chart(ctx, {
             type: 'line',
             data: {
@@ -68,22 +73,49 @@ export default function ModDashboard({ cicloInfo }: ModDashboardProps) {
                 {
                   label: 'Recaudación Diaria (S/)',
                   data: values.length > 0 ? values : [0],
-                  borderColor: '#0284c7',
-                  backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                  borderColor: '#c92a2a',
+                  borderWidth: 2.5,
+                  backgroundColor: gradient,
                   fill: true,
-                  tension: 0.35,
+                  tension: 0.38,
                   pointRadius: 4,
-                  pointBackgroundColor: '#0284c7',
+                  pointHoverRadius: 6,
+                  pointBackgroundColor: '#c92a2a',
+                  pointBorderColor: '#ffffff',
+                  pointBorderWidth: 2,
                 },
               ],
             },
             options: {
               responsive: true,
               maintainAspectRatio: false,
-              plugins: { legend: { display: false } },
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  backgroundColor: '#0f172a',
+                  titleFont: { family: 'Plus Jakarta Sans', size: 12, weight: 'bold' },
+                  bodyFont: { family: 'JetBrains Mono', size: 13 },
+                  padding: 10,
+                  cornerRadius: 8,
+                  callbacks: {
+                    label: (context) => ` Recaudación: S/ ${Number(context.raw || 0).toFixed(2)}`,
+                  },
+                },
+              },
               scales: {
-                y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
-                x: { grid: { display: false } },
+                y: {
+                  beginAtZero: true,
+                  grid: { color: '#f1f5f9' },
+                  ticks: {
+                    font: { family: 'JetBrains Mono', size: 11 },
+                    color: '#64748b',
+                    callback: (value) => `S/ ${value}`,
+                  },
+                },
+                x: {
+                  grid: { display: false },
+                  ticks: { font: { family: 'Plus Jakarta Sans', size: 11 }, color: '#64748b' },
+                },
               },
             },
           });
@@ -97,18 +129,43 @@ export default function ModDashboard({ cicloInfo }: ModDashboardProps) {
                 {
                   label: 'Total por Día de Semana (S/)',
                   data: datos.comparativaSemana || [0, 0, 0, 0, 0, 0, 0],
-                  backgroundColor: '#3b82f6',
-                  borderRadius: 6,
+                  backgroundColor: 'rgba(37, 99, 235, 0.85)',
+                  hoverBackgroundColor: '#2563eb',
+                  borderRadius: 8,
+                  borderSkipped: false,
                 },
               ],
             },
             options: {
               responsive: true,
               maintainAspectRatio: false,
-              plugins: { legend: { display: false } },
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  backgroundColor: '#0f172a',
+                  titleFont: { family: 'Plus Jakarta Sans', size: 12, weight: 'bold' },
+                  bodyFont: { family: 'JetBrains Mono', size: 13 },
+                  padding: 10,
+                  cornerRadius: 8,
+                  callbacks: {
+                    label: (context) => ` Total acumulado: S/ ${Number(context.raw || 0).toFixed(2)}`,
+                  },
+                },
+              },
               scales: {
-                y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
-                x: { grid: { display: false } },
+                y: {
+                  beginAtZero: true,
+                  grid: { color: '#f1f5f9' },
+                  ticks: {
+                    font: { family: 'JetBrains Mono', size: 11 },
+                    color: '#64748b',
+                    callback: (value) => `S/ ${value}`,
+                  },
+                },
+                x: {
+                  grid: { display: false },
+                  ticks: { font: { family: 'Plus Jakarta Sans', size: 11 }, color: '#64748b' },
+                },
               },
             },
           });
@@ -132,8 +189,11 @@ export default function ModDashboard({ cicloInfo }: ModDashboardProps) {
             datasets: [
               {
                 data: salon === 0 && cocina === 0 ? [60, 40] : [salon, cocina],
-                backgroundColor: ['#22c55e', '#eab308'],
-                hoverOffset: 4,
+                backgroundColor: ['#10b981', '#f59e0b'],
+                hoverBackgroundColor: ['#059669', '#d97706'],
+                borderWidth: 3,
+                borderColor: '#ffffff',
+                hoverOffset: 6,
               },
             ],
           },
@@ -141,9 +201,27 @@ export default function ModDashboard({ cicloInfo }: ModDashboardProps) {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-              legend: { position: 'bottom' },
+              legend: {
+                position: 'bottom',
+                labels: {
+                  font: { family: 'Plus Jakarta Sans', size: 12, weight: 600 },
+                  padding: 14,
+                  usePointStyle: true,
+                  pointStyle: 'circle',
+                },
+              },
+              tooltip: {
+                backgroundColor: '#0f172a',
+                titleFont: { family: 'Plus Jakarta Sans', size: 12, weight: 'bold' },
+                bodyFont: { family: 'JetBrains Mono', size: 13 },
+                padding: 10,
+                cornerRadius: 8,
+                callbacks: {
+                  label: (context) => ` Fondo: S/ ${Number(context.raw || 0).toFixed(2)}`,
+                },
+              },
             },
-            cutout: '70%',
+            cutout: '72%',
           },
         });
       }
@@ -170,25 +248,38 @@ export default function ModDashboard({ cicloInfo }: ModDashboardProps) {
 
   return (
     <div className="container-fluid p-0">
-      {/* Filtro independiente para el Dashboard */}
-      <div className="card p-3 mb-4 shadow-sm border-0 bg-white">
+      {/* Barra de Filtro Analítico */}
+      <div className="card p-4 mb-4 shadow-sm border-0 bg-white">
         <div className="row align-items-center g-3">
-          <div className="col-md-5">
-            <h5 className="fw-bold mb-1">
-              <i className="bi bi-speedometer2 text-primary me-2"></i>
-              Panel de Control Analítico
-            </h5>
-            <p className="text-muted small mb-0">
-              Visualización de recaudación, fondos de propinas y comparativas temporales.
+          <div className="col-lg-5">
+            <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+              <span className="hanko-stamp">
+                ダッシュボード
+              </span>
+              <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0 fw-bold">
+                PANEL OPERATIVO
+              </span>
+              {cicloInfo?.estado && (
+                <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-0 font-mono">
+                  {cicloInfo.estado}
+                </span>
+              )}
+            </div>
+            <h4 className="fw-bold mb-1 text-slate-900 d-flex align-items-center gap-2" style={{ letterSpacing: '-0.02em' }}>
+              <span>Dashboard de Recaudación</span>
+              <span className="text-danger-subtle" style={{ fontSize: '1rem', fontFamily: 'Noto Sans JP', fontWeight: 700 }}>チップ集計</span>
+            </h4>
+            <p className="text-secondary small mb-0">
+              Métricas de propinas en tiempo real, desglose por áreas operativas y evolución diaria.
             </p>
           </div>
-          <div className="col-md-7">
+          <div className="col-lg-7">
             <form
-              className="row g-2 justify-content-md-end align-items-center"
+              className="row g-2 justify-content-lg-end align-items-center"
               onSubmit={handleFiltrar}
             >
               <div className="col-auto">
-                <span className="small fw-semibold text-secondary">Filtro de Análisis:</span>
+                <span className="small fw-bold text-secondary">Rango:</span>
               </div>
               <div className="col-auto">
                 <input
@@ -198,9 +289,7 @@ export default function ModDashboard({ cicloInfo }: ModDashboardProps) {
                   onChange={(e) => setFInicio(e.target.value)}
                 />
               </div>
-              <div className="col-auto">
-                <span className="text-muted small">a</span>
-              </div>
+              <div className="col-auto text-muted small fw-semibold">a</div>
               <div className="col-auto">
                 <input
                   type="date"
@@ -210,17 +299,27 @@ export default function ModDashboard({ cicloInfo }: ModDashboardProps) {
                 />
               </div>
               <div className="col-auto">
-                <button type="submit" className="btn btn-primary btn-sm px-3" disabled={cargando}>
-                  <i className="bi bi-funnel me-1"></i> Filtrar
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-sm px-3 shadow-xs"
+                  disabled={cargando}
+                >
+                  {cargando ? (
+                    <span className="spinner-border spinner-border-sm me-1"></span>
+                  ) : (
+                    <i className="bi bi-funnel-fill me-1"></i>
+                  )}
+                  Filtrar
                 </button>
               </div>
               <div className="col-auto">
                 <button
                   type="button"
-                  className="btn btn-outline-secondary btn-sm"
+                  className="btn btn-outline-secondary btn-sm px-3 shadow-xs"
                   onClick={handleRestablecerCiclo}
+                  title="Restablecer fechas al ciclo actual de la sede"
                 >
-                  Ciclo Activo
+                  <i className="bi bi-arrow-counterclockwise me-1"></i> Ciclo Activo
                 </button>
               </div>
             </form>
@@ -228,112 +327,167 @@ export default function ModDashboard({ cicloInfo }: ModDashboardProps) {
         </div>
       </div>
 
-      {/* Tarjetas KPI */}
+      {/* Tarjetas KPI Bento Grid */}
       <div className="row g-3 mb-4">
-        <div className="col-md-2 col-6">
-          <div className="card p-3 border-start border-primary border-4 shadow-sm h-100">
-            <span className="text-muted small fw-semibold">Total Recaudado</span>
-            <h4 className="fw-bold text-primary mt-1 mb-1">
+        {/* Total Recaudado */}
+        <div className="col-xl-3 col-md-6 col-12">
+          <div className="stat-kpi-card h-100">
+            <div className="d-flex align-items-start justify-content-between mb-2">
+              <span className="stat-label">Total Recaudado</span>
+              <div className="stat-icon-wrapper bg-primary-subtle text-primary">
+                <i className="bi bi-cash-stack"></i>
+              </div>
+            </div>
+            <div className="stat-value kpi-amount text-primary">
               S/ {(datos?.totalRecaudado || 0).toFixed(2)}
-            </h4>
-            <span className="small text-muted">
+            </div>
+            <div className="mt-2 small text-secondary d-flex align-items-center gap-1">
               {datos?.crecimiento && datos?.crecimiento !== '--' ? (
-                <span className="text-success fw-bold">
-                  <i className="bi bi-arrow-up-right"></i> {datos.crecimiento}
+                <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-0 fw-bold">
+                  <i className="bi bi-arrow-up-short"></i> {datos.crecimiento} vs anterior
                 </span>
               ) : (
-                'Primer ciclo'
+                <span className="text-muted">Ciclo en curso</span>
               )}
-            </span>
+            </div>
           </div>
         </div>
 
-        <div className="col-md-2 col-6">
-          <div className="card p-3 border-start border-secondary border-4 shadow-sm h-100">
-            <span className="text-muted small fw-semibold">Promedio Diario</span>
-            <h4 className="fw-bold text-secondary mt-1 mb-1">
+        {/* Promedio Diario */}
+        <div className="col-xl-3 col-md-6 col-12">
+          <div className="stat-kpi-card h-100">
+            <div className="d-flex align-items-start justify-content-between mb-2">
+              <span className="stat-label">Promedio Diario</span>
+              <div className="stat-icon-wrapper bg-slate-100 text-slate-700">
+                <i className="bi bi-calendar2-week"></i>
+              </div>
+            </div>
+            <div className="stat-value kpi-amount text-slate-800">
               S/ {(datos?.promedioPropinaDia || 0).toFixed(2)}
-            </h4>
-            <span className="small text-muted">Por jornada registrada</span>
+            </div>
+            <div className="mt-2 small text-muted">
+              Por jornada efectiva registrada
+            </div>
           </div>
         </div>
 
-        <div className="col-md-2 col-6">
-          <div className="card p-3 border-start border-success border-4 shadow-sm h-100">
-            <span className="text-muted small fw-semibold">Fondo Salón (60%)</span>
-            <h4 className="fw-bold text-success mt-1 mb-1">
+        {/* Fondo Salón */}
+        <div className="col-xl-3 col-md-6 col-12">
+          <div className="stat-kpi-card h-100">
+            <div className="d-flex align-items-start justify-content-between mb-2">
+              <span className="stat-label text-success">Fondo Salón (60%)</span>
+              <div className="stat-icon-wrapper bg-success-subtle text-success">
+                <i className="bi bi-shop"></i>
+              </div>
+            </div>
+            <div className="stat-value kpi-amount text-success">
               S/ {(datos?.totalSalon || 0).toFixed(2)}
-            </h4>
-            <span className="small text-muted">FOH proporcional</span>
+            </div>
+            <div className="mt-2 small text-muted">
+              Colaboradores de servicio salón & apoyos
+            </div>
           </div>
         </div>
 
-        <div className="col-md-2 col-6">
-          <div className="card p-3 border-start border-warning border-4 shadow-sm h-100">
-            <span className="text-muted small fw-semibold">Fondo Cocina (40%)</span>
-            <h4 className="fw-bold text-warning mt-1 mb-1">
+        {/* Fondo Cocina */}
+        <div className="col-xl-3 col-md-6 col-12">
+          <div className="stat-kpi-card h-100">
+            <div className="d-flex align-items-start justify-content-between mb-2">
+              <span className="stat-label text-warning-emphasis">Fondo Cocina (40%)</span>
+              <div className="stat-icon-wrapper bg-warning-subtle text-warning-emphasis">
+                <i className="bi bi-fire"></i>
+              </div>
+            </div>
+            <div className="stat-value kpi-amount text-warning-emphasis">
               S/ {(datos?.totalCocina || 0).toFixed(2)}
-            </h4>
-            <span className="small text-muted">BOH proporcional</span>
-          </div>
-        </div>
-
-        <div className="col-md-4 col-12">
-          <div className="card p-3 border-start border-info border-4 shadow-sm h-100">
-            <span className="text-muted small fw-semibold">Total Liquidado a la Fecha</span>
-            <h4 className="fw-bold text-info mt-1 mb-1">
-              S/ {(datos?.totalLiquidado || 0).toFixed(2)}
-            </h4>
-            <span className="small text-muted">Total asignado por horas</span>
+            </div>
+            <div className="mt-2 small text-muted">
+              Equipo de producción de cocina & apoyos
+            </div>
           </div>
         </div>
       </div>
 
       {/* Gráficos Principales */}
       <div className="row g-4 mb-4">
+        {/* Gráfico Temporal */}
         <div className="col-lg-8">
-          <div className="card p-4 shadow-sm">
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <h6 className="fw-bold mb-0 text-dark">
-                <i className="bi bi-graph-up text-primary me-2"></i>
-                Evolución de Recaudación: Cronología y Días de la Semana
-              </h6>
-              <div className="btn-group btn-group-sm">
+          <div className="card p-4 shadow-sm h-100 border-0">
+            <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+              <div>
+                <h6 className="fw-bold mb-1 text-slate-900">
+                  <i className="bi bi-graph-up text-primary me-2"></i>
+                  Evolución Cronológica de Recaudación
+                </h6>
+                <span className="text-secondary small">
+                  Análisis comparativo de montos diarios y distribución semanal
+                </span>
+              </div>
+
+              {/* Segmented Control */}
+              <div className="segmented-control">
                 <button
-                  className={`btn btn-outline-primary ${modoGrafico === 'line' ? 'active' : ''}`}
+                  type="button"
+                  className={`segmented-control-btn ${modoGrafico === 'line' ? 'active' : ''}`}
                   onClick={() => setModoGrafico('line')}
                 >
-                  Tendencia Diaria
+                  <i className="bi bi-activity me-1"></i> Línea Diaria
                 </button>
                 <button
-                  className={`btn btn-outline-primary ${modoGrafico === 'bar' ? 'active' : ''}`}
+                  type="button"
+                  className={`segmented-control-btn ${modoGrafico === 'bar' ? 'active' : ''}`}
                   onClick={() => setModoGrafico('bar')}
                 >
-                  Por Día de Semana
+                  <i className="bi bi-bar-chart me-1"></i> Por Día Semana
                 </button>
               </div>
             </div>
-            <div style={{ position: 'relative', height: '280px' }}>
+
+            <div style={{ position: 'relative', height: '300px' }}>
               <canvas ref={lineChartRef}></canvas>
             </div>
           </div>
         </div>
 
+        {/* Gráfico de Dona */}
         <div className="col-lg-4">
-          <div className="card p-4 shadow-sm">
-            <h6 className="fw-bold mb-3 text-dark">
-              <i className="bi bi-pie-chart text-success me-2"></i>
-              Distribución de Fondos
-            </h6>
+          <div className="card p-4 shadow-sm h-100 border-0 d-flex flex-column">
+            <div className="mb-2">
+              <h6 className="fw-bold mb-1 text-slate-900">
+                <i className="bi bi-pie-chart text-success me-2"></i>
+                Prorrateo por Área
+              </h6>
+              <span className="text-secondary small">
+                Distribución legal estatutaria 60/40
+              </span>
+            </div>
+
             <div
               style={{ position: 'relative', height: '240px' }}
-              className="d-flex justify-content-center align-items-center"
+              className="d-flex justify-content-center align-items-center my-auto"
             >
               <canvas ref={donaChartRef}></canvas>
             </div>
-            <div className="text-center mt-3 small text-muted">
-              <span className="badge bg-success me-2">Salón 60%</span>
-              <span className="badge bg-warning text-dark">Cocina 40%</span>
+
+            <div className="p-3 bg-light rounded-3 mt-3 border">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <span className="small fw-semibold text-secondary">
+                  <i className="bi bi-circle-fill text-success me-1" style={{ fontSize: '0.65rem' }}></i>
+                  Salón (60%):
+                </span>
+                <span className="fw-bold font-mono text-success small">
+                  S/ {(datos?.totalSalon || 0).toFixed(2)}
+                </span>
+              </div>
+              <div className="d-flex justify-content-between align-items-center">
+                <span className="small fw-semibold text-secondary">
+                  <i className="bi bi-circle-fill text-warning me-1" style={{ fontSize: '0.65rem' }}></i>
+                  Cocina (40%):
+                </span>
+                <span className="fw-bold font-mono text-warning-emphasis small">
+                  S/ {(datos?.totalCocina || 0).toFixed(2)}
+                </span>
+              </div>
             </div>
           </div>
         </div>
