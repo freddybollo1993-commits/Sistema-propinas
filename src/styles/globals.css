@@ -218,8 +218,11 @@ body {
   border-right: 1px solid var(--sidebar-border);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  touch-action: pan-y !important;
 }
 
 .sidebar-brand {
@@ -319,12 +322,10 @@ body {
 }
 
 .sidebar .nav {
-  padding: 6px 0 100px;
-  flex: 1 1 auto;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  padding: 6px 0 120px !important;
+  flex: 1 0 auto;
+  min-height: min-content;
+  overflow: visible;
   touch-action: pan-y;
 }
 
@@ -913,6 +914,10 @@ body.sidebar-open-mobile {
   .sidebar-open-mobile .sidebar,
   body.sidebar-open-mobile .sidebar {
     transform: translateX(0) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
   }
   .sidebar-backdrop.show,
   .sidebar-open-mobile .sidebar-backdrop,
