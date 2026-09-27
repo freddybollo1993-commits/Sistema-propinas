@@ -16,32 +16,82 @@ export interface ProrrateoCalculado {
 
 /**
  * Calcula el prorrateo de propinas en tiempo real según regla regular (60% Salón y 40% Cocina)
- * o según modo especial (ej. 50% Salón / 50% Cocina).
+ * o según modo especial de reparto equitativo entre todo el personal (bolsa común unificada).
  */
 export function calcularProrrateoEnMemoria(
   montoTotal: number,
   participantes: ParticipantInput[],
-  porcentajeSalon: number = 0.6
+  modoODivision: 'REGULAR_60_40' | 'EQUITATIVO_GENERAL' | '60_40' | '50_50' | 'equitativo' | number = 'REGULAR_60_40'
 ): {
   fondoSalon: number;
   fondoCocina: number;
   totalHorasSalon: number;
   totalHorasCocina: number;
+  totalHorasGlobal: number;
   detalles: ProrrateoCalculado[];
 } {
-  const pctSalon = typeof porcentajeSalon === 'number' && porcentajeSalon > 0 ? porcentajeSalon : 0.6;
-  const pctCocina = Math.round((1 - pctSalon) * 100) / 100;
-  const fondoSalon = Math.round(montoTotal * pctSalon * 100) / 100;
-  const fondoCocina = Math.round(montoTotal * pctCocina * 100) / 100;
+  const esEquitativo =
+    modoODivision === 'EQUITATIVO_GENERAL' ||
+    modoODivision === 'equitativo' ||
+    modoODivision === '50_50' ||
+    modoODivision === 0.5;
 
   let totalHorasSalon = 0;
   let totalHorasCocina = 0;
+  let totalHorasGlobal = 0;
 
   participantes.forEach((p) => {
     const h = Number(p.horas) || 0;
-    if (p.area.includes('Salón')) totalHorasSalon += h;
-    else if (p.area.includes('Cocina')) totalHorasCocina += h;
+    if (h > 0) {
+      totalHorasGlobal += h;
+      if (p.area.includes('Salón')) totalHorasSalon += h;
+      else if (p.area.includes('Cocina')) totalHorasCocina += h;
+    }
   });
+
+  if (esEquitativo) {
+    // Reparto equitativo entre TODO el personal proporcional a las horas laboradas (bolsa común)
+    // Ejemplo: S/ 100 entre 3 salón y 2 cocina con horas iguales = S/ 20 para cada trabajador
+    const detalles = participantes.map((p) => {
+      const h = Number(p.horas) || 0;
+      const propinaAsignada = totalHorasGlobal > 0 ? (montoTotal * h) / totalHorasGlobal : 0;
+      return {
+        colaborador: p.colaborador,
+        area: p.area,
+        horas: h,
+        totalHorasArea: totalHorasGlobal,
+        propinaAsignada: Math.round(propinaAsignada * 100) / 100,
+      };
+    });
+
+    let sumaSalon = 0;
+    let sumaCocina = 0;
+    detalles.forEach((d) => {
+      if (d.area.includes('Salón')) {
+        sumaSalon += d.propinaAsignada;
+      } else {
+        sumaCocina += d.propinaAsignada;
+      }
+    });
+
+    const fondoSalon = Math.round(sumaSalon * 100) / 100;
+    const fondoCocina = Math.round((montoTotal - fondoSalon) * 100) / 100;
+
+    return {
+      fondoSalon,
+      fondoCocina,
+      totalHorasSalon,
+      totalHorasCocina,
+      totalHorasGlobal,
+      detalles,
+    };
+  }
+
+  // Modo Regular: 60% Salón / 40% Cocina
+  const pctSalon = typeof modoODivision === 'number' && modoODivision > 0 ? modoODivision : 0.6;
+  const pctCocina = Math.round((1 - pctSalon) * 100) / 100;
+  const fondoSalon = Math.round(montoTotal * pctSalon * 100) / 100;
+  const fondoCocina = Math.round(montoTotal * pctCocina * 100) / 100;
 
   const detalles = participantes.map((p) => {
     const h = Number(p.horas) || 0;
@@ -64,6 +114,7 @@ export function calcularProrrateoEnMemoria(
     fondoCocina,
     totalHorasSalon,
     totalHorasCocina,
+    totalHorasGlobal,
     detalles,
   };
 }

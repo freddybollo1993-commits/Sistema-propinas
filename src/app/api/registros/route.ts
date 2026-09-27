@@ -73,22 +73,28 @@ export async function POST(request: Request) {
 
     const fecha = payload.fecha || new Date().toISOString().split('T')[0];
 
-    // Modo de distribución: por defecto Regular 60% / 40%, o Modo Especial 50% / 50%
-    const modoDistribucion = payload.modoDistribucion === '50_50' ? '50_50' : '60_40';
+    // Modo de distribución: por defecto Regular 60% / 40%, o Modo Especial Reparto Equitativo
+    const esModoEspecial =
+      payload.modoDistribucion === 'equitativo' ||
+      payload.modoDistribucion === '50_50' ||
+      payload.modoDistribucion === 'EQUITATIVO_GENERAL';
     const justificacionIngresada = (payload.justificacion || '').trim();
 
-    if (modoDistribucion === '50_50' && !justificacionIngresada) {
+    if (esModoEspecial && !justificacionIngresada) {
       return NextResponse.json(
-        { success: false, message: 'Debe ingresar una justificación obligatoria para utilizar el modo especial 50% / 50%.' },
+        { success: false, message: 'Debe ingresar una justificación obligatoria para utilizar el modo especial de reparto equitativo.' },
         { status: 400 }
       );
     }
 
-    const porcentajeSalon = modoDistribucion === '50_50' ? 0.5 : 0.6;
-    const calculo = calcularProrrateoEnMemoria(montoTotal, participantes, porcentajeSalon);
+    const calculo = calcularProrrateoEnMemoria(
+      montoTotal,
+      participantes,
+      esModoEspecial ? 'EQUITATIVO_GENERAL' : 'REGULAR_60_40'
+    );
 
-    const justificacionGuardar = modoDistribucion === '50_50'
-      ? `[Modo Especial 50/50]: ${justificacionIngresada}`
+    const justificacionGuardar = esModoEspecial
+      ? `[Modo Especial Equitativo]: ${justificacionIngresada}`
       : null;
 
     // Guardar atómicamente el registro y sus detalles en base de datos
@@ -119,8 +125,8 @@ export async function POST(request: Request) {
       return reg;
     });
 
-    const descAuditoria = modoDistribucion === '50_50'
-      ? `Nuevo turno registrado en Modo Especial 50/50: S/ ${montoTotal.toFixed(2)} (${calculo.detalles.length} colaboradores) el ${fecha}. Justificación: ${justificacionIngresada}`
+    const descAuditoria = esModoEspecial
+      ? `Nuevo turno registrado en Modo Especial Reparto Equitativo: S/ ${montoTotal.toFixed(2)} (${calculo.detalles.length} colaboradores) el ${fecha}. Justificación: ${justificacionIngresada}`
       : `Nuevo turno registrado en Modo Regular 60/40: S/ ${montoTotal.toFixed(2)} (${calculo.detalles.length} colaboradores) el ${fecha}`;
 
     await logAuditoria(

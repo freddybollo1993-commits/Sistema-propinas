@@ -83,24 +83,57 @@ describe("Motor de Cálculo de Prorrateo de Propinas (60% Salón / 40% Cocina)",
 		expect(meseroActivo?.propinaAsignada).toBe(300);
 	});
 
-	it("debe distribuir exactamente 50% para Salón y 50% para Cocina en Modo Especial 50/50", () => {
-		const montoTotal = 1000;
+	it("debe repartir de forma equitativa entre todo el personal en Modo Especial (ejemplo: S/ 100 entre 3 salón y 2 cocina = S/ 20 c/u)", () => {
+		const montoTotal = 100;
 		const participantes: ParticipantInput[] = [
-			{ colaborador: "Mesero Especial 1", area: "Salón", horas: 8 },
-			{ colaborador: "Cocinero Especial 1", area: "Cocina", horas: 8 },
+			{ colaborador: "Salón 1", area: "Salón", horas: 8 },
+			{ colaborador: "Salón 2", area: "Salón", horas: 8 },
+			{ colaborador: "Salón 3", area: "Salón", horas: 8 },
+			{ colaborador: "Cocina 1", area: "Cocina", horas: 8 },
+			{ colaborador: "Cocina 2", area: "Cocina", horas: 8 },
 		];
 
-		const resultado = calcularProrrateoEnMemoria(montoTotal, participantes, 0.5);
+		const resultado = calcularProrrateoEnMemoria(montoTotal, participantes, "EQUITATIVO_GENERAL");
 
+		// Verificamos que cada trabajador reciba exactamente S/ 20
+		resultado.detalles.forEach((d) => {
+			expect(d.propinaAsignada).toBe(20);
+		});
+
+		// Fondo Salón (3 personas x 20) = 60, Fondo Cocina (2 personas x 20) = 40
+		expect(resultado.fondoSalon).toBe(60);
+		expect(resultado.fondoCocina).toBe(40);
+		expect(resultado.totalHorasSalon).toBe(24);
+		expect(resultado.totalHorasCocina).toBe(16);
+		expect(resultado.totalHorasGlobal).toBe(40);
+
+		// Suma total igual a 100
+		const suma = resultado.detalles.reduce((acc, curr) => acc + curr.propinaAsignada, 0);
+		expect(suma).toBe(100);
+	});
+
+	it("debe prorratear equitativamente por horas globales en modo especial con turnos diferenciados", () => {
+		const montoTotal = 1000;
+		const participantes: ParticipantInput[] = [
+			{ colaborador: "Salón 12h", area: "Salón", horas: 12 },
+			{ colaborador: "Cocina 6h", area: "Cocina", horas: 6 },
+			{ colaborador: "Cocina 6h B", area: "Cocina", horas: 6 },
+		];
+
+		// Total horas = 24.
+		// Salón 12h: 1000 * (12/24) = 500
+		// Cocina 6h: 1000 * (6/24) = 250
+		// Cocina 6h B: 1000 * (6/24) = 250
+		const resultado = calcularProrrateoEnMemoria(montoTotal, participantes, "equitativo");
+
+		const s1 = resultado.detalles.find((d) => d.colaborador === "Salón 12h");
+		const c1 = resultado.detalles.find((d) => d.colaborador === "Cocina 6h");
+		const c2 = resultado.detalles.find((d) => d.colaborador === "Cocina 6h B");
+
+		expect(s1?.propinaAsignada).toBe(500);
+		expect(c1?.propinaAsignada).toBe(250);
+		expect(c2?.propinaAsignada).toBe(250);
 		expect(resultado.fondoSalon).toBe(500);
 		expect(resultado.fondoCocina).toBe(500);
-		expect(resultado.totalHorasSalon).toBe(8);
-		expect(resultado.totalHorasCocina).toBe(8);
-
-		const mesero = resultado.detalles.find((d) => d.colaborador === "Mesero Especial 1");
-		const cocinero = resultado.detalles.find((d) => d.colaborador === "Cocinero Especial 1");
-
-		expect(mesero?.propinaAsignada).toBe(500);
-		expect(cocinero?.propinaAsignada).toBe(500);
 	});
 });

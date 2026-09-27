@@ -17,14 +17,14 @@ interface WorkerRow {
   propinaCalculada: number;
 }
 
-export function getAreaGroup(area: string, modoDistribucion: '60_40' | '50_50' = '60_40') {
+export function getAreaGroup(area: string, modoDistribucion: '60_40' | 'equitativo' = '60_40') {
   const a = (area || '').trim().toLowerCase();
   const isApoyo = a.includes('apoyo');
   const isSalon = a.includes('salón') || a.includes('salon');
   const isCocina = a.includes('cocina');
 
-  const badgeSalon = modoDistribucion === '50_50' ? 'Fondo 50%' : 'Fondo 60%';
-  const badgeCocina = modoDistribucion === '50_50' ? 'Fondo 50%' : 'Fondo 40%';
+  const badgeSalon = modoDistribucion === 'equitativo' ? 'Reparto Equitativo' : 'Fondo 60%';
+  const badgeCocina = modoDistribucion === 'equitativo' ? 'Reparto Equitativo' : 'Fondo 40%';
 
   if (isSalon) {
     return {
@@ -72,8 +72,8 @@ export default function ModRegistroPropinas({
   const [colaboradores, setColaboradores] = useState<WorkerRow[]>([]);
   const [cargando, setCargando] = useState(false);
 
-  // Modalidad de fondos: Regular 60/40 (predeterminada en todas las tiendas) o Modo Especial 50/50
-  const [modoDistribucion, setModoDistribucion] = useState<'60_40' | '50_50'>('60_40');
+  // Modalidad de fondos: Regular 60/40 (predeterminada en todas las tiendas) o Modo Especial Equitativo
+  const [modoDistribucion, setModoDistribucion] = useState<'60_40' | 'equitativo'>('60_40');
   const [justificacionModo, setJustificacionModo] = useState('');
 
   // Historial
@@ -165,30 +165,55 @@ export default function ModRegistroPropinas({
     }
   };
 
-  // Cálculo en vivo del prorrateo según modalidad (Regular 60/40 o Especial 50/50)
-  const pctSalon = modoDistribucion === '50_50' ? 0.5 : 0.6;
-  const pctCocina = modoDistribucion === '50_50' ? 0.5 : 0.4;
+  // Cálculo en vivo del prorrateo según modalidad (Regular 60/40 o Especial Equitativo)
   const monto = parseFloat(montoTotal) || 0;
-  const fondoSalon = monto * pctSalon;
-  const fondoCocina = monto * pctCocina;
+  const esEquitativo = modoDistribucion === 'equitativo';
 
   let totalHorasSalon = 0;
   let totalHorasCocina = 0;
+  let totalHorasGlobal = 0;
+  let activosSalon = 0;
+  let activosCocina = 0;
 
   colaboradores.forEach((c) => {
-    if (c.activo) {
-      if (c.area.includes('Salón')) totalHorasSalon += c.horas;
-      else if (c.area.includes('Cocina')) totalHorasCocina += c.horas;
+    if (c.activo && c.horas > 0) {
+      totalHorasGlobal += c.horas;
+      if (c.area.includes('Salón')) {
+        totalHorasSalon += c.horas;
+        activosSalon += 1;
+      } else if (c.area.includes('Cocina')) {
+        totalHorasCocina += c.horas;
+        activosCocina += 1;
+      }
     }
   });
 
   const getPropinaCalculada = (c: WorkerRow) => {
     if (!c.activo || c.horas <= 0) return 0;
+    if (esEquitativo) {
+      // Reparto equitativo entre todo el personal (ej: 100 soles entre 3 salón y 2 cocina = 20 c/u con horas iguales)
+      return totalHorasGlobal > 0 ? (monto * c.horas) / totalHorasGlobal : 0;
+    }
     const esSalon = c.area.includes('Salón');
     const totalArea = esSalon ? totalHorasSalon : totalHorasCocina;
-    const fondoArea = esSalon ? fondoSalon : fondoCocina;
+    const fondoArea = esSalon ? monto * 0.6 : monto * 0.4;
     return totalArea > 0 ? (fondoArea * c.horas) / totalArea : 0;
   };
+
+  let fondoSalon = 0;
+  let fondoCocina = 0;
+  if (esEquitativo) {
+    colaboradores.forEach((c) => {
+      if (c.activo && c.horas > 0) {
+        const prop = getPropinaCalculada(c);
+        if (c.area.includes('Salón')) fondoSalon += prop;
+        else fondoCocina += prop;
+      }
+    });
+  } else {
+    fondoSalon = monto * 0.6;
+    fondoCocina = monto * 0.4;
+  }
 
   const handleToggleAsistencia = (index: number) => {
     setColaboradores((prev) =>
@@ -228,8 +253,8 @@ export default function ModRegistroPropinas({
       return;
     }
 
-    if (modoDistribucion === '50_50' && !justificacionModo.trim()) {
-      alert('Debe ingresar una justificación obligatoria para utilizar el Modo Especial 50% / 50%.');
+    if (modoDistribucion === 'equitativo' && !justificacionModo.trim()) {
+      alert('Debe ingresar una justificación obligatoria para utilizar el Modo Especial de Reparto Equitativo.');
       return;
     }
 
@@ -256,7 +281,7 @@ export default function ModRegistroPropinas({
           montoTotal: monto,
           participantes,
           modoDistribucion,
-          justificacion: modoDistribucion === '50_50' ? justificacionModo.trim() : '',
+          justificacion: modoDistribucion === 'equitativo' ? justificacionModo.trim() : '',
         }),
       });
       const data = await res.json();
@@ -434,15 +459,15 @@ export default function ModRegistroPropinas({
               <div>
                 <label className="form-label small fw-bold text-slate-800 mb-0 d-flex align-items-center gap-2">
                   <i className="bi bi-sliders text-danger"></i>
-                  <span>Modalidad de Distribución de Fondos</span>
+                  <span>Modalidad de Distribución de Propinas</span>
                 </label>
                 <span className="text-secondary small d-block" style={{ fontSize: '0.8rem' }}>
                   Por defecto, todas las tiendas operan con el Sistema Regular 60% Salón / 40% Cocina.
                 </span>
               </div>
-              {modoDistribucion === '50_50' ? (
+              {modoDistribucion === 'equitativo' ? (
                 <span className="badge bg-danger text-white border border-danger fw-bold px-2 py-1">
-                  <i className="bi bi-exclamation-circle-fill me-1"></i> Modo Especial 50% / 50% Activo
+                  <i className="bi bi-people-fill me-1"></i> Modo Especial: Reparto Equitativo Activo
                 </span>
               ) : (
                 <span className="badge bg-success-subtle text-success border border-success-subtle fw-semibold px-2 py-1">
@@ -492,20 +517,20 @@ export default function ModRegistroPropinas({
                 </div>
               </div>
 
-              {/* Opción 2: Especial 50/50 */}
+              {/* Opción 2: Especial Equitativo */}
               <div className="col-12 col-md-6">
                 <div
                   className={`p-3 rounded-3 border h-100 cursor-pointer transition-all ${
-                    modoDistribucion === '50_50'
+                    modoDistribucion === 'equitativo'
                       ? 'bg-white border-danger shadow-xs'
                       : 'bg-white bg-opacity-50 border-secondary-subtle opacity-75'
                   }`}
                   style={{
                     cursor: 'pointer',
-                    borderLeft: modoDistribucion === '50_50' ? '4px solid #dc2626' : undefined,
+                    borderLeft: modoDistribucion === 'equitativo' ? '4px solid #dc2626' : undefined,
                   }}
                   onClick={() => {
-                    setModoDistribucion('50_50');
+                    setModoDistribucion('equitativo');
                   }}
                 >
                   <div className="form-check d-flex align-items-start gap-2 mb-0">
@@ -513,19 +538,19 @@ export default function ModRegistroPropinas({
                       className="form-check-input mt-1"
                       type="radio"
                       name="modoDistribucion"
-                      id="modoEsp5050"
-                      checked={modoDistribucion === '50_50'}
-                      onChange={() => setModoDistribucion('50_50')}
+                      id="modoEspEquitativo"
+                      checked={modoDistribucion === 'equitativo'}
+                      onChange={() => setModoDistribucion('equitativo')}
                     />
-                    <label className="form-check-label w-100 cursor-pointer" htmlFor="modoEsp5050" style={{ cursor: 'pointer' }}>
+                    <label className="form-check-label w-100 cursor-pointer" htmlFor="modoEspEquitativo" style={{ cursor: 'pointer' }}>
                       <div className="d-flex justify-content-between align-items-center">
-                        <strong className="text-danger">Modo Especial (50% / 50%)</strong>
+                        <strong className="text-danger">Modo Especial (Reparto Equitativo)</strong>
                         <span className="badge bg-danger-subtle text-danger border border-danger-subtle small fw-bold">
                           Requiere Justificación
                         </span>
                       </div>
                       <div className="text-secondary small mt-1" style={{ fontSize: '0.78rem' }}>
-                        50% Salón y 50% Cocina. Fondo equitativo que requiere ingresar una justificación obligatoria.
+                        Reparto equitativo entre todo el personal (ej: S/ 100 entre 3 salón y 2 cocina = S/ 20 para cada trabajador). Requiere justificación obligatoria.
                       </div>
                     </label>
                   </div>
@@ -533,49 +558,66 @@ export default function ModRegistroPropinas({
               </div>
             </div>
 
-            {/* Campo Justificación Obligatoria cuando se elige 50/50 */}
-            {modoDistribucion === '50_50' && (
+            {/* Campo Justificación Obligatoria cuando se elige equitativo */}
+            {modoDistribucion === 'equitativo' && (
               <div className="mt-2 p-3 bg-danger bg-opacity-10 rounded-3 border border-danger border-opacity-25">
                 <div className="d-flex align-items-center gap-2 mb-2 text-danger fw-bold small">
                   <i className="bi bi-pencil-fill"></i>
-                  <span>Justificación Obligatoria del Modo Especial 50/50 *</span>
+                  <span>Justificación Obligatoria del Modo Especial Equitativo *</span>
                 </div>
                 <p className="text-secondary small mb-2" style={{ fontSize: '0.8rem' }}>
-                  Por políticas de control corporativo, debes justificar por qué se utilizó la división 50% - 50% en este turno (ej. acuerdo extraordinario de equipo, evento especial, cobertura temporal, etc.).
+                  Por políticas de control corporativo, debes justificar por qué se utilizó el reparto equitativo entre todo el personal en este turno (ej. acuerdo extraordinario de equipo, jornada especial, evento con apoyo cruzado, etc.).
                 </p>
                 <textarea
                   className="form-control form-control-sm border-danger-subtle"
                   rows={2}
-                  placeholder="Escribe aquí la justificación obligatoria del por qué se utilizó el modo especial 50% / 50%..."
+                  placeholder="Escribe aquí la justificación obligatoria del por qué se utilizó el reparto equitativo entre todo el personal..."
                   value={justificacionModo}
                   onChange={(e) => setJustificacionModo(e.target.value)}
                   required
                 ></textarea>
                 {!justificacionModo.trim() && (
                   <span className="text-danger small mt-1 d-block fw-semibold" style={{ fontSize: '0.75rem' }}>
-                    * Campo requerido para poder congelar y registrar las propinas en modo 50/50.
+                    * Campo requerido para poder congelar y registrar las propinas en modo equitativo.
                   </span>
                 )}
               </div>
             )}
           </div>
 
+          {/* Banner de Reparto Equitativo si está activo */}
+          {esEquitativo && (
+            <div className="alert alert-danger py-2 px-3 mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2 small border border-danger-subtle rounded-3">
+              <div className="d-flex align-items-center gap-2">
+                <i className="bi bi-people-fill fs-5 text-danger"></i>
+                <div>
+                  <strong className="text-danger">Bolsa Común Equitativa Activa:</strong> El total de S/ {monto.toFixed(2)} se reparte de forma equitativa entre los {activosSalon + activosCocina} trabajadores activos ({totalHorasGlobal.toFixed(1)} hrs en total).
+                </div>
+              </div>
+              {(activosSalon + activosCocina) > 0 && (
+                <span className="badge bg-danger text-white px-2 py-1 font-mono fs-6 shadow-xs">
+                  ~S/ {(monto / (activosSalon + activosCocina)).toFixed(2)} c/u (horas completas)
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Resumen de Fondos por Área Bento Cards */}
           <div className="row g-3 mb-4">
             <div className="col-md-6">
               <div
                 className="p-3 rounded-3 border bg-white d-flex justify-content-between align-items-center shadow-xs"
-                style={{ borderLeft: modoDistribucion === '50_50' ? '5px solid #dc2626 !important' : '5px solid #10b981 !important' }}
+                style={{ borderLeft: esEquitativo ? '5px solid #dc2626 !important' : '5px solid #10b981 !important' }}
               >
                 <div>
                   <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                    <span className={`badge ${modoDistribucion === '50_50' ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-success-subtle text-success border border-success-subtle'} px-2 py-0 fw-bold small`}>
-                      FONDO SALÓN ({(pctSalon * 100).toFixed(0)}%)
+                    <span className={`badge ${esEquitativo ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-success-subtle text-success border border-success-subtle'} px-2 py-0 fw-bold small`}>
+                      {esEquitativo ? 'SALÓN (REPARTO EQUITATIVO)' : 'FONDO SALÓN (60%)'}
                     </span>
                     <i className="bi bi-shop text-success"></i>
-                    {modoDistribucion === '50_50' && (
+                    {esEquitativo && (
                       <span className="badge bg-secondary-subtle text-dark border small" style={{ fontSize: '0.68rem' }}>
-                        Modo Especial
+                        {activosSalon} colab.
                       </span>
                     )}
                   </div>
@@ -594,17 +636,17 @@ export default function ModRegistroPropinas({
             <div className="col-md-6">
               <div
                 className="p-3 rounded-3 border bg-white d-flex justify-content-between align-items-center shadow-xs"
-                style={{ borderLeft: modoDistribucion === '50_50' ? '5px solid #dc2626 !important' : '5px solid #f59e0b !important' }}
+                style={{ borderLeft: esEquitativo ? '5px solid #dc2626 !important' : '5px solid #f59e0b !important' }}
               >
                 <div>
                   <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                    <span className={`badge ${modoDistribucion === '50_50' ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'} px-2 py-0 fw-bold small`}>
-                      FONDO COCINA ({(pctCocina * 100).toFixed(0)}%)
+                    <span className={`badge ${esEquitativo ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'} px-2 py-0 fw-bold small`}>
+                      {esEquitativo ? 'COCINA (REPARTO EQUITATIVO)' : 'FONDO COCINA (40%)'}
                     </span>
                     <i className="bi bi-fire text-warning"></i>
-                    {modoDistribucion === '50_50' && (
+                    {esEquitativo && (
                       <span className="badge bg-secondary-subtle text-dark border small" style={{ fontSize: '0.68rem' }}>
-                        Modo Especial
+                        {activosCocina} colab.
                       </span>
                     )}
                   </div>
@@ -857,9 +899,9 @@ export default function ModRegistroPropinas({
                         <td className="fw-bold text-primary">S/ {r.montoTotal.toFixed(2)}</td>
                         <td>
                           <div className="d-flex align-items-center gap-1 mb-1">
-                            {Math.abs(r.fondoSalon - r.fondoCocina) < 0.05 && r.montoTotal > 0 ? (
+                            {r.justificacion?.includes('Equitativo') || r.justificacion?.includes('50/50') ? (
                               <span className="badge bg-danger-subtle text-danger border border-danger-subtle small fw-bold">
-                                <i className="bi bi-percent me-1"></i>50% / 50% Especial
+                                <i className="bi bi-people-fill me-1"></i>Reparto Equitativo Especial
                               </span>
                             ) : (
                               <span className="badge bg-light text-secondary border small">
@@ -970,7 +1012,7 @@ export default function ModRegistroPropinas({
                                       show: true,
                                       idReg: r.idRegistro,
                                       justificacion: r.justificacion,
-                                      validador: r.validador || 'Modo Especial 50/50',
+                                      validador: r.validador || 'Modo Especial Equitativo',
                                     })
                                   }
                                 >
@@ -1127,14 +1169,14 @@ export default function ModRegistroPropinas({
               <div className="modal-content border-0 shadow">
                 <div
                   className={`modal-header ${
-                    modalVerJust.justificacion?.includes('50/50') ? 'bg-danger' : 'bg-secondary'
+                    modalVerJust.justificacion?.includes('Equitativo') || modalVerJust.justificacion?.includes('50/50') ? 'bg-danger' : 'bg-secondary'
                   } text-white`}
                 >
                   <h6 className="modal-title fw-bold">
-                    {modalVerJust.justificacion?.includes('50/50') ? (
+                    {modalVerJust.justificacion?.includes('Equitativo') || modalVerJust.justificacion?.includes('50/50') ? (
                       <>
-                        <i className="bi bi-percent me-2"></i>
-                        Justificación de Modo Especial 50% / 50% - Registro #{modalVerJust.idReg}
+                        <i className="bi bi-people-fill me-2"></i>
+                        Justificación de Modo Especial Equitativo - Registro #{modalVerJust.idReg}
                       </>
                     ) : (
                       <>
@@ -1154,8 +1196,8 @@ export default function ModRegistroPropinas({
                 <div className="modal-body p-4">
                   <div className="mb-3">
                     <label className="small text-muted fw-bold">
-                      {modalVerJust.justificacion?.includes('50/50')
-                        ? 'Justificación Registrada de Distribución 50% - 50%:'
+                      {modalVerJust.justificacion?.includes('Equitativo') || modalVerJust.justificacion?.includes('50/50')
+                        ? 'Justificación Registrada del Reparto Equitativo:'
                         : 'Motivo Registrado:'}
                     </label>
                     <div className="p-3 bg-light rounded border small text-dark">
