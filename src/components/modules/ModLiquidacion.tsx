@@ -568,14 +568,16 @@ export default function ModLiquidacion({
                               </tr>
                             </thead>
                             <tbody>
-                              {boletaModal.colaborador.detalleDias.length === 0 ? (
+                              {boletaModal.colaborador.detalleDias.filter((d: any) => !d.estado || d.estado === 'Activo').length === 0 ? (
                                 <tr>
                                   <td colSpan={4} className="text-center text-muted py-2">
                                     No registra jornadas trabajadas en este ciclo.
                                   </td>
                                 </tr>
                               ) : (
-                                boletaModal.colaborador.detalleDias.map((d: any, idx: number) => (
+                                boletaModal.colaborador.detalleDias
+                                  .filter((d: any) => !d.estado || d.estado === 'Activo')
+                                  .map((d: any, idx: number) => (
                                   <tr key={idx}>
                                     <td>
                                       <i className="bi bi-calendar-check text-success me-1"></i>
@@ -679,14 +681,16 @@ export default function ModLiquidacion({
                               </tr>
                             </thead>
                             <tbody>
-                              {boletaModal.colaborador.detalleSanciones.length === 0 ? (
+                              {boletaModal.colaborador.detalleSanciones.filter((s: any) => !s.estado || s.estado === 'Aprobado').length === 0 ? (
                                 <tr>
                                   <td colSpan={3} className="text-center text-success py-1" style={{ fontSize: '7pt' }}>
                                     <i className="bi bi-check-circle me-1"></i>Sin sanciones en el periodo (S/ 0.00).
                                   </td>
                                 </tr>
                               ) : (
-                                boletaModal.colaborador.detalleSanciones.map((s: any, idx: number) => (
+                                boletaModal.colaborador.detalleSanciones
+                                  .filter((s: any) => !s.estado || s.estado === 'Aprobado')
+                                  .map((s: any, idx: number) => (
                                   <tr key={idx}>
                                     <td>{s.fecha}</td>
                                     <td>
@@ -726,14 +730,16 @@ export default function ModLiquidacion({
                               </tr>
                             </thead>
                             <tbody>
-                              {boletaModal.colaborador.detalleAdelantos.length === 0 ? (
+                              {boletaModal.colaborador.detalleAdelantos.filter((a: any) => !a.estado || a.estado === 'Aprobado').length === 0 ? (
                                 <tr>
                                   <td colSpan={3} className="text-center text-muted py-1" style={{ fontSize: '7pt' }}>
                                     Sin adelantos registrados en el ciclo (S/ 0.00).
                                   </td>
                                 </tr>
                               ) : (
-                                boletaModal.colaborador.detalleAdelantos.map((a: any, idx: number) => (
+                                boletaModal.colaborador.detalleAdelantos
+                                  .filter((a: any) => !a.estado || a.estado === 'Aprobado')
+                                  .map((a: any, idx: number) => (
                                   <tr key={idx}>
                                     <td>{a.fecha}</td>
                                     <td>
@@ -1112,14 +1118,16 @@ export default function ModLiquidacion({
                       </tr>
                     </thead>
                     <tbody>
-                      {boletaModal.colaborador.detalleDias.length === 0 ? (
+                      {boletaModal.colaborador.detalleDias.filter((d: any) => !d.estado || d.estado === 'Activo').length === 0 ? (
                         <tr>
                           <td colSpan={4} className="text-center text-muted py-1" style={{ fontSize: '7pt' }}>
                             No registra jornadas trabajadas en este ciclo.
                           </td>
                         </tr>
                       ) : (
-                        boletaModal.colaborador.detalleDias.map((d: any, idx: number) => (
+                        boletaModal.colaborador.detalleDias
+                          .filter((d: any) => !d.estado || d.estado === 'Activo')
+                          .map((d: any, idx: number) => (
                           <tr key={idx}>
                             <td>{d.fecha}</td>
                             <td>Reg #{d.idRegistro}</td>
@@ -1220,14 +1228,16 @@ export default function ModLiquidacion({
                       </tr>
                     </thead>
                     <tbody>
-                      {boletaModal.colaborador.detalleSanciones.length === 0 ? (
+                      {boletaModal.colaborador.detalleSanciones.filter((s: any) => !s.estado || s.estado === 'Aprobado').length === 0 ? (
                         <tr>
                           <td colSpan={3} className="text-center text-success py-1" style={{ fontSize: '7pt' }}>
                             <i className="bi bi-check-circle me-1"></i>Sin sanciones en el periodo (S/ 0.00).
                           </td>
                         </tr>
                       ) : (
-                        boletaModal.colaborador.detalleSanciones.map((s: any, idx: number) => (
+                        boletaModal.colaborador.detalleSanciones
+                          .filter((s: any) => !s.estado || s.estado === 'Aprobado')
+                          .map((s: any, idx: number) => (
                           <tr key={idx}>
                             <td>{s.fecha}</td>
                             <td>
@@ -1267,14 +1277,16 @@ export default function ModLiquidacion({
                       </tr>
                     </thead>
                     <tbody>
-                      {boletaModal.colaborador.detalleAdelantos.length === 0 ? (
+                      {boletaModal.colaborador.detalleAdelantos.filter((a: any) => !a.estado || a.estado === 'Aprobado').length === 0 ? (
                         <tr>
                           <td colSpan={3} className="text-center text-muted py-1" style={{ fontSize: '7pt' }}>
                             Sin adelantos registrados en el ciclo (S/ 0.00).
                           </td>
                         </tr>
                       ) : (
-                        boletaModal.colaborador.detalleAdelantos.map((a: any, idx: number) => (
+                        boletaModal.colaborador.detalleAdelantos
+                          .filter((a: any) => !a.estado || a.estado === 'Aprobado')
+                          .map((a: any, idx: number) => (
                           <tr key={idx}>
                             <td>{a.fecha}</td>
                             <td>

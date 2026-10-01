@@ -188,7 +188,11 @@ export async function POST(request: Request) {
             tiendaId,
           },
         });
-        const frecDisparo = modificadorEspecial.disparadorFrecuencia || 1;
+        const frecDisparo =
+          modificadorEspecial.disparadorFrecuencia !== undefined &&
+          modificadorEspecial.disparadorFrecuencia !== null
+            ? modificadorEspecial.disparadorFrecuencia
+            : 0;
         if (historialPrevia + 1 >= frecDisparo) {
           disparaModificador = true;
         }
@@ -263,7 +267,10 @@ export async function POST(request: Request) {
         c.infraccion.includes('Inasistencia injustificada')
       );
       if (reglaInasistencia && reglaInasistencia.estado === 'Activo') {
-        const maxPermitido = reglaInasistencia.frecuenciaMax || 1;
+        const maxPermitido =
+          reglaInasistencia.frecuenciaMax !== undefined && reglaInasistencia.frecuenciaMax !== null
+            ? reglaInasistencia.frecuenciaMax
+            : 0;
         const faltas = historial.filter((h) =>
           h.concepto.includes('Inasistencia injustificada')
         ).length;
@@ -278,7 +285,10 @@ export async function POST(request: Request) {
       }
     } else if (payload.infraccion === 'Tardanza') {
       if (reglaTardanza) {
-        const maxPermitido = reglaTardanza.frecuenciaMax || 1;
+        const maxPermitido =
+          reglaTardanza.frecuenciaMax !== undefined && reglaTardanza.frecuenciaMax !== null
+            ? reglaTardanza.frecuenciaMax
+            : 0;
         const tolActiva = reglaTardanza.toleranciaActiva;
         const tolMin = reglaTardanza.toleranciaMin || 15;
         const tiempoIngresado = parseFloat(payload.tiempoTardanza) || 0;
@@ -317,7 +327,10 @@ export async function POST(request: Request) {
     } else {
       const reglaGenerica = catalogo.find((c) => c.infraccion === payload.infraccion);
       if (reglaGenerica && reglaGenerica.estado === 'Activo') {
-        const maxPermitido = reglaGenerica.frecuenciaMax || 1;
+        const maxPermitido =
+          reglaGenerica.frecuenciaMax !== undefined && reglaGenerica.frecuenciaMax !== null
+            ? reglaGenerica.frecuenciaMax
+            : 0;
         const faltas = historial.filter((h) =>
           h.concepto.includes(payload.infraccion)
         ).length;

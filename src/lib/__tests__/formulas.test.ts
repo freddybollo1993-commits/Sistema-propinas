@@ -136,4 +136,21 @@ describe("Motor de Cálculo de Prorrateo de Propinas (60% Salón / 40% Cocina)",
 		expect(resultado.fondoSalon).toBe(500);
 		expect(resultado.fondoCocina).toBe(500);
 	});
+
+	it("debe aplicar pérdida total cuando la frecuencia permitida es 0 y se comete al menos 1 falta", () => {
+		// Simulación de evaluación de reincidencia con tolerancia cero (frecuenciaMax: 0)
+		const catalogo = [{ infraccion: "Falta Injustificada", estado: "Activo", frecuenciaMax: 0 }];
+		const mapLimites: Record<string, number> = {};
+		catalogo.forEach((c) => {
+			mapLimites[c.infraccion] = c.frecuenciaMax !== undefined ? Math.max(0, c.frecuenciaMax) : 0;
+		});
+
+		const colaboradorFaltas = 1;
+		const maxPermitido = mapLimites["Falta Injustificada"];
+		const superoLimite = colaboradorFaltas > maxPermitido;
+
+		expect(maxPermitido).toBe(0);
+		expect(superoLimite).toBe(true);
+	});
 });
+

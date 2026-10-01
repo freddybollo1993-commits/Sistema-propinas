@@ -6,18 +6,23 @@ import { resolveTiendaId } from '@/lib/tiendas';
 export async function POST(request: Request) {
   try {
     const { tiendaId, user } = await resolveTiendaId(request);
-    const usuarioActual = user?.nombre || 'Usuario Maestro';
-    const idUsuario = user?.id || 'USR-MASTER';
-    const rolUsuario = user?.rol || 'Administrador';
+    if (!user) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'No autenticado: Debe iniciar sesión para realizar esta operación.',
+        },
+        { status: 401 }
+      );
+    }
 
+    const usuarioActual = user.nombre;
+    const idUsuario = user.id;
+    const rolUsuario = user.rol;
     const esAutorizado =
-      idUsuario === 'USR-MASTER' ||
+      Boolean(user.esMaestro) ||
       rolUsuario === 'Administrador' ||
-      rolUsuario === 'Supervisor' ||
-      user?.esMaestro ||
-      usuarioActual.toLowerCase().includes('maestro') ||
-      usuarioActual.toLowerCase().includes('admin') ||
-      usuarioActual.toLowerCase().includes('super');
+      rolUsuario === 'Supervisor';
 
     if (!esAutorizado) {
       return NextResponse.json(

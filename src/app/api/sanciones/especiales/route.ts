@@ -37,6 +37,12 @@ export async function POST(request: Request) {
 
     const payload = await request.json();
 
+    const parseFrecuencia = (val: any) => {
+      if (val === undefined || val === null || val === '') return 0;
+      const p = parseInt(val, 10);
+      return isNaN(p) ? 0 : Math.max(0, p);
+    };
+
     // Puede recibir un arreglo de reglas o una sola regla
     if (Array.isArray(payload)) {
       for (const item of payload) {
@@ -49,7 +55,7 @@ export async function POST(request: Request) {
               estado: item.estado,
               tipoEfecto: item.tipoEfecto || 'PERDIDA_DIA',
               criterioDisparador: item.criterioDisparador || 'TOLERANCIA_O_FRECUENCIA',
-              disparadorFrecuencia: parseInt(item.disparadorFrecuencia || 1),
+              disparadorFrecuencia: parseFrecuencia(item.disparadorFrecuencia),
               tiendaId,
             },
           });
@@ -61,7 +67,7 @@ export async function POST(request: Request) {
               estado: item.estado || 'Inactivo',
               tipoEfecto: item.tipoEfecto || 'PERDIDA_DIA',
               criterioDisparador: item.criterioDisparador || 'TOLERANCIA_O_FRECUENCIA',
-              disparadorFrecuencia: parseInt(item.disparadorFrecuencia || 1),
+              disparadorFrecuencia: parseFrecuencia(item.disparadorFrecuencia),
               tiendaId,
             },
           });
@@ -92,7 +98,7 @@ export async function POST(request: Request) {
           estado,
           tipoEfecto: tipoEfecto || 'PERDIDA_DIA',
           criterioDisparador: criterioDisparador || 'TOLERANCIA_O_FRECUENCIA',
-          disparadorFrecuencia: parseInt(disparadorFrecuencia || 1),
+          disparadorFrecuencia: parseFrecuencia(disparadorFrecuencia),
           tiendaId,
         },
       });
@@ -116,7 +122,7 @@ export async function POST(request: Request) {
           estado: estado || 'Inactivo',
           tipoEfecto: tipoEfecto || 'PERDIDA_DIA',
           criterioDisparador: criterioDisparador || 'TOLERANCIA_O_FRECUENCIA',
-          disparadorFrecuencia: parseInt(disparadorFrecuencia || 1),
+          disparadorFrecuencia: parseFrecuencia(disparadorFrecuencia),
           tiendaId,
         },
       });

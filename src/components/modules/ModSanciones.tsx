@@ -653,7 +653,7 @@ export default function ModSanciones({
                                 ? 'Al incurrir en exceso de tiempo de break, confisca el 100% de la propina de la fecha en lugar del monto clásico.'
                                 : modEsp.criterioDisparador === 'INMEDIATO'
                                 ? 'Aplica de inmediato desde la 1ª falta registrada. Confisca el 100% de la propina de la fecha.'
-                                : `Aplica a partir de la falta #${modEsp.disparadorFrecuencia || 1}. Confisca el 100% de la propina del día.`}
+                                : `Aplica a partir de la falta #${modEsp.disparadorFrecuencia !== undefined && modEsp.disparadorFrecuencia !== null ? modEsp.disparadorFrecuencia : 0}. Confisca el 100% de la propina del día.`}
                             </div>
                           </div>
                         </div>
@@ -977,13 +977,14 @@ export default function ModSanciones({
                               <td>
                                 <input
                                   type="number"
-                                  min="1"
+                                  min="0"
                                   className="form-control form-control-sm text-center fw-bold"
                                   style={{ width: '60px' }}
-                                  value={c.frecuenciaMax}
+                                  value={c.frecuenciaMax ?? 0}
                                   disabled={esModerador}
                                   onChange={(e) => {
-                                    const val = parseInt(e.target.value) || 1;
+                                    const parsed = parseInt(e.target.value, 10);
+                                    const val = isNaN(parsed) ? 0 : Math.max(0, parsed);
                                     setCatalogo((prev) =>
                                       prev.map((item, idx) => {
                                         if (isInasistencia && item.infraccion.includes('Inasistencia injustificada')) {
@@ -1056,7 +1057,11 @@ export default function ModSanciones({
                               const esTardanza = esp.sancionPrincipal === 'Tardanza';
                               const esBreak = esp.sancionPrincipal === 'Break';
                               const tolMin = sancionAsociada?.toleranciaMin || 15;
-                              const frecMax = sancionAsociada?.frecuenciaMax || 1;
+                              const frecMax =
+                                sancionAsociada?.frecuenciaMax !== undefined &&
+                                sancionAsociada?.frecuenciaMax !== null
+                                  ? sancionAsociada.frecuenciaMax
+                                  : 0;
                               const criterioActual =
                                 esp.criterioDisparador ||
                                 (esTardanza ? 'TOLERANCIA' : esBreak ? 'DEMORA' : 'FRECUENCIA');
@@ -1180,14 +1185,15 @@ export default function ModSanciones({
                                           </span>
                                           <input
                                             type="number"
-                                            min="1"
+                                            min="0"
                                             max={frecMax}
                                             className="form-control form-control-sm text-center fw-bold px-1"
                                             style={{ width: '48px', height: '28px' }}
-                                            value={esp.disparadorFrecuencia || 1}
+                                            value={esp.disparadorFrecuencia ?? 0}
                                             disabled={esModerador}
                                             onChange={(e) => {
-                                              const val = parseInt(e.target.value) || 1;
+                                              const parsed = parseInt(e.target.value, 10);
+                                              const val = isNaN(parsed) ? 0 : Math.max(0, parsed);
                                               setSancionesEspeciales((prev) =>
                                                 prev.map((item, idx) =>
                                                   idx === i ? { ...item, disparadorFrecuencia: val } : item

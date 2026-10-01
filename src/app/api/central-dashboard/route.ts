@@ -553,7 +553,10 @@ export async function GET(request: Request) {
       Object.keys(conteoFaltasComputables[colabKey]).forEach((inf) => {
         const cnt = conteoFaltasComputables[colabKey][inf];
         const regla = tiendaReglas[inf];
-        const maxPermitido = regla ? regla.frecuenciaMax : 1;
+        const maxPermitido =
+          regla && regla.frecuenciaMax !== undefined && regla.frecuenciaMax !== null
+            ? regla.frecuenciaMax
+            : 0;
         const cons = regla ? regla.consecuencia : 'Pérdida del 100% de propinas acumuladas';
         if (cons.includes('100%') && cnt > maxPermitido) {
           perdida100 = true;

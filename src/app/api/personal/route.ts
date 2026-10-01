@@ -7,7 +7,12 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    const { tiendaId } = await resolveTiendaId(request);
+    const { tiendaId, user } = await resolveTiendaId(request);
+
+    if (!user) {
+      return NextResponse.json({ error: 'No autenticado: Inicie sesión para consultar personal.' }, { status: 401 });
+    }
+
     const personal = await prisma.colaborador.findMany({
       where: { tiendaId },
     });
@@ -40,7 +45,27 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const { tiendaId, user } = await resolveTiendaId(request);
-    const usuarioActual = user?.nombre || 'Sistema';
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'No autenticado: Inicie sesión para gestionar personal.' },
+        { status: 401 }
+      );
+    }
+
+    const esAutorizado =
+      Boolean(user.esMaestro) ||
+      user.rol === 'Administrador' ||
+      user.rol === 'Supervisor';
+
+    if (!esAutorizado) {
+      return NextResponse.json(
+        { success: false, message: 'Acceso denegado: Se requieren permisos de Administrador o Supervisor.' },
+        { status: 403 }
+      );
+    }
+
+    const usuarioActual = user.nombre;
 
     const { nombre, area, estado } = await request.json();
 

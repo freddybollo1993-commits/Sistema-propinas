@@ -44,16 +44,25 @@ export async function POST(request: Request) {
     }
 
     // Frecuencia compartida para inasistencia injustificada
-    let inasistenciaFreq = 1;
+    let inasistenciaFreq: number | null = null;
     nuevosDatos.forEach((c: any) => {
       if (c.infraccion && c.infraccion.includes('Inasistencia injustificada')) {
-        if (c.frecuenciaMax) inasistenciaFreq = parseInt(c.frecuenciaMax);
+        if (c.frecuenciaMax !== undefined && c.frecuenciaMax !== null && c.frecuenciaMax !== '') {
+          const parsed = parseInt(c.frecuenciaMax, 10);
+          if (!isNaN(parsed)) inasistenciaFreq = Math.max(0, parsed);
+        }
       }
     });
 
     for (const c of nuevosDatos) {
       const isInf = c.infraccion && c.infraccion.includes('Inasistencia injustificada');
-      const freq = isInf ? inasistenciaFreq : parseInt(c.frecuenciaMax || 1);
+      let freq = 1;
+      if (isInf && inasistenciaFreq !== null) {
+        freq = inasistenciaFreq;
+      } else if (c.frecuenciaMax !== undefined && c.frecuenciaMax !== null && c.frecuenciaMax !== '') {
+        const parsed = parseInt(c.frecuenciaMax, 10);
+        freq = isNaN(parsed) ? 0 : Math.max(0, parsed);
+      }
       const isTardanza = c.infraccion === 'Tardanza';
       const isBreak = c.infraccion === 'Break';
       const tolMin = isTardanza ? parseInt(c.toleranciaMin || 0) : 0;

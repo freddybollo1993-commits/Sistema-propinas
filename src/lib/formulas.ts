@@ -170,9 +170,12 @@ export async function getPromediosColaboradores(tiendaId?: string): Promise<Reco
   const fInicio = ciclo.fechaInicio;
   const fFin = ciclo.fechaFin;
 
-  const registrosValidos = await prisma.registroPropina.findMany({
+  const rawRegistrosValidos = await prisma.registroPropina.findMany({
     where: {
       estado: 'Activo',
+      NOT: {
+        estado: { in: ['Anulado', 'anulado', 'ANULADO', 'Pendiente de Anulación', 'Eliminado', 'Rechazado'] },
+      },
       ...(tiendaId ? { tiendaId } : {}),
       fecha: {
         gte: fInicio,
@@ -183,6 +186,10 @@ export async function getPromediosColaboradores(tiendaId?: string): Promise<Reco
       detalles: true,
     },
   });
+
+  const registrosValidos = rawRegistrosValidos.filter(
+    (r) => (r.estado || '').trim().toLowerCase() === 'activo'
+  );
 
   const stats: Record<string, { totalPropina: number; diasSet: Set<string> }> = {};
 
@@ -218,9 +225,12 @@ export async function getEstadoFondoMancomunado(filtroRango?: { inicio?: string;
   const modoActivo = await getModoSanciones(tiendaId);
   const esModoFondoActivo = modoActivo === 'FONDO_MANCOMUNADO';
 
-  const todasSanciones = await prisma.sancionAdelanto.findMany({
+  const rawSanciones = await prisma.sancionAdelanto.findMany({
     where: {
       estado: 'Aprobado',
+      NOT: {
+        estado: { in: ['Anulado', 'anulado', 'ANULADO', 'Rechazado', 'rechazado', 'Pendiente', 'pendiente'] },
+      },
       monto: { gt: 0 },
       concepto: { contains: 'Sanción' },
       ...(tiendaId ? { tiendaId } : {}),
@@ -228,13 +238,22 @@ export async function getEstadoFondoMancomunado(filtroRango?: { inicio?: string;
     orderBy: { fecha: 'desc' },
   });
 
-  const todosRetiros = await prisma.retiroFondo.findMany({
+  const todasSanciones = rawSanciones.filter(
+    (s) => (s.estado || '').trim().toLowerCase() === 'aprobado'
+  );
+
+  const rawRetiros = await prisma.retiroFondo.findMany({
     where: {
-      estado: { notIn: ['Anulado', 'Rechazado'] },
+      estado: { notIn: ['Anulado', 'anulado', 'ANULADO', 'Rechazado', 'rechazado', 'Eliminado'] },
       monto: { gt: 0 },
       ...(tiendaId ? { tiendaId } : {}),
     },
     orderBy: { fecha: 'desc' },
+  });
+
+  const todosRetiros = rawRetiros.filter((r) => {
+    const est = (r.estado || '').trim().toLowerCase();
+    return est !== 'anulado' && est !== 'rechazado' && est !== 'eliminado';
   });
 
   let totalIngresosHistorico = 0;
@@ -377,10 +396,13 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
     }
   });
 
-  // 2. Registros de propina válidos de la tienda
-  const registros = await prisma.registroPropina.findMany({
+  // 2. Registros de propina válidos de la tienda (Excluyendo estrictamente anulados y pendientes)
+  const rawRegistros = await prisma.registroPropina.findMany({
     where: {
       estado: 'Activo',
+      NOT: {
+        estado: { in: ['Anulado', 'anulado', 'ANULADO', 'Pendiente de Anulación', 'Eliminado', 'Rechazado'] },
+      },
       ...(fInicio && fFin ? { fecha: { gte: fInicio, lte: fFin } } : {}),
       ...(tiendaId ? { tiendaId } : {}),
     },
@@ -389,6 +411,10 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
     },
     orderBy: { fecha: 'asc' },
   });
+
+  const registros = rawRegistros.filter(
+    (r) => (r.estado || '').trim().toLowerCase() === 'activo'
+  );
 
   // 3. Procesar detalle de jornadas
   registros.forEach((reg) => {
@@ -421,6 +447,7 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
         fecha: reg.fecha,
         horas: det.horas,
         propina: det.propina,
+        estado: reg.estado,
       });
     });
   });
@@ -436,11 +463,13 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
 
   catalogo.forEach((c) => {
     const esActiva = c.estado.toLowerCase() === 'activo';
+    const frecVal =
+      c.frecuenciaMax !== undefined && c.frecuenciaMax !== null ? Math.max(0, c.frecuenciaMax) : 0;
     reglasActivas[c.infraccion] = esActiva;
-    mapLimites[c.infraccion] = c.frecuenciaMax || 1;
+    mapLimites[c.infraccion] = frecVal;
     if (c.infraccion.includes('Inasistencia injustificada')) {
       reglasActivas['Inasistencia injustificada'] = esActiva;
-      mapLimites['Inasistencia injustificada'] = c.frecuenciaMax || 1;
+      mapLimites['Inasistencia injustificada'] = frecVal;
     }
     if (c.infraccion === 'Abandono de trabajo' && esActiva) {
       reglasActivas['Abandono de estación'] = true;
@@ -450,21 +479,28 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
       reglasActivas['Inasistencia a capacitación / reunión'] = true;
       reglasActivas['Inasistencia a capacitacion / reunion'] = true;
       reglasActivas['Inasistencias a capacitacion / reunion'] = true;
-      mapLimites['Inasistencia a capacitación / reunión'] = c.frecuenciaMax || 1;
-      mapLimites['Inasistencia a capacitacion / reunion'] = c.frecuenciaMax || 1;
-      mapLimites['Inasistencias a capacitacion / reunion'] = c.frecuenciaMax || 1;
+      mapLimites['Inasistencia a capacitación / reunión'] = frecVal;
+      mapLimites['Inasistencia a capacitacion / reunion'] = frecVal;
+      mapLimites['Inasistencias a capacitacion / reunion'] = frecVal;
     }
   });
 
-  // 5. Sanciones y adelantos aprobados de la tienda
-  const sancionesAdelantos = await prisma.sancionAdelanto.findMany({
+  // 5. Sanciones y adelantos aprobados de la tienda (Excluyendo estrictamente anulados o rechazados)
+  const rawSancionesAdelantos = await prisma.sancionAdelanto.findMany({
     where: {
       estado: 'Aprobado',
+      NOT: {
+        estado: { in: ['Anulado', 'anulado', 'ANULADO', 'Rechazado', 'rechazado', 'Pendiente', 'pendiente'] },
+      },
       ...(fInicio && fFin ? { fecha: { gte: fInicio, lte: fFin } } : {}),
       ...(tiendaId ? { tiendaId } : {}),
     },
     orderBy: { fecha: 'asc' },
   });
+
+  const sancionesAdelantos = rawSancionesAdelantos.filter(
+    (item) => (item.estado || '').trim().toLowerCase() === 'aprobado'
+  );
 
   sancionesAdelantos.forEach((item) => {
     const nombre = item.colaborador.trim();
@@ -506,9 +542,10 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
         if (propinaGanadaEseDia > 0) {
           montoEfectivo = Math.round(propinaGanadaEseDia * 100) / 100;
           detalleEfectivo += ` | [Castigo Especial: Pérdida del 100% de propina del día ${fechaTarget} (S/ ${montoEfectivo.toFixed(2)})]`;
-        } else if (item.montoEspecialCalculado && item.montoEspecialCalculado > 0) {
-          montoEfectivo = item.montoEspecialCalculado;
-          detalleEfectivo += ` | [Castigo Especial: Pérdida de propina del día ${fechaTarget} (S/ ${montoEfectivo.toFixed(2)})]`;
+        } else {
+          // Si el día no tiene jornada activa registrada o fue anulado, no cobrar penalidad sobre propina inexistente
+          montoEfectivo = 0;
+          detalleEfectivo += ` | [Castigo Especial: Día ${fechaTarget} sin propina activa registrada o jornada anulada (S/ 0.00)]`;
         }
       }
 
@@ -579,7 +616,7 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
     Object.keys(c.conteoInfracciones).forEach((inf) => {
       const nombreLimpio = inf.replace('Sanción:', '').trim();
       if (!reglasActivas[nombreLimpio]) return;
-      const maxPermitido = mapLimites[nombreLimpio] || 1;
+      const maxPermitido = mapLimites[nombreLimpio] !== undefined ? mapLimites[nombreLimpio] : 0;
       if (c.conteoInfracciones[inf] > maxPermitido) {
         superoLimite = true;
       }

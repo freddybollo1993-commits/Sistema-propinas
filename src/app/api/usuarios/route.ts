@@ -10,6 +10,10 @@ export async function GET(request: Request) {
   try {
     const { tiendaId, user } = await resolveTiendaId(request);
 
+    if (!user) {
+      return NextResponse.json({ error: 'No autenticado: Inicie sesión para consultar usuarios.' }, { status: 401 });
+    }
+
     // Si es Usuario Maestro, puede ver todos los usuarios o filtrar por tienda si se indica
     const whereClause: any = {};
     if (!user?.esMaestro) {
@@ -46,7 +50,30 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const { tiendaId: activeTiendaId, user } = await resolveTiendaId(request);
-    const usuarioActual = user?.nombre || 'Sistema';
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'No autenticado. Inicie sesión para continuar.' },
+        { status: 401 }
+      );
+    }
+
+    const esAutorizado =
+      Boolean(user.esMaestro) ||
+      user.rol === 'Administrador' ||
+      user.rol === 'Supervisor';
+
+    if (!esAutorizado) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Acceso denegado: Se requieren permisos de Administrador o Supervisor para gestionar usuarios.',
+        },
+        { status: 403 }
+      );
+    }
+
+    const usuarioActual = user.nombre;
 
     const payload = await request.json();
 
