@@ -86,9 +86,18 @@ export default function ModCentralNeuralgica({ currentUser, onSelectTienda }: Mo
     }
   };
 
+  const esMaster = Boolean(
+    currentUser?.esMaestro ||
+    currentUser?.id === 'USR-MASTER' ||
+    currentUser?.rol?.toLowerCase().includes('master') ||
+    currentUser?.rol?.toLowerCase().includes('maestro')
+  );
+
   useEffect(() => {
-    cargarDatos();
-  }, []);
+    if (esMaster) {
+      cargarDatos();
+    }
+  }, [esMaster]);
 
   // Gráficos BI cuando se activa la pestaña BI
   useEffect(() => {
@@ -547,6 +556,32 @@ export default function ModCentralNeuralgica({ currentUser, onSelectTienda }: Mo
       r.diaSemana.toLowerCase().includes(txt)
     );
   });
+
+  if (!esMaster) {
+    return (
+      <div className="container-fluid py-5">
+        <div className="card border-0 shadow-sm rounded-4 p-5 text-center bg-white mx-auto" style={{ maxWidth: '600px' }}>
+          <div className="mb-3">
+            <span className="badge bg-danger-subtle text-danger p-3 rounded-circle">
+              <i className="bi bi-shield-lock-fill fs-1"></i>
+            </span>
+          </div>
+          <h4 className="fw-bold text-slate-900 mb-2">Acceso Exclusivo para Rango Master</h4>
+          <p className="text-secondary small mb-4">
+            El módulo <strong>Central Neurálgica (BI)</strong> consolida métricas financieras y análisis multi-sede de toda la corporación. Su acceso está reservado exclusivamente para cuentas con rango <strong>Master</strong>.
+          </p>
+          <div className="p-3 bg-light rounded-3 text-start small border">
+            <div className="text-muted fw-bold mb-1">
+              <i className="bi bi-info-circle me-1"></i> Detalle de Autorización:
+            </div>
+            <div>Usuario actual: <strong>{currentUser?.nombre || 'Usuario'}</strong></div>
+            <div>Rol: <span className="badge bg-secondary">{currentUser?.rol || 'Sin Rol'}</span></div>
+            <div>Estado de autorización: <span className="badge bg-danger">No Autorizado</span></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const kpis = datos?.kpis || {};
   const heatmapMatriz = datos?.analiticaBI?.matrizCalor || {};

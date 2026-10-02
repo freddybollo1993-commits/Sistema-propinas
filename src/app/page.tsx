@@ -285,10 +285,33 @@ export default function HomePage() {
             )}
             {currentModule === 'Dashboard' && <ModDashboard cicloInfo={cicloInfo} />}
             {currentModule === 'CentralNeuralgica' && (
-              <ModCentralNeuralgica
-                currentUser={currentUser}
-                onSelectTienda={handleSelectTienda}
-              />
+              (currentUser?.esMaestro || currentUser?.id === 'USR-MASTER' || currentUser?.rol?.toLowerCase().includes('master') || currentUser?.rol?.toLowerCase().includes('maestro')) ? (
+                <ModCentralNeuralgica
+                  currentUser={currentUser}
+                  onSelectTienda={handleSelectTienda}
+                />
+              ) : (
+                <div className="card p-5 border-0 shadow-sm rounded-4 text-center bg-white m-3">
+                  <div className="mb-3">
+                    <span className="badge bg-danger-subtle text-danger p-3 rounded-circle">
+                      <i className="bi bi-shield-lock-fill fs-1"></i>
+                    </span>
+                  </div>
+                  <h4 className="fw-bold text-slate-900 mb-2">Acceso Exclusivo para Rango Master</h4>
+                  <p className="text-secondary small mb-4 mx-auto" style={{ maxWidth: '520px' }}>
+                    La Central Neurálgica de Inteligencia de Negocios (BI) consolida información confidencial multi-sede y solo está autorizada para cuentas de administración corporativa con rango Master.
+                  </p>
+                  <div>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm px-4 shadow-xs"
+                      onClick={() => setCurrentModule('Dashboard')}
+                    >
+                      <i className="bi bi-arrow-left me-1"></i> Ir al Dashboard Local
+                    </button>
+                  </div>
+                </div>
+              )
             )}
             {currentModule === 'RegistroPropinas' && (
               <ModRegistroPropinas

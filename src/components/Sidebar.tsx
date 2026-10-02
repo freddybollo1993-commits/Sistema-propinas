@@ -51,13 +51,19 @@ export default function Sidebar({
   isOpenMobile = false,
   activeTiendaNombre,
 }: SidebarProps) {
+  const esMaster = Boolean(
+    currentUser?.esMaestro ||
+    currentUser?.id === 'USR-MASTER' ||
+    currentUser?.rol?.toLowerCase().includes('master') ||
+    currentUser?.rol?.toLowerCase().includes('maestro')
+  );
+
   const esAdminOMaestro =
     currentUser?.rol === 'Administrador' ||
-    currentUser?.esMaestro ||
-    currentUser?.id === 'USR-MASTER';
+    esMaster;
 
   const sections: MenuSection[] = [
-    ...(currentUser?.esMaestro
+    ...(esMaster
       ? [
           {
             title: 'Corporativo Multi-Sede',
@@ -68,6 +74,13 @@ export default function Sidebar({
                 label: 'Catálogo de Tiendas',
                 jpLabel: '店舗一覧',
                 icon: 'bi-grid-3x3-gap-fill',
+                maestroOnly: true,
+              },
+              {
+                id: 'CentralNeuralgica' as ModuleName,
+                label: 'Central Neurálgica (BI)',
+                jpLabel: '統合分析',
+                icon: 'bi-diagram-3',
                 maestroOnly: true,
               },
               {
@@ -86,7 +99,6 @@ export default function Sidebar({
       jpTitle: '業務統括',
       items: [
         { id: 'Dashboard', label: 'Dashboard Local', jpLabel: 'ダッシュボード', icon: 'bi-speedometer2' },
-        { id: 'CentralNeuralgica', label: 'Central Neurálgica (BI)', jpLabel: '統合分析', icon: 'bi-diagram-3' },
         { id: 'RegistroPropinas', label: 'Registro de Propinas', jpLabel: 'チップ記録', icon: 'bi-pencil-square' },
       ],
     },
@@ -164,6 +176,7 @@ export default function Sidebar({
         {sections.map((sec, sIdx) => {
           // Filtrar items según rol
           const visibleItems = sec.items.filter((item) => {
+            if (item.maestroOnly && !esMaster) return false;
             if (item.adminOnly && !esAdminOMaestro) return false;
             return true;
           });

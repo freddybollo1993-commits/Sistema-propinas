@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { resolveTiendaId } from '@/lib/tiendas';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,26 @@ const DIAS_ORDEN = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sába
 
 export async function GET(request: Request) {
   try {
+    const { user } = await resolveTiendaId(request);
+    const esMaster = Boolean(
+      user && (
+        user.esMaestro ||
+        user.id === 'USR-MASTER' ||
+        user.rol?.toLowerCase().includes('master') ||
+        user.rol?.toLowerCase().includes('maestro')
+      )
+    );
+
+    if (!esMaster) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Acceso denegado: El módulo Central Neurálgica está restringido exclusivamente a cuentas con rango Master.',
+        },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const filtroSede = searchParams.get('sede') || '';
     const fInicio = searchParams.get('inicio') || '';
