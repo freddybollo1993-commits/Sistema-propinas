@@ -365,6 +365,9 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
   const fInicio = filtroRango?.inicio || ciclo.fechaInicio;
   const fFin = filtroRango?.fin || ciclo.fechaFin;
 
+  const modoActivo = await getModoSanciones(tiendaId);
+  const esFondoMancomunado = modoActivo === 'FONDO_MANCOMUNADO';
+
   // 1. Obtener personal activo de la tienda
   const personal = await prisma.colaborador.findMany({
     where: {
@@ -531,8 +534,8 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
       let montoEfectivo = item.monto;
       let detalleEfectivo = item.detalle || 'Falta disciplinaria';
 
-      // Sanción Especial: Pérdida de la propina del día
-      if (item.esEspecial && item.tipoEfecto === 'PERDIDA_DIA') {
+      // Sanción Especial: Pérdida de la propina del día (Exclusivo de Modo Clásico, NUNCA en Fondo Mancomunado)
+      if (!esFondoMancomunado && item.esEspecial && item.tipoEfecto === 'PERDIDA_DIA') {
         const fechaTarget = item.fechaAfectada || item.fecha;
         const jornadasEseDia = colaboradores[nombre].detalleDias.filter(
           (d: any) => d.fecha === fechaTarget
@@ -612,38 +615,41 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
     }
   });
 
-  // 6. Evaluar pérdida del 100% por reincidencia
-  Object.keys(colaboradores).forEach((nombre) => {
-    const c = colaboradores[nombre];
-    let superoLimite = false;
-    Object.keys(c.conteoInfracciones).forEach((inf) => {
-      const nombreLimpio = inf.replace('Sanción:', '').trim();
-      if (!reglasActivas[nombreLimpio]) return;
-      const maxPermitido = mapLimites[nombreLimpio] !== undefined ? mapLimites[nombreLimpio] : 0;
-      if (c.conteoInfracciones[inf] > maxPermitido) {
-        superoLimite = true;
+  // 6. Evaluar pérdida del 100% por reincidencia (Exclusivo de Modo Clásico)
+  // En Fondo Mancomunado no aplican las condiciones del modelo clásico y NUNCA se pierde el 100% de la propina
+  if (!esFondoMancomunado) {
+    Object.keys(colaboradores).forEach((nombre) => {
+      const c = colaboradores[nombre];
+      let superoLimite = false;
+      Object.keys(c.conteoInfracciones).forEach((inf) => {
+        const nombreLimpio = inf.replace('Sanción:', '').trim();
+        if (!reglasActivas[nombreLimpio]) return;
+        const maxPermitido = mapLimites[nombreLimpio] !== undefined ? mapLimites[nombreLimpio] : 0;
+        if (c.conteoInfracciones[inf] > maxPermitido) {
+          superoLimite = true;
+        }
+      });
+      if (superoLimite) {
+        c.perdidaTotal = true;
       }
     });
-    if (superoLimite) {
-      c.perdidaTotal = true;
-    }
-  });
+  } else {
+    Object.keys(colaboradores).forEach((nombre) => {
+      colaboradores[nombre].perdidaTotal = false;
+    });
+  }
 
-  // 7. Modalidad activa: Clásico vs Fondo Mancomunado
-  const modoActivo = await getModoSanciones(tiendaId);
-  const esFondoMancomunado = modoActivo === 'FONDO_MANCOMUNADO';
-
+  // 7. Reparto equitativo en Modo Clásico vs Fondo Mancomunado
   let fondoRedistribuirTotal = 0;
   let fondoSalonTotal = 0;
   let fondoCocinaTotal = 0;
 
-  // Reparto equitativo en Modo Clásico
   Object.keys(colaboradores).forEach((nombre) => {
     const c = colaboradores[nombre];
     const esSalon = c.area.includes('Salón');
     let montoGenerado = 0;
 
-    if (c.perdidaTotal) {
+    if (!esFondoMancomunado && c.perdidaTotal) {
       // La redistribución por pérdida del 100% de propina incluye la diferencia
       // tras el adelanto + el adelanto mismo (es decir, el 100% de la propina acumulada
       // o el monto del adelanto recibido si fuese mayor, pues el sancionado no puede disfrutar de fondos del periodo).

@@ -398,7 +398,7 @@ export default function ModLiquidacion({
                     <tr key={c.colaborador}>
                       <td>
                         <strong className="text-slate-900">{c.colaborador}</strong>
-                        {c.perdidaTotal && (
+                        {!esFondo && c.perdidaTotal && (
                           <span
                             className="badge bg-danger ms-2"
                             title="Pérdida de 100% por reincidencia de sanciones"
@@ -622,7 +622,7 @@ export default function ModLiquidacion({
                               <tr>
                                 <td>(+) Propina Bruta Acumulada:</td>
                                 <td className="text-end fw-bold">
-                                  {boletaModal.colaborador.perdidaTotal
+                                  {!esFondo && boletaModal.colaborador.perdidaTotal
                                     ? 'S/ 0.00 (Retenido 100%)'
                                     : `S/ ${boletaModal.colaborador.propinaBruta.toFixed(2)}`}
                                 </td>
@@ -653,7 +653,7 @@ export default function ModLiquidacion({
                                   S/ {boletaModal.colaborador.montoNeto.toFixed(2)}
                                 </td>
                               </tr>
-                              {boletaModal.colaborador.perdidaTotal && boletaModal.colaborador.adelantos > 0 && (
+                              {!esFondo && boletaModal.colaborador.perdidaTotal && boletaModal.colaborador.adelantos > 0 && (
                                 <tr className="bg-danger-subtle text-danger border-top border-danger">
                                   <td className="fw-bold py-1" style={{ fontSize: '7.5pt' }}>
                                     <i className="bi bi-exclamation-triangle-fill text-danger me-1"></i>
@@ -667,7 +667,7 @@ export default function ModLiquidacion({
                             </tbody>
                           </table>
 
-                          {boletaModal.colaborador.perdidaTotal && boletaModal.colaborador.adelantos > 0 && (
+                          {!esFondo && boletaModal.colaborador.perdidaTotal && boletaModal.colaborador.adelantos > 0 && (
                             <div
                               className="alert alert-danger p-2 mt-2 mb-0 border border-danger-subtle rounded"
                               style={{ fontSize: '7.5pt', lineHeight: 1.35 }}
@@ -958,7 +958,7 @@ export default function ModLiquidacion({
             </thead>
             <tbody>
               {datos?.lista?.map((c: any, idx: number) => {
-                const aviso = c.perdidaTotal ? ' [100% Retenido]' : '';
+                const aviso = !esFondo && c.perdidaTotal ? ' [100% Retenido]' : '';
                 return (
                   <tr key={c.colaborador}>
                     <td>{idx + 1}</td>
@@ -1195,7 +1195,7 @@ export default function ModLiquidacion({
                       <tr>
                         <td>(+) Propina Bruta Acumulada:</td>
                         <td className="text-end fw-bold">
-                          {boletaModal.colaborador.perdidaTotal
+                          {!esFondo && boletaModal.colaborador.perdidaTotal
                             ? 'S/ 0.00 (Retenido 100%)'
                             : `S/ ${boletaModal.colaborador.propinaBruta.toFixed(2)}`}
                         </td>
@@ -1226,7 +1226,7 @@ export default function ModLiquidacion({
                           S/ {boletaModal.colaborador.montoNeto.toFixed(2)}
                         </td>
                       </tr>
-                      {boletaModal.colaborador.perdidaTotal && boletaModal.colaborador.adelantos > 0 && (
+                      {!esFondo && boletaModal.colaborador.perdidaTotal && boletaModal.colaborador.adelantos > 0 && (
                         <tr style={{ background: '#fee2e2', color: '#b91c1c' }}>
                           <td style={{ fontWeight: 'bold', fontSize: '7pt', paddingTop: '2px', paddingBottom: '2px' }}>
                             [!] SALDO DEUDOR A DEVOLVER:
@@ -1239,7 +1239,7 @@ export default function ModLiquidacion({
                     </tbody>
                   </table>
 
-                  {boletaModal.colaborador.perdidaTotal && boletaModal.colaborador.adelantos > 0 && (
+                  {!esFondo && boletaModal.colaborador.perdidaTotal && boletaModal.colaborador.adelantos > 0 && (
                     <div
                       style={{
                         marginTop: '4px',
