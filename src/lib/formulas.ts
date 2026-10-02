@@ -714,7 +714,7 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
     } else if (c.perdidaTotal) {
       c.bonoRedistribucion = 0;
       c.motivoBono = c.adelantos > 0
-        ? `No aplica (Pérdida del 100% de propina por sanción. Su propina acumulada y el adelanto de S/ ${c.adelantos.toFixed(2)} fueron redistribuidos al equipo).`
+        ? `No aplica (Pérdida del 100% de propina por sanción. Su propina acumulada y el adelanto de S/ ${c.adelantos.toFixed(2)} fueron redistribuidos al equipo. Saldo deudor de S/ ${c.adelantos.toFixed(2)} pendiente de devolución por el trabajador al fondo).`
         : 'No aplica (Pérdida del 100% de propinas por superar la frecuencia máxima de sanciones permitidas).';
     } else if (c.area.toLowerCase().includes('apoyo')) {
       c.bonoRedistribucion = 0;

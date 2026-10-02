@@ -653,8 +653,34 @@ export default function ModLiquidacion({
                                   S/ {boletaModal.colaborador.montoNeto.toFixed(2)}
                                 </td>
                               </tr>
+                              {boletaModal.colaborador.perdidaTotal && boletaModal.colaborador.adelantos > 0 && (
+                                <tr className="bg-danger-subtle text-danger border-top border-danger">
+                                  <td className="fw-bold py-1" style={{ fontSize: '7.5pt' }}>
+                                    <i className="bi bi-exclamation-triangle-fill text-danger me-1"></i>
+                                    SALDO DEUDOR A DEVOLVER:
+                                  </td>
+                                  <td className="text-end fw-bold py-1" style={{ fontSize: '8.5pt', color: '#b91c1c' }}>
+                                    S/ {boletaModal.colaborador.adelantos.toFixed(2)}
+                                  </td>
+                                </tr>
+                              )}
                             </tbody>
                           </table>
+
+                          {boletaModal.colaborador.perdidaTotal && boletaModal.colaborador.adelantos > 0 && (
+                            <div
+                              className="alert alert-danger p-2 mt-2 mb-0 border border-danger-subtle rounded"
+                              style={{ fontSize: '7.5pt', lineHeight: 1.35 }}
+                            >
+                              <div className="fw-bold text-danger mb-1">
+                                <i className="bi bi-exclamation-octagon-fill me-1"></i>
+                                Compromiso de Devolución al Fondo:
+                              </div>
+                              <span className="text-slate-700">
+                                Por sanción del 100% de propina, el colaborador no percibe propinas en este ciclo y debe devolver <strong>S/ {boletaModal.colaborador.adelantos.toFixed(2)}</strong> correspondiente al adelanto recibido en efectivo para saldar la deuda generada al fondo común.
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -1200,8 +1226,35 @@ export default function ModLiquidacion({
                           S/ {boletaModal.colaborador.montoNeto.toFixed(2)}
                         </td>
                       </tr>
+                      {boletaModal.colaborador.perdidaTotal && boletaModal.colaborador.adelantos > 0 && (
+                        <tr style={{ background: '#fee2e2', color: '#b91c1c' }}>
+                          <td style={{ fontWeight: 'bold', fontSize: '7pt', paddingTop: '2px', paddingBottom: '2px' }}>
+                            [!] SALDO DEUDOR A DEVOLVER:
+                          </td>
+                          <td className="text-end" style={{ fontWeight: 'bold', fontSize: '7.5pt', color: '#b91c1c', paddingTop: '2px', paddingBottom: '2px' }}>
+                            S/ {boletaModal.colaborador.adelantos.toFixed(2)}
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
+
+                  {boletaModal.colaborador.perdidaTotal && boletaModal.colaborador.adelantos > 0 && (
+                    <div
+                      style={{
+                        marginTop: '4px',
+                        padding: '4px 6px',
+                        background: '#fef2f2',
+                        border: '1px solid #f87171',
+                        borderRadius: '4px',
+                        fontSize: '6.5pt',
+                        lineHeight: 1.25,
+                        color: '#991b1b',
+                      }}
+                    >
+                      <strong>Aviso de Regularización:</strong> Por sanción del 100%, el colaborador no percibe propinas y debe devolver <strong>S/ {boletaModal.colaborador.adelantos.toFixed(2)}</strong> del adelanto recibido para saldar la deuda generada al fondo.
+                    </div>
+                  )}
                 </div>
               </div>
 
