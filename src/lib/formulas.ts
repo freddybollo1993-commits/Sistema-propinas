@@ -385,6 +385,7 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
         detalleSanciones: [],
         detalleAdelantos: [],
         propinaBruta: 0,
+        propinaBrutaOriginal: 0,
         sanciones: 0,
         adelantos: 0,
         conteoInfracciones: {} as Record<string, number>,
@@ -430,6 +431,7 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
           detalleSanciones: [],
           detalleAdelantos: [],
           propinaBruta: 0,
+          propinaBrutaOriginal: 0,
           sanciones: 0,
           adelantos: 0,
           conteoInfracciones: {},
@@ -442,6 +444,7 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
       colaboradores[nombre].horasTrabajadas += det.horas;
       if (reg.fecha) colaboradores[nombre].diasSet.add(reg.fecha);
       colaboradores[nombre].propinaBruta += det.propina;
+      colaboradores[nombre].propinaBrutaOriginal += det.propina;
       colaboradores[nombre].detalleDias.push({
         idRegistro: reg.id,
         fecha: reg.fecha,
@@ -641,8 +644,13 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
     let montoGenerado = 0;
 
     if (c.perdidaTotal) {
-      montoGenerado = Math.max(0, c.propinaBruta - c.adelantos);
-      c.propinaBruta = 0; // Propina confiscada
+      // La redistribución por pérdida del 100% de propina incluye la diferencia
+      // tras el adelanto + el adelanto mismo (es decir, el 100% de la propina acumulada
+      // o el monto del adelanto recibido si fuese mayor, pues el sancionado no puede disfrutar de fondos del periodo).
+      const propinaBase = c.propinaBrutaOriginal || c.propinaBruta;
+      const diferencia = Math.max(0, propinaBase - c.adelantos);
+      montoGenerado = diferencia + c.adelantos;
+      c.propinaBruta = 0; // Se anula la percepción neta individual del sancionado
     } else {
       montoGenerado = c.sanciones;
     }
@@ -665,11 +673,31 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
         );
       });
 
-      if (!esFondoMancomunado && destinatarios.length > 0) {
-        const cuota = montoGenerado / destinatarios.length;
-        destinatarios.forEach((destNombre) => {
-          colaboradores[destNombre].bonoRedistribucion += cuota;
-        });
+      if (!esFondoMancomunado) {
+        if (destinatarios.length > 0) {
+          const cuota = montoGenerado / destinatarios.length;
+          destinatarios.forEach((destNombre) => {
+            colaboradores[destNombre].bonoRedistribucion += cuota;
+          });
+        } else {
+          // Si no hay compañeros en su misma área, redistribuir entre el resto del personal activo del local
+          const destinatariosGlobales = Object.keys(colaboradores).filter((destNombre) => {
+            const dest = colaboradores[destNombre];
+            const destEsApoyo = dest.area.toLowerCase().includes('apoyo');
+            return (
+              destNombre !== nombre &&
+              !dest.perdidaTotal &&
+              !destEsApoyo &&
+              dest.horasTrabajadas > 0
+            );
+          });
+          if (destinatariosGlobales.length > 0) {
+            const cuotaGlobal = montoGenerado / destinatariosGlobales.length;
+            destinatariosGlobales.forEach((destNombre) => {
+              colaboradores[destNombre].bonoRedistribucion += cuotaGlobal;
+            });
+          }
+        }
       }
     }
   });
@@ -685,8 +713,9 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
         'No aplica (Modo Fondo Mancomunado: las sanciones no se redistribuyen; alimentan el fondo común del personal).';
     } else if (c.perdidaTotal) {
       c.bonoRedistribucion = 0;
-      c.motivoBono =
-        'No aplica (Pérdida del 100% de propinas por superar la frecuencia máxima de sanciones permitidas).';
+      c.motivoBono = c.adelantos > 0
+        ? `No aplica (Pérdida del 100% de propina por sanción. Su propina acumulada y el adelanto de S/ ${c.adelantos.toFixed(2)} fueron redistribuidos al equipo).`
+        : 'No aplica (Pérdida del 100% de propinas por superar la frecuencia máxima de sanciones permitidas).';
     } else if (c.area.toLowerCase().includes('apoyo')) {
       c.bonoRedistribucion = 0;
       c.motivoBono = 'No aplica (Personal de Apoyo).';
@@ -710,9 +739,13 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
     const c = colaboradores[nombre];
     const diasTrabajados = c.diasSet.size;
     const deduccionesTotal = c.sanciones + c.adelantos;
-    const montoNeto = Math.max(0, c.propinaBruta - deduccionesTotal + c.bonoRedistribucion);
+    const montoNeto = c.perdidaTotal
+      ? 0
+      : Math.max(0, c.propinaBruta - deduccionesTotal + c.bonoRedistribucion);
 
-    totalBruto += c.propinaBruta;
+    const propinaBrutaReporte = c.propinaBrutaOriginal !== undefined ? c.propinaBrutaOriginal : c.propinaBruta;
+
+    totalBruto += propinaBrutaReporte;
     totalDeducciones += deduccionesTotal;
     totalNetoGeneral += montoNeto;
 
@@ -728,7 +761,8 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
       detalleSanciones: c.detalleSanciones.sort((a: any, b: any) => (a.fecha > b.fecha ? 1 : -1)),
       detalleAdelantos: c.detalleAdelantos.sort((a: any, b: any) => (a.fecha > b.fecha ? 1 : -1)),
       motivoBono: c.motivoBono || 'Sin bonificación',
-      propinaBruta: Math.round(c.propinaBruta * 100) / 100,
+      propinaBruta: Math.round(propinaBrutaReporte * 100) / 100,
+      propinaBrutaOriginal: Math.round(propinaBrutaReporte * 100) / 100,
       sanciones: Math.round(c.sanciones * 100) / 100,
       adelantos: Math.round(c.adelantos * 100) / 100,
       deducciones: Math.round(deduccionesTotal * 100) / 100,

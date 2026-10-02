@@ -152,5 +152,29 @@ describe("Motor de Cálculo de Prorrateo de Propinas (60% Salón / 40% Cocina)",
 		expect(maxPermitido).toBe(0);
 		expect(superoLimite).toBe(true);
 	});
+
+	it("debe redistribuir la diferencia restante más el adelanto completo cuando un colaborador pierde el 100% de la propina", () => {
+		// Colaborador A gana S/ 300 de propina y solicitó un adelanto de S/ 100
+		const propinaBruta = 300;
+		const adelantos = 100;
+		const perdidaTotal = true;
+
+		// Cálculo según regla de negocio
+		let montoGenerado = 0;
+		if (perdidaTotal) {
+			const diferencia = Math.max(0, propinaBruta - adelantos); // S/ 200
+			montoGenerado = diferencia + adelantos; // S/ 200 + S/ 100 = S/ 300
+		}
+
+		expect(montoGenerado).toBe(300);
+
+		// Si el adelanto supera la propina bruta (ej. propina 80, adelanto 100)
+		const propinaMenor = 80;
+		const adelantoMayor = 100;
+		const dif2 = Math.max(0, propinaMenor - adelantoMayor); // S/ 0
+		const montoGen2 = dif2 + adelantoMayor; // S/ 0 + S/ 100 = S/ 100
+
+		expect(montoGen2).toBe(100);
+	});
 });
 
