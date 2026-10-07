@@ -187,14 +187,14 @@
     "modPin": "7BDBFD"
   },
   {
-    "tienda": "Puruchuko",
-    "slug": "puruchuko",
+    "tienda": "Puruchuco",
+    "slug": "puruchuco",
     "modalidad": "CLASICO",
-    "adminLogin": "admin.puruchuko@propinas.pe",
+    "adminLogin": "admin.puruchuco@propinas.pe",
     "adminPin": "EAD05E",
-    "superLogin": "super.puruchuko@propinas.pe",
+    "superLogin": "super.puruchuco@propinas.pe",
     "superPin": "E5CB7D",
-    "modLogin": "mod.puruchuko@propinas.pe",
+    "modLogin": "mod.puruchuco@propinas.pe",
     "modPin": "14B8EB"
   },
   {

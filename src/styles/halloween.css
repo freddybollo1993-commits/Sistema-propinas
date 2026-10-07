@@ -1,0 +1,252 @@
+/* ========================================================
+   🎃 SHIMAYA TAKUMI — EDICIÓN HALLOWEEN (ハロウィン特別仕様)
+   Atmósfera: Noche de Brujas, Yōkai, Calabazas & Fuego Místico
+   ======================================================== */
+
+[data-theme="halloween"],
+body.theme-halloween {
+	/* ========================================================
+     PALETA HALLOWEEN (CALABAZA, CENIZA OBSIDIANA & VIOLETA BRUJA)
+  ======================================================== */
+	/* Pumpkin Ember & Jack-o'-Lantern Flame (Color Primario Festivo) */
+	--torii-red: #ff7518;
+	--torii-red-hover: #ea580c;
+	--torii-red-dark: #c2410c;
+	--torii-red-light: #fff7ed;
+	--torii-red-glow: rgba(255, 117, 24, 0.38);
+	--torii-red-subtle: rgba(255, 117, 24, 0.12);
+
+	/* Primario del Sistema */
+	--primary: #ff7518;
+	--primary-hover: #ea580c;
+	--primary-active: #c2410c;
+	--primary-light: #fff7ed;
+	--primary-glow: rgba(255, 117, 24, 0.38);
+	--primary-color: #ff7518;
+
+	/* Witch Violet & Yōkai Twilight (Acento Analítico y BI) */
+	--ai-indigo-900: #160c2b;
+	--ai-indigo-700: #4c1d95;
+	--ai-indigo-500: #7c3aed;
+	--ai-indigo-300: #a78bfa;
+	--ai-indigo-50: #f5f3ff;
+
+	/* Fondo Cálido de Pergamino Otoñal con Tono Calabaza */
+	--washi-bg: #fdfaf7;
+	--washi-surface: #ffffff;
+	--washi-card: #ffffff;
+	--washi-border: #fed7aa;
+	--washi-border-subtle: #ffedd5;
+
+	/* Barra Lateral Mística Nocturna (Obsidiana + Violeta Profundo) */
+	--sidebar-bg: linear-gradient(180deg, #0d0816 0%, #180f29 45%, #090510 100%);
+	--sidebar-border: rgba(255, 117, 24, 0.18);
+}
+
+/* Fondo decorativo con tenue patrón otoñal/estrellas para Halloween */
+body.theme-halloween,
+[data-theme="halloween"] body {
+	background-color: #fdfaf7;
+	background-image:
+		radial-gradient(#fed7aa 0.85px, transparent 0.85px),
+		radial-gradient(rgba(124, 58, 237, 0.08) 0.85px, transparent 0.85px);
+	background-size:
+		26px 26px,
+		52px 52px;
+	background-position:
+		0 0,
+		13px 13px;
+}
+
+/* ========================================================
+   SIDEBAR HALLOWEEN (CALABAZA & NOCHE PROFUNDA)
+======================================================== */
+[data-theme="halloween"] .sidebar {
+	border-right: 1px solid rgba(255, 117, 24, 0.22);
+	box-shadow: 6px 0 32px rgba(13, 8, 22, 0.45);
+}
+
+[data-theme="halloween"] .sidebar-brand {
+	background: radial-gradient(
+		circle at top left,
+		rgba(255, 117, 24, 0.28) 0%,
+		rgba(124, 58, 237, 0.18) 55%,
+		transparent 80%
+	);
+	border-bottom: 1px solid rgba(255, 117, 24, 0.18);
+}
+
+[data-theme="halloween"] .sidebar-brand .brand-logo-wrapper img {
+	border-color: rgba(255, 165, 0, 0.5);
+	box-shadow:
+		0 4px 18px rgba(255, 117, 24, 0.5),
+		0 0 8px rgba(124, 58, 237, 0.4);
+}
+
+[data-theme="halloween"] .sidebar-brand-japanese {
+	color: #ff9238;
+	text-shadow: 0 0 10px rgba(255, 117, 24, 0.5);
+}
+
+[data-theme="halloween"] .sidebar-store-capsule {
+	background: rgba(255, 117, 24, 0.06);
+	border: 1px solid rgba(255, 117, 24, 0.2);
+}
+
+[data-theme="halloween"] .sidebar-store-capsule:hover {
+	background: rgba(255, 117, 24, 0.12);
+	border-color: rgba(255, 117, 24, 0.4);
+}
+
+[data-theme="halloween"] .sidebar-store-capsule i.bi-shop {
+	color: #ff9238 !important;
+}
+
+[data-theme="halloween"] .sidebar .nav-link {
+	color: #cbd5e1;
+}
+
+[data-theme="halloween"] .sidebar .nav-link:hover {
+	background: rgba(255, 117, 24, 0.1);
+	color: #fed7aa;
+}
+
+[data-theme="halloween"] .sidebar .nav-link:hover i {
+	color: #ff9238;
+}
+
+[data-theme="halloween"] .sidebar .nav-link.active {
+	background: linear-gradient(135deg, #ff7518 0%, #ea580c 60%, #c2410c 100%);
+	color: #ffffff;
+	box-shadow: 0 4px 18px rgba(255, 117, 24, 0.45);
+	border: 1px solid rgba(254, 215, 170, 0.35);
+}
+
+[data-theme="halloween"] .sidebar .nav-link.active i {
+	color: #fff;
+}
+
+/* ========================================================
+   TOPBAR GLASSMORPHIC HALLOWEEN
+======================================================== */
+[data-theme="halloween"] .navbar-top {
+	background: rgba(255, 255, 255, 0.94);
+	border-bottom: 1px solid rgba(254, 215, 170, 0.85);
+	box-shadow: 0 2px 12px rgba(234, 88, 12, 0.06);
+}
+
+[data-theme="halloween"] .btn-toggle-sidebar:hover {
+	background: #fff7ed;
+	color: #ea580c;
+	border-color: rgba(255, 117, 24, 0.4);
+}
+
+/* ========================================================
+   BOTONES FESTIVOS
+======================================================== */
+[data-theme="halloween"] .btn-primary {
+	background: linear-gradient(135deg, #ff7518 0%, #ea580c 100%);
+	border: none;
+	color: #ffffff;
+	box-shadow: 0 2px 10px rgba(255, 117, 24, 0.35);
+}
+
+[data-theme="halloween"] .btn-primary:hover {
+	background: linear-gradient(135deg, #fb923c 0%, #ff7518 100%);
+	color: #ffffff;
+	box-shadow: 0 4px 16px rgba(255, 117, 24, 0.48);
+	transform: translateY(-1px);
+}
+
+[data-theme="halloween"] .btn-primary:active,
+[data-theme="halloween"] .btn-primary:focus {
+	background: #c2410c !important;
+	color: #ffffff;
+	box-shadow: 0 0 0 3px rgba(255, 117, 24, 0.35) !important;
+}
+
+[data-theme="halloween"] .btn-outline-primary {
+	border-color: rgba(255, 117, 24, 0.45);
+	color: #ea580c;
+	background: #ffffff;
+}
+
+[data-theme="halloween"] .btn-outline-primary:hover {
+	background: #fff7ed;
+	border-color: #ff7518;
+	color: #c2410c;
+}
+
+/* ========================================================
+   BADGES & FORM CONTROLS
+======================================================== */
+[data-theme="halloween"] .badge-subtle-primary,
+[data-theme="halloween"] .bg-primary-subtle {
+	background: #fff7ed !important;
+	color: #ea580c !important;
+	border: 1px solid rgba(255, 117, 24, 0.3);
+}
+
+[data-theme="halloween"] .form-control:focus,
+[data-theme="halloween"] .form-select:focus {
+	border-color: #ff7518;
+	box-shadow: 0 0 0 3px rgba(255, 117, 24, 0.22);
+}
+
+[data-theme="halloween"] .nav-tabs .nav-link.active {
+	color: #ea580c;
+	border-bottom: 2px solid #ff7518;
+}
+
+[data-theme="halloween"] .stat-kpi-card.accent-red::before {
+	background: linear-gradient(180deg, #ff7518 0%, #ea580c 100%);
+}
+
+[data-theme="halloween"] .hanko-stamp {
+	border-color: #ff7518;
+	color: #ea580c;
+	background: rgba(255, 117, 24, 0.06);
+	box-shadow: 0 0 0 1px rgba(255, 117, 24, 0.2) inset;
+}
+
+/* ========================================================
+   ELEMENTOS DECORATIVOS FESTIVOS (CALABAZA, TELARAÑA SUTIL)
+======================================================== */
+.halloween-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	background: linear-gradient(135deg, #ff7518 0%, #7c3aed 100%);
+	color: #ffffff;
+	padding: 3px 9px;
+	border-radius: var(--radius-pill);
+	font-size: 0.7rem;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	box-shadow: 0 2px 8px rgba(255, 117, 24, 0.3);
+	user-select: none;
+}
+
+.halloween-flame-pulse {
+	animation: halloweenFlame 2.5s infinite alternate ease-in-out;
+}
+
+@keyframes halloweenFlame {
+	0% {
+		filter: drop-shadow(0 0 2px rgba(255, 117, 24, 0.4));
+	}
+	100% {
+		filter: drop-shadow(0 0 8px rgba(255, 117, 24, 0.8));
+	}
+}
+
+/* Indicador de cambio de tema */
+.theme-switcher-btn {
+	transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+	font-size: 0.8rem;
+	font-weight: 600;
+}
+
+.theme-switcher-btn:hover {
+	transform: translateY(-1px) scale(1.03);
+}

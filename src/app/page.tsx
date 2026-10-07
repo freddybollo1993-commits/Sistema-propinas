@@ -20,6 +20,7 @@ import ModLiquidacion from '@/components/modules/ModLiquidacion';
 import ModAuditoria from '@/components/modules/ModAuditoria';
 import ModUsuarios from '@/components/modules/ModUsuarios';
 import ModCredencialesTiendas from '@/components/modules/ModCredencialesTiendas';
+import ModalNotificaciones from '@/components/ModalNotificaciones';
 
 export default function HomePage() {
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
@@ -52,6 +53,11 @@ export default function HomePage() {
   // Key de recarga forzada para componentes que necesiten refrescar datos tras cambio de tienda o eliminación
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // Notificaciones de solicitudes pendientes (Admin/Supervisor)
+  const [solicitudesPendientes, setSolicitudesPendientes] = useState<any[]>([]);
+  const [cargandoNotif, setCargandoNotif] = useState(false);
+  const [modalNotifShow, setModalNotifShow] = useState(false);
+
   useEffect(() => {
     verificarSesion();
   }, []);
@@ -62,6 +68,21 @@ export default function HomePage() {
       cargarCicloActivo();
     }
   }, [currentUser]);
+
+  // Cargar notificaciones al montar (si es Admin/Supervisor) y al cambiar de tienda
+  useEffect(() => {
+    const esAprobador =
+      currentUser?.rol === 'Administrador' ||
+      currentUser?.rol === 'Supervisor' ||
+      currentUser?.esMaestro;
+
+    if (currentUser && esAprobador) {
+      cargarSolicitudesPendientes();
+      // Polling cada 60 segundos
+      const intervalo = setInterval(cargarSolicitudesPendientes, 60_000);
+      return () => clearInterval(intervalo);
+    }
+  }, [currentUser, activeTiendaId]);
 
   const verificarSesion = async () => {
     try {
@@ -146,6 +167,37 @@ export default function HomePage() {
     } catch (e) {}
     setCurrentUser(null);
     setCurrentModule('Dashboard');
+  };
+
+  const cargarSolicitudesPendientes = async () => {
+    try {
+      setCargandoNotif(true);
+      const res = await fetch('/api/solicitudes');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.lista)) {
+        setSolicitudesPendientes(data.lista);
+      }
+    } catch (e) {
+      console.error('Error al cargar solicitudes pendientes:', e);
+    } finally {
+      setCargandoNotif(false);
+    }
+  };
+
+  const handleResolverSolicitud = async (id: number, accion: 'Aprobado' | 'Rechazado') => {
+    const res = await fetch('/api/solicitudes/resolver', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, nuevaAccion: accion }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      // Remover de la lista local inmediatamente y refrescar
+      setSolicitudesPendientes((prev) => prev.filter((s) => s.id !== id));
+      setRefreshKey((k) => k + 1);
+    } else {
+      alert(data.message || 'Error al resolver la solicitud.');
+    }
   };
 
   useEffect(() => {
@@ -250,6 +302,11 @@ export default function HomePage() {
           onOpenCrearTienda={() => setModalNuevaTiendaShow(true)}
           onOpenCatalogo={() => setCurrentModule('CatalogoTiendas')}
           onOpenCredenciales={() => setCurrentModule('CredencialesTiendas')}
+          notificacionesPendientes={solicitudesPendientes.length}
+          onOpenNotificaciones={() => {
+            setModalNotifShow(true);
+            cargarSolicitudesPendientes();
+          }}
         />
 
         {/* Notificación de Modo Moderador */}
@@ -378,6 +435,16 @@ export default function HomePage() {
           setModalMaster({ show: false, modulo: '', idOParam: '', descripcionVisual: '' })
         }
         onConfirmSuccess={() => setRefreshKey((k) => k + 1)}
+      />
+
+      {/* Modal de Notificaciones Pendientes (Admin/Supervisor) */}
+      <ModalNotificaciones
+        show={modalNotifShow}
+        solicitudes={solicitudesPendientes}
+        cargando={cargandoNotif}
+        onClose={() => setModalNotifShow(false)}
+        onResolver={handleResolverSolicitud}
+        onRecargar={cargarSolicitudesPendientes}
       />
     </div>
   );

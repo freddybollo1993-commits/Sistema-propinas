@@ -1,0 +1,36 @@
+/* ========================================================
+   🎋 SHIMAYA TAKUMI — TEMA ORIGINAL (和風クラシック仕様)
+   Respaldo y definición de la identidad visual clásica corporativa
+   ======================================================== */
+
+[data-theme="original"],
+body.theme-original {
+	--torii-red: #d92d20;
+	--torii-red-hover: #b42318;
+	--torii-red-dark: #912018;
+	--torii-red-light: #fef3f2;
+	--torii-red-glow: rgba(217, 45, 32, 0.28);
+	--torii-red-subtle: rgba(217, 45, 32, 0.08);
+
+	--primary: #c92a2a;
+	--primary-hover: #a51d24;
+	--primary-active: #82151b;
+	--primary-light: #fff5f5;
+	--primary-glow: rgba(201, 42, 42, 0.25);
+	--primary-color: #c92a2a;
+
+	--ai-indigo-900: #0c2340;
+	--ai-indigo-700: #18426d;
+	--ai-indigo-500: #1e5a96;
+	--ai-indigo-300: #74a0cb;
+	--ai-indigo-50: #f0f7fc;
+
+	--washi-bg: #f8f9fa;
+	--washi-surface: #ffffff;
+	--washi-card: #ffffff;
+	--washi-border: #e9ecef;
+	--washi-border-subtle: #edf2f7;
+
+	--sidebar-bg: linear-gradient(180deg, #0c1017 0%, #111722 50%, #0a0d13 100%);
+	--sidebar-border: rgba(255, 255, 255, 0.08);
+}
