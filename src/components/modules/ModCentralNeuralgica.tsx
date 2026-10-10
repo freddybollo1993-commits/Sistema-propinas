@@ -696,38 +696,42 @@ export default function ModCentralNeuralgica({ currentUser, onSelectTienda }: Mo
               </div>
             </div>
 
-            <div className="d-flex align-items-center gap-2 flex-wrap">
+            <div className="d-flex align-items-stretch align-items-md-center gap-2 flex-column flex-sm-row flex-wrap w-100 w-md-auto">
               <button
                 type="button"
-                className="btn btn-info btn-sm fw-semibold shadow-sm text-dark d-flex align-items-center gap-1"
+                className="btn btn-info btn-sm fw-bold shadow-sm text-dark d-flex align-items-center justify-content-center gap-2 py-2 py-sm-1"
                 onClick={() => {
                   setModalApiOpen(true);
                   cargarApiKeyInfo();
                 }}
               >
-                <i className="bi bi-key-fill text-dark"></i> API Externa
+                <i className="bi bi-key-fill text-dark fs-6"></i>
+                <span>API Externa & Credenciales</span>
               </button>
               <button
                 type="button"
-                className="btn btn-warning btn-sm fw-semibold shadow-sm text-dark d-flex align-items-center gap-1"
+                className="btn btn-warning btn-sm fw-semibold shadow-sm text-dark d-flex align-items-center justify-content-center gap-2 py-2 py-sm-1"
                 onClick={() => setModalLookerOpen(true)}
               >
-                <i className="bi bi-bar-chart-steps"></i> Looker Studio
+                <i className="bi bi-bar-chart-steps"></i>
+                <span>Looker Studio</span>
               </button>
               <button
                 type="button"
-                className="btn btn-outline-light btn-sm fw-semibold shadow-sm d-flex align-items-center gap-1"
+                className="btn btn-outline-light btn-sm fw-semibold shadow-sm d-flex align-items-center justify-content-center gap-2 py-2 py-sm-1"
                 onClick={() => setModalDirectorioOpen(true)}
               >
-                <i className="bi bi-shop"></i> Directorio ({datos?.sedesDisponibles?.length || 0} Sedes)
+                <i className="bi bi-shop"></i>
+                <span>Directorio ({datos?.sedesDisponibles?.length || 0} Sedes)</span>
               </button>
               <button
                 type="button"
-                className="btn btn-primary btn-sm fw-bold shadow-sm d-flex align-items-center gap-1 px-3"
+                className="btn btn-primary btn-sm fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2 px-3 py-2 py-sm-1"
                 onClick={() => cargarDatos()}
                 disabled={cargando}
               >
-                <i className={`bi bi-arrow-repeat ${cargando ? 'spin' : ''}`}></i> Refrescar Red
+                <i className={`bi bi-arrow-repeat ${cargando ? 'spin' : ''}`}></i>
+                <span>Refrescar Red</span>
               </button>
             </div>
           </div>
