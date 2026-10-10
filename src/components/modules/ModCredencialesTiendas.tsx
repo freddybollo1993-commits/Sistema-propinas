@@ -48,8 +48,24 @@ export default function ModCredencialesTiendas({
   const [mostrarPins, setMostrarPins] = useState(true);
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
 
+  // Estados de API Key para Central Neurálgica
+  const [apiKeyValor, setApiKeyValor] = useState<string>('cn_live_8f3a9b4c2e1d7065e94b28a1c9704e52');
+  const [apiEndpointUrl, setApiEndpointUrl] = useState<string>('https://propinas-one.vercel.app/api/v1/central-neuralgica');
+  const [mostrarApiKey, setMostrarApiKey] = useState(false);
+  const [copiarEndpointFeedback, setCopiarEndpointFeedback] = useState(false);
+  const [copiarKeyFeedback, setCopiarKeyFeedback] = useState(false);
+
   useEffect(() => {
     cargarCredenciales();
+    fetch('/api/central-dashboard/api-key')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) {
+          if (d.apiKey) setApiKeyValor(d.apiKey);
+          if (d.endpoints?.v1) setApiEndpointUrl(d.endpoints.v1);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const cargarCredenciales = async () => {
@@ -285,6 +301,106 @@ export default function ModCredencialesTiendas({
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tarjeta Destacada: API de Integración Externa (Central Neurálgica) */}
+      <div className="card border-0 shadow-sm mb-4 rounded-4 overflow-hidden border-start border-4 border-info">
+        <div className="card-body p-3 p-md-4 bg-white">
+          <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div className="d-flex align-items-center gap-3">
+              <span className="badge bg-info-subtle text-info p-3 rounded-circle">
+                <i className="bi bi-hdd-network-fill fs-4"></i>
+              </span>
+              <div>
+                <div className="d-flex align-items-center gap-2 flex-wrap">
+                  <h5 className="fw-bold mb-0 text-slate-900">API de Integración • Central Neurálgica</h5>
+                  <span className="badge bg-success-subtle text-success border border-success-subtle" style={{ fontSize: '0.7rem' }}>
+                    <i className="bi bi-shield-check me-1"></i>Solo Lectura • Aislada
+                  </span>
+                  <span className="badge bg-primary-subtle text-primary border border-primary-subtle" style={{ fontSize: '0.7rem' }}>
+                    REST v1
+                  </span>
+                </div>
+                <p className="text-secondary small mb-0 mt-1">
+                  Credencial de acceso para ver la información de Central Neurálgica en tus otras herramientas web corporativas.
+                </p>
+              </div>
+            </div>
+
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                className="btn btn-outline-primary btn-sm fw-semibold shadow-sm d-flex align-items-center gap-1"
+                onClick={() => onNavigateToModule?.('CentralNeuralgica')}
+              >
+                <i className="bi bi-arrow-up-right-square me-1"></i> Ir a Central Neurálgica
+              </button>
+            </div>
+          </div>
+
+          <div className="row g-3 mt-2 pt-2 border-top">
+            <div className="col-md-6">
+              <label className="form-label small fw-bold text-muted mb-1">
+                <i className="bi bi-link-45deg me-1"></i>ENDPOINT REST (v1)
+              </label>
+              <div className="input-group input-group-sm">
+                <span className="input-group-text bg-light font-monospace text-success fw-bold">GET</span>
+                <input
+                  type="text"
+                  className="form-control font-monospace"
+                  value={apiEndpointUrl}
+                  readOnly
+                />
+                <button
+                  type="button"
+                  className={`btn ${copiarEndpointFeedback ? 'btn-success' : 'btn-outline-secondary'}`}
+                  onClick={() => {
+                    navigator.clipboard.writeText(apiEndpointUrl);
+                    setCopiarEndpointFeedback(true);
+                    setTimeout(() => setCopiarEndpointFeedback(false), 2000);
+                  }}
+                >
+                  {copiarEndpointFeedback ? '¡Copiado!' : 'Copiar'}
+                </button>
+              </div>
+            </div>
+
+            <div className="col-md-6">
+              <label className="form-label small fw-bold text-muted mb-1">
+                <i className="bi bi-key-fill me-1 text-warning"></i>CLAVE DE ACCESO PRIVADA (API KEY)
+              </label>
+              <div className="input-group input-group-sm">
+                <input
+                  type={mostrarApiKey ? 'text' : 'password'}
+                  className="form-control font-monospace"
+                  value={apiKeyValor || 'cn_live_8f3a9b4c2e1d7065e94b28a1c9704e52'}
+                  readOnly
+                />
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={() => setMostrarApiKey(!mostrarApiKey)}
+                >
+                  <i className={`bi ${mostrarApiKey ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${copiarKeyFeedback ? 'btn-success' : 'btn-outline-secondary'}`}
+                  onClick={() => {
+                    navigator.clipboard.writeText(apiKeyValor || 'cn_live_8f3a9b4c2e1d7065e94b28a1c9704e52');
+                    setCopiarKeyFeedback(true);
+                    setTimeout(() => setCopiarKeyFeedback(false), 2000);
+                  }}
+                >
+                  {copiarKeyFeedback ? '¡Copiado!' : 'Copiar'}
+                </button>
+              </div>
+              <div className="small text-muted mt-1" style={{ fontSize: '0.72rem' }}>
+                Enviar en el encabezado HTTP: <code>x-api-key: TU_KEY</code> o <code>Authorization: Bearer TU_KEY</code>
               </div>
             </div>
           </div>

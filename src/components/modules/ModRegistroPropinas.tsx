@@ -80,14 +80,32 @@ export default function ModRegistroPropinas({
   const [historial, setHistorial] = useState<any[]>([]);
   const [pendientesCount, setPendientesCount] = useState(0);
 
-  // Modal Anulación
+  // Modal Anulación Individual
   const [modalAnular, setModalAnular] = useState<{
     show: boolean;
     idReg: number;
     fecha: string;
     monto: number;
+    hora?: string;
+    turnoNumero?: number;
+    turnosEnFecha?: number;
     justificacion: string;
-  }>({ show: false, idReg: 0, fecha: '', monto: 0, justificacion: '' });
+  }>({
+    show: false,
+    idReg: 0,
+    fecha: '',
+    monto: 0,
+    hora: '',
+    turnoNumero: 1,
+    turnosEnFecha: 1,
+    justificacion: '',
+  });
+
+  // Modal Ver Nómina / Personal del Turno
+  const [modalDetalleReg, setModalDetalleReg] = useState<{
+    show: boolean;
+    registro: any | null;
+  }>({ show: false, registro: null });
 
   // Modal Ver Justificación
   const [modalVerJust, setModalVerJust] = useState<{
@@ -96,6 +114,16 @@ export default function ModRegistroPropinas({
     justificacion: string;
     validador: string;
   }>({ show: false, idReg: 0, justificacion: '', validador: '' });
+
+  const formatHoraRegistro = (isoStr?: string) => {
+    if (!isoStr) return '';
+    try {
+      const d = new Date(isoStr);
+      return d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch {
+      return '';
+    }
+  };
 
   const esValidador =
     currentUser?.rol === 'Administrador' ||
@@ -111,6 +139,7 @@ export default function ModRegistroPropinas({
   useEffect(() => {
     setFecha(new Date().toISOString().split('T')[0]);
     cargarPlantillaPersonal();
+    cargarHistorial();
   }, []);
 
   const cargarPlantillaPersonal = async () => {
@@ -451,6 +480,26 @@ export default function ModRegistroPropinas({
                 </div>
               </div>
             </div>
+
+            {/* Banner de Detección de Múltiples Turnos en la misma fecha */}
+            {(() => {
+              const turnosActivosEnFecha = historial.filter(
+                (h) => h.fecha === fecha && h.estado === 'Activo'
+              );
+              if (turnosActivosEnFecha.length === 0) return null;
+              return (
+                <div className="alert alert-info py-2 px-3 mt-3 mb-0 d-flex align-items-center gap-2 small border border-info-subtle rounded-3">
+                  <i className="bi bi-info-circle-fill text-info fs-5 flex-shrink-0"></i>
+                  <div>
+                    <strong>Turnos Múltiples en esta fecha:</strong> Ya existe {turnosActivosEnFecha.length} turno(s) activo(s) registrado(s) para el <strong>{fecha}</strong>{' '}
+                    ({turnosActivosEnFecha.map((t: any) => `Turno ${t.turnoNumero || 1}: S/ ${t.montoTotal.toFixed(2)}${t.createdAt ? ` [${formatHoraRegistro(t.createdAt)}]` : ''}`).join(', ')}).
+                    <div className="text-secondary mt-1" style={{ fontSize: '0.78rem' }}>
+                      Este nuevo registro se guardará como <strong>Turno {turnosActivosEnFecha.length + 1} independiente</strong> para esta fecha. Podrás anular o gestionar cualquiera de los turnos de forma independiente en el <em>Historial</em>, y en la liquidación final se unificarán automáticamente.
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Selector de Modalidad de Distribución de Fondos */}
@@ -866,13 +915,13 @@ export default function ModRegistroPropinas({
             <table className="table table-hover align-middle small">
               <thead className="table-light">
                 <tr>
-                  <th style={{ width: '10%' }}>ID Reg.</th>
-                  <th style={{ width: '12%' }}>Fecha</th>
-                  <th style={{ width: '15%' }}>Monto Total</th>
-                  <th style={{ width: '18%' }}>Fondo Salón / Cocina</th>
-                  <th style={{ width: '12%' }}>Personal</th>
-                  <th style={{ width: '15%' }}>Estado</th>
-                  <th style={{ width: '18%', textAlign: 'center' }}>Acciones / Validación</th>
+                  <th style={{ width: '9%' }}>ID Reg.</th>
+                  <th style={{ width: '18%' }}>Fecha y Turno</th>
+                  <th style={{ width: '13%' }}>Monto Total</th>
+                  <th style={{ width: '16%' }}>Fondo Salón / Cocina</th>
+                  <th style={{ width: '13%' }}>Personal</th>
+                  <th style={{ width: '12%' }}>Estado</th>
+                  <th style={{ width: '19%', textAlign: 'center' }}>Acciones / Anulación</th>
                 </tr>
               </thead>
               <tbody>
@@ -893,10 +942,35 @@ export default function ModRegistroPropinas({
                         className={esAnulado ? 'table-light opacity-75' : ''}
                       >
                         <td>
-                          <strong>#{r.idRegistro}</strong>
+                          <strong className="text-slate-900">#{r.idRegistro}</strong>
                         </td>
-                        <td>{r.fecha}</td>
-                        <td className="fw-bold text-primary">S/ {r.montoTotal.toFixed(2)}</td>
+                        <td>
+                          <div className="fw-bold text-slate-800">
+                            <i className="bi bi-calendar3 me-1 text-primary"></i>
+                            {r.fecha}
+                          </div>
+                          <div className="d-flex align-items-center gap-1 mt-1 flex-wrap">
+                            {r.createdAt && (
+                              <span className="badge bg-light text-secondary border font-mono" style={{ fontSize: '0.72rem' }}>
+                                <i className="bi bi-clock me-1"></i>{formatHoraRegistro(r.createdAt)}
+                              </span>
+                            )}
+                            {r.turnosEnFecha > 1 ? (
+                              <span
+                                className="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold"
+                                style={{ fontSize: '0.72rem' }}
+                                title={`Hay ${r.turnosEnFecha} turnos independientes en la fecha ${r.fecha}`}
+                              >
+                                <i className="bi bi-layers-fill me-1"></i>Turno {r.turnoNumero} de {r.turnosEnFecha}
+                              </span>
+                            ) : (
+                              <span className="badge bg-light text-muted border" style={{ fontSize: '0.72rem' }}>
+                                Turno Único
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="fw-bold text-primary font-mono fs-6">S/ {r.montoTotal.toFixed(2)}</td>
                         <td>
                           <div className="d-flex align-items-center gap-1 mb-1">
                             {r.justificacion?.includes('Equitativo') || r.justificacion?.includes('50/50') ? (
@@ -909,15 +983,30 @@ export default function ModRegistroPropinas({
                               </span>
                             )}
                           </div>
-                          <small className="text-success">
+                          <small className="text-success font-mono">
                             Salón: S/ {r.fondoSalon.toFixed(2)}
                           </small>
                           <br />
-                          <small className="text-warning">
+                          <small className="text-warning font-mono">
                             Cocina: S/ {r.fondoCocina.toFixed(2)}
                           </small>
                         </td>
-                        <td>{r.cantParticipantes} colab.</td>
+                        <td>
+                          <div>
+                            <span className="fw-semibold text-dark">{r.cantParticipantes} colab.</span>
+                            {r.detalles && r.detalles.length > 0 && (
+                              <button
+                                type="button"
+                                className="btn btn-outline-secondary btn-sm py-0 px-2 mt-1 d-block"
+                                style={{ fontSize: '0.74rem' }}
+                                onClick={() => setModalDetalleReg({ show: true, registro: r })}
+                                title="Ver personal registrado en este turno"
+                              >
+                                <i className="bi bi-people-fill me-1 text-primary"></i>Ver Nómina
+                              </button>
+                            )}
+                          </div>
+                        </td>
                         <td>
                           <span
                             className={`badge ${
@@ -1022,17 +1111,21 @@ export default function ModRegistroPropinas({
                               <button
                                 type="button"
                                 className="btn btn-outline-warning btn-sm py-0 px-2"
+                                title="Anular únicamente este turno específico"
                                 onClick={() =>
                                   setModalAnular({
                                     show: true,
                                     idReg: r.idRegistro,
                                     fecha: r.fecha,
                                     monto: r.montoTotal,
+                                    hora: formatHoraRegistro(r.createdAt),
+                                    turnoNumero: r.turnoNumero,
+                                    turnosEnFecha: r.turnosEnFecha,
                                     justificacion: '',
                                   })
                                 }
                               >
-                                <i className="bi bi-slash-circle me-1"></i>Anular
+                                <i className="bi bi-slash-circle me-1"></i>Anular Turno
                               </button>
                             </>
                           )}
@@ -1074,29 +1167,41 @@ export default function ModRegistroPropinas({
                 <div className="modal-header bg-danger text-white">
                   <h6 className="modal-title fw-bold">
                     <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                    Anular / Corregir Registro de Propinas
+                    Anular / Corregir Turno de Propinas
                   </h6>
                   <button
                     type="button"
                     className="btn-close btn-close-white"
                     onClick={() =>
-                      setModalAnular({ show: false, idReg: 0, fecha: '', monto: 0, justificacion: '' })
+                      setModalAnular({ show: false, idReg: 0, fecha: '', monto: 0, hora: '', turnoNumero: 1, turnosEnFecha: 1, justificacion: '' })
                     }
                   ></button>
                 </div>
                 <div className="modal-body p-4">
                   <div className="p-3 bg-light rounded border mb-3 small">
                     <div className="d-flex justify-content-between mb-1">
-                      <strong>Registro a Modificar:</strong>
-                      <span className="badge bg-primary fs-6">#{modalAnular.idReg}</span>
+                      <strong>Turno a Anular:</strong>
+                      <span className="badge bg-danger fs-6">Registro #{modalAnular.idReg}</span>
                     </div>
                     <div className="d-flex justify-content-between mb-1">
                       <span>Fecha del Turno:</span>
-                      <strong>{modalAnular.fecha}</strong>
+                      <strong>{modalAnular.fecha} {modalAnular.hora ? `(${modalAnular.hora})` : ''}</strong>
                     </div>
-                    <div className="d-flex justify-content-between">
-                      <span>Monto Total Recaudado:</span>
-                      <strong className="text-success">S/ {modalAnular.monto.toFixed(2)}</strong>
+                    {modalAnular.turnosEnFecha && modalAnular.turnosEnFecha > 1 ? (
+                      <div className="d-flex justify-content-between mb-1">
+                        <span>Orden del Turno:</span>
+                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold">
+                          Turno {modalAnular.turnoNumero} de {modalAnular.turnosEnFecha} del día
+                        </span>
+                      </div>
+                    ) : null}
+                    <div className="d-flex justify-content-between mb-2">
+                      <span>Monto Recaudado en este Turno:</span>
+                      <strong className="text-danger font-mono fs-6">S/ {modalAnular.monto.toFixed(2)}</strong>
+                    </div>
+                    <div className="alert alert-warning py-1 px-2 mb-0 border small text-dark" style={{ fontSize: '0.78rem' }}>
+                      <i className="bi bi-shield-check text-warning-emphasis me-1"></i>
+                      <strong>Anulación Quirúrgica:</strong> Solo se anulará este registro específico (#{modalAnular.idReg}). Los demás turnos registrados en la fecha <strong>{modalAnular.fecha}</strong> permanecerán activos e intactos.
                     </div>
                   </div>
 
@@ -1107,7 +1212,7 @@ export default function ModRegistroPropinas({
                     <textarea
                       className="form-control"
                       rows={3}
-                      placeholder="Indique claramente la razón por la que se anula este registro..."
+                      placeholder="Indique claramente la razón por la que se anula este turno específico..."
                       value={modalAnular.justificacion}
                       onChange={(e) =>
                         setModalAnular((prev) => ({ ...prev, justificacion: e.target.value }))
@@ -1125,7 +1230,7 @@ export default function ModRegistroPropinas({
                       <>
                         <i className="bi bi-shield-check me-1"></i> Como{' '}
                         <strong>{currentUser?.rol}</strong>, tu validación es inmediata: al
-                        confirmar, el registro quedará <strong>ANULADO</strong> y excluido formalmente.
+                        confirmar, el turno quedará <strong>ANULADO</strong> y excluido formalmente.
                       </>
                     ) : (
                       <>
@@ -1141,7 +1246,7 @@ export default function ModRegistroPropinas({
                     type="button"
                     className="btn btn-secondary btn-sm"
                     onClick={() =>
-                      setModalAnular({ show: false, idReg: 0, fecha: '', monto: 0, justificacion: '' })
+                      setModalAnular({ show: false, idReg: 0, fecha: '', monto: 0, hora: '', turnoNumero: 1, turnosEnFecha: 1, justificacion: '' })
                     }
                   >
                     Cancelar
@@ -1152,6 +1257,147 @@ export default function ModRegistroPropinas({
                     onClick={handleConfirmarAnulacion}
                   >
                     <i className="bi bi-trash3 me-1"></i> Confirmar Anulación
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Modal Ver Nómina / Personal del Turno */}
+      {modalDetalleReg.show && modalDetalleReg.registro && (
+        <>
+          <div className="modal-backdrop fade show" style={{ zIndex: 100010 }}></div>
+          <div className="modal fade show d-block" tabIndex={-1} style={{ zIndex: 100015 }}>
+            <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+              <div className="modal-content border-0 shadow-lg">
+                <div className="modal-header bg-dark text-white">
+                  <div>
+                    <h6 className="modal-title fw-bold mb-0">
+                      <i className="bi bi-card-checklist me-2 text-danger"></i>
+                      Personal y Nómina del Turno #{modalDetalleReg.registro.idRegistro}
+                    </h6>
+                    <small className="text-white-50">
+                      Fecha: {modalDetalleReg.registro.fecha}
+                      {modalDetalleReg.registro.createdAt && ` • Hora: ${formatHoraRegistro(modalDetalleReg.registro.createdAt)}`}
+                      {modalDetalleReg.registro.turnosEnFecha > 1 && ` • Turno ${modalDetalleReg.registro.turnoNumero} de ${modalDetalleReg.registro.turnosEnFecha}`}
+                    </small>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-close btn-close-white"
+                    onClick={() => setModalDetalleReg({ show: false, registro: null })}
+                  ></button>
+                </div>
+                <div className="modal-body p-3">
+                  <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded border flex-wrap gap-2">
+                    <div>
+                      <span className="text-secondary small">Monto Recaudado en Turno:</span>
+                      <div className="fw-bold fs-5 text-primary font-mono">
+                        S/ {modalDetalleReg.registro.montoTotal.toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="text-end">
+                      <span className="text-secondary small">Distribución de Fondos:</span>
+                      <div className="small font-mono">
+                        <span className="text-success fw-semibold">Salón: S/ {modalDetalleReg.registro.fondoSalon.toFixed(2)}</span>
+                        <span className="mx-2 text-muted">|</span>
+                        <span className="text-warning-emphasis fw-semibold">Cocina: S/ {modalDetalleReg.registro.fondoCocina.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="table-responsive">
+                    <table className="table table-sm table-hover align-middle mb-0">
+                      <thead className="table-light">
+                        <tr>
+                          <th style={{ width: '8%' }}>N°</th>
+                          <th style={{ width: '38%' }}>Colaborador</th>
+                          <th style={{ width: '22%' }}>Área</th>
+                          <th style={{ width: '16%' }} className="text-center">Horas</th>
+                          <th style={{ width: '16%' }} className="text-end">Propina Asignada</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {!modalDetalleReg.registro.detalles || modalDetalleReg.registro.detalles.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="text-center text-muted py-3">
+                              No hay participantes detallados registrados para este turno.
+                            </td>
+                          </tr>
+                        ) : (
+                          modalDetalleReg.registro.detalles.map((d: any, idx: number) => {
+                            const esSalon = (d.area || '').includes('Salón');
+                            return (
+                              <tr key={idx}>
+                                <td className="text-muted">{idx + 1}</td>
+                                <td><strong className="text-dark">{d.colaborador}</strong></td>
+                                <td>
+                                  <span
+                                    className={`badge ${
+                                      esSalon
+                                        ? 'bg-success-subtle text-success border border-success-subtle'
+                                        : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
+                                    }`}
+                                  >
+                                    {d.area}
+                                  </span>
+                                </td>
+                                <td className="text-center font-mono">{d.horas} hrs</td>
+                                <td className="text-end font-mono fw-bold text-success">
+                                  S/ {Number(d.propina || 0).toFixed(2)}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                      <tfoot>
+                        <tr className="table-light fw-bold">
+                          <td colSpan={3} className="text-end">TOTALES DEL TURNO:</td>
+                          <td className="text-center font-mono">
+                            {modalDetalleReg.registro.detalles?.reduce((acc: number, cur: any) => acc + (cur.horas || 0), 0) || 0} hrs
+                          </td>
+                          <td className="text-end font-mono text-primary">
+                            S/ {modalDetalleReg.registro.montoTotal.toFixed(2)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+                <div className="modal-footer d-flex justify-content-between">
+                  <div>
+                    {modalDetalleReg.registro.estado === 'Activo' && (
+                      <button
+                        type="button"
+                        className="btn btn-outline-danger btn-sm"
+                        onClick={() => {
+                          const reg = modalDetalleReg.registro;
+                          setModalDetalleReg({ show: false, registro: null });
+                          setModalAnular({
+                            show: true,
+                            idReg: reg.idRegistro,
+                            fecha: reg.fecha,
+                            monto: reg.montoTotal,
+                            hora: formatHoraRegistro(reg.createdAt),
+                            turnoNumero: reg.turnoNumero,
+                            turnosEnFecha: reg.turnosEnFecha,
+                            justificacion: '',
+                          });
+                        }}
+                      >
+                        <i className="bi bi-slash-circle me-1"></i> Anular solo este Turno (#{modalDetalleReg.registro.idRegistro})
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setModalDetalleReg({ show: false, registro: null })}
+                  >
+                    Cerrar
                   </button>
                 </div>
               </div>

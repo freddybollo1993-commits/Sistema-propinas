@@ -431,6 +431,7 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
           horasTrabajadas: 0,
           diasSet: new Set<string>(),
           detalleDias: [],
+          jornadasPorFecha: {} as Record<string, any>,
           detalleSanciones: [],
           detalleAdelantos: [],
           propinaBruta: 0,
@@ -448,14 +449,57 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
       if (reg.fecha) colaboradores[nombre].diasSet.add(reg.fecha);
       colaboradores[nombre].propinaBruta += det.propina;
       colaboradores[nombre].propinaBrutaOriginal += det.propina;
-      colaboradores[nombre].detalleDias.push({
-        idRegistro: reg.id,
-        fecha: reg.fecha,
-        horas: det.horas,
-        propina: det.propina,
-        estado: reg.estado,
-      });
+
+      // Agrupar turnos en la misma fecha para unificarlos en la liquidación
+      const fecha = reg.fecha;
+      if (!colaboradores[nombre].jornadasPorFecha) {
+        colaboradores[nombre].jornadasPorFecha = {};
+      }
+      if (!colaboradores[nombre].jornadasPorFecha[fecha]) {
+        colaboradores[nombre].jornadasPorFecha[fecha] = {
+          fecha,
+          ids: [reg.id],
+          horas: det.horas,
+          propina: det.propina,
+          turnosDetalle: [
+            { idRegistro: reg.id, horas: det.horas, propina: det.propina, estado: reg.estado }
+          ],
+        };
+      } else {
+        colaboradores[nombre].jornadasPorFecha[fecha].ids.push(reg.id);
+        colaboradores[nombre].jornadasPorFecha[fecha].horas += det.horas;
+        colaboradores[nombre].jornadasPorFecha[fecha].propina += det.propina;
+        colaboradores[nombre].jornadasPorFecha[fecha].turnosDetalle.push({
+          idRegistro: reg.id,
+          horas: det.horas,
+          propina: det.propina,
+          estado: reg.estado,
+        });
+      }
     });
+  });
+
+  // Consolidar detalleDias unificado por fecha para cada colaborador
+  Object.keys(colaboradores).forEach((nombre) => {
+    const c = colaboradores[nombre];
+    const mapa = c.jornadasPorFecha || {};
+    c.detalleDias = Object.values(mapa)
+      .map((j: any) => {
+        const ids = j.ids || [];
+        const cantTurnos = ids.length;
+        return {
+          fecha: j.fecha,
+          idRegistro: cantTurnos === 1 ? ids[0] : ids.join(', '),
+          turnoTexto: cantTurnos > 1 ? `${cantTurnos} turnos (#${ids.join(', #')})` : `Reg #${ids[0]}`,
+          horas: Math.round(j.horas * 100) / 100,
+          propina: Math.round(j.propina * 100) / 100,
+          estado: 'Activo',
+          cantTurnos,
+          idsRegistro: ids,
+          turnosDetalle: j.turnosDetalle,
+        };
+      })
+      .sort((a: any, b: any) => a.fecha.localeCompare(b.fecha));
   });
 
   // 4. Catálogo de sanciones de la tienda

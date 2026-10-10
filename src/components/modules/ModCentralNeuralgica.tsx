@@ -39,6 +39,17 @@ export default function ModCentralNeuralgica({ currentUser, onSelectTienda }: Mo
   // Modal Looker Studio
   const [modalLookerOpen, setModalLookerOpen] = useState(false);
 
+  // Modal API de Integración Externa
+  const [modalApiOpen, setModalApiOpen] = useState(false);
+  const [apiKeyInfo, setApiKeyInfo] = useState<any>(null);
+  const [cargandoApiKey, setCargandoApiKey] = useState(false);
+  const [mostrarKey, setMostrarKey] = useState(false);
+  const [pruebaApiResponse, setPruebaApiResponse] = useState<any>(null);
+  const [probandoApi, setProbandoApi] = useState(false);
+  const [tabApiDoc, setTabApiDoc] = useState<'js' | 'curl' | 'python'>('js');
+  const [copiadoUrl, setCopiadoUrl] = useState(false);
+  const [copiadoKey, setCopiadoKey] = useState(false);
+
   // BI State - Sedes seleccionadas en el gráfico de evolución
   const [sedesSeleccionadasEvolucion, setSedesSeleccionadasEvolucion] = useState<string[]>([]);
   const [verTotalRedEvolucion, setVerTotalRedEvolucion] = useState(true);
@@ -83,6 +94,77 @@ export default function ModCentralNeuralgica({ currentUser, onSelectTienda }: Mo
     } catch (e) {
       setCargando(false);
       console.error('Error al cargar Central Neurálgica:', e);
+    }
+  };
+
+  const cargarApiKeyInfo = async () => {
+    try {
+      setCargandoApiKey(true);
+      const res = await fetch('/api/central-dashboard/api-key');
+      const data = await res.json();
+      setCargandoApiKey(false);
+      if (data.success) {
+        setApiKeyInfo(data);
+      }
+    } catch (e) {
+      setCargandoApiKey(false);
+      console.error('Error al cargar API Key:', e);
+    }
+  };
+
+  const probarApiEnVivo = async () => {
+    if (!apiKeyInfo?.apiKey) return;
+    try {
+      setProbandoApi(true);
+      setPruebaApiResponse(null);
+      const t0 = performance.now();
+      const res = await fetch('/api/v1/central-neuralgica?seccion=kpis', {
+        headers: {
+          'x-api-key': apiKeyInfo.apiKey,
+        },
+      });
+      const t1 = performance.now();
+      const json = await res.json();
+      setProbandoApi(false);
+      setPruebaApiResponse({
+        status: res.status,
+        ok: res.ok,
+        ms: Math.round(t1 - t0),
+        data: json,
+      });
+    } catch (err: any) {
+      setProbandoApi(false);
+      setPruebaApiResponse({
+        status: 500,
+        ok: false,
+        ms: 0,
+        error: err.message,
+      });
+    }
+  };
+
+  const handleRegenerarApiKey = async () => {
+    if (!confirm('¿Estás seguro de que deseas regenerar la API Key? La clave anterior dejará de funcionar inmediatamente en los entornos externos.')) {
+      return;
+    }
+    try {
+      setCargandoApiKey(true);
+      const res = await fetch('/api/central-dashboard/api-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'regenerate' }),
+      });
+      const data = await res.json();
+      setCargandoApiKey(false);
+      if (data.success) {
+        alert('¡Nueva API Key generada con éxito!');
+        cargarApiKeyInfo();
+      } else {
+        alert('Error: ' + data.error);
+      }
+    } catch (e: any) {
+      setCargandoApiKey(false);
+      alert('Error al regenerar: ' + e.message);
     }
   };
 
@@ -615,6 +697,16 @@ export default function ModCentralNeuralgica({ currentUser, onSelectTienda }: Mo
             </div>
 
             <div className="d-flex align-items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                className="btn btn-info btn-sm fw-semibold shadow-sm text-dark d-flex align-items-center gap-1"
+                onClick={() => {
+                  setModalApiOpen(true);
+                  cargarApiKeyInfo();
+                }}
+              >
+                <i className="bi bi-key-fill text-dark"></i> API Externa
+              </button>
               <button
                 type="button"
                 className="btn btn-warning btn-sm fw-semibold shadow-sm text-dark d-flex align-items-center gap-1"
@@ -1562,25 +1654,29 @@ export default function ModCentralNeuralgica({ currentUser, onSelectTienda }: Mo
               </div>
               <div className="modal-body p-4 text-center">
                 <p className="small text-muted">
-                  Los datos consolidados están estructurados para conectarse directamente con Google Looker Studio mediante la API o la base de datos central.
+                  Los datos consolidados están estructurados para conectarse directamente con Google Looker Studio mediante la API REST v1 oficial.
                 </p>
                 <div className="input-group input-group-sm mb-3">
                   <input
                     type="text"
                     className="form-control text-center"
-                    value="https://propinas-one.vercel.app/api/central-dashboard"
+                    value="https://propinas-one.vercel.app/api/v1/central-neuralgica"
                     readOnly
                   />
                   <button
                     type="button"
                     className="btn btn-outline-secondary"
                     onClick={() => {
-                      navigator.clipboard.writeText('https://propinas-one.vercel.app/api/central-dashboard');
+                      navigator.clipboard.writeText('https://propinas-one.vercel.app/api/v1/central-neuralgica');
                       alert('Endpoint de datos copiado al portapapeles.');
                     }}
                   >
                     Copiar
                   </button>
+                </div>
+                <div className="p-2 mb-3 bg-light rounded text-start small border">
+                  <div className="text-muted fw-bold">Autenticación requerida:</div>
+                  <code>Header: x-api-key: {apiKeyInfo?.apiKey || 'cn_live_8f3a9b4c2e1d7065e94b28a1c9704e52'}</code>
                 </div>
                 <a
                   href="https://lookerstudio.google.com/navigation/reporting"
@@ -1590,6 +1686,330 @@ export default function ModCentralNeuralgica({ currentUser, onSelectTienda }: Mo
                 >
                   Abrir Looker Studio <i className="bi bi-box-arrow-up-right ms-1"></i>
                 </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal API de Integración Externa */}
+      {modalApiOpen && (
+        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} tabIndex={-1}>
+          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div className="modal-content shadow-lg border-0 rounded-4">
+              <div className="modal-header bg-dark text-white border-0 py-3 px-4">
+                <div className="d-flex align-items-center gap-2">
+                  <span className="badge bg-warning text-dark p-2 rounded-3">
+                    <i className="bi bi-key-fill fs-5"></i>
+                  </span>
+                  <div>
+                    <h5 className="modal-title fw-bold mb-0 text-white">
+                      API de Acceso • Central Neurálgica
+                    </h5>
+                    <span className="badge bg-success bg-opacity-75 text-white" style={{ fontSize: '0.7rem' }}>
+                      <i className="bi bi-shield-check me-1"></i>Acceso Exclusivo • Solo Lectura • CORS Habilitado
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={() => setModalApiOpen(false)}
+                ></button>
+              </div>
+
+              <div className="modal-body p-4 bg-light">
+                {/* Nota de Alcance */}
+                <div className="alert alert-info border-0 shadow-sm rounded-3 py-2 px-3 small mb-3">
+                  <i className="bi bi-info-circle-fill me-2 text-info"></i>
+                  Esta API está diseñada para conectar la información de <strong>Central Neurálgica</strong> con tu otro entorno web donde se centralizan las herramientas corporativas. Por seguridad, esta API Key <strong>únicamente concede acceso a este módulo</strong> y no permite modificar tiendas, colaboradores ni registros.
+                </div>
+
+                {/* Endpoint URL */}
+                <div className="card border-0 shadow-sm rounded-3 mb-3 bg-white">
+                  <div className="card-body p-3">
+                    <label className="form-label small fw-bold text-muted mb-1">
+                      <i className="bi bi-link-45deg me-1"></i>ENDPOINT REST OFICIAL (v1)
+                    </label>
+                    <div className="input-group input-group-sm">
+                      <span className="input-group-text bg-light fw-bold text-success">GET</span>
+                      <input
+                        type="text"
+                        className="form-control font-monospace"
+                        value={
+                          apiKeyInfo?.endpoints?.v1 ||
+                          'https://propinas-one.vercel.app/api/v1/central-neuralgica'
+                        }
+                        readOnly
+                      />
+                      <button
+                        type="button"
+                        className={`btn ${copiadoUrl ? 'btn-success' : 'btn-outline-secondary'}`}
+                        onClick={() => {
+                          const url =
+                            apiKeyInfo?.endpoints?.v1 ||
+                            'https://propinas-one.vercel.app/api/v1/central-neuralgica';
+                          navigator.clipboard.writeText(url);
+                          setCopiadoUrl(true);
+                          setTimeout(() => setCopiadoUrl(false), 2000);
+                        }}
+                      >
+                        {copiadoUrl ? (
+                          <>
+                            <i className="bi bi-check-lg me-1"></i>Copiado
+                          </>
+                        ) : (
+                          <>
+                            <i className="bi bi-clipboard me-1"></i>Copiar URL
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Clave de Acceso (API Key) */}
+                <div className="card border-0 shadow-sm rounded-3 mb-3 bg-white">
+                  <div className="card-body p-3">
+                    <div className="d-flex justify-content-between align-items-center mb-1">
+                      <label className="form-label small fw-bold text-muted mb-0">
+                        <i className="bi bi-shield-lock me-1"></i>CLAVE DE ACCESO PRIVADA (API KEY)
+                      </label>
+                      <button
+                        type="button"
+                        className="btn btn-link btn-sm text-danger text-decoration-none p-0"
+                        style={{ fontSize: '0.75rem' }}
+                        onClick={handleRegenerarApiKey}
+                        disabled={cargandoApiKey}
+                      >
+                        <i className="bi bi-arrow-repeat me-1"></i>Regenerar Clave
+                      </button>
+                    </div>
+
+                    <div className="input-group input-group-sm">
+                      <input
+                        type={mostrarKey ? 'text' : 'password'}
+                        className="form-control font-monospace"
+                        value={apiKeyInfo?.apiKey || 'cn_live_8f3a9b4c2e1d7065e94b28a1c9704e52'}
+                        readOnly
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary"
+                        onClick={() => setMostrarKey(!mostrarKey)}
+                        title={mostrarKey ? 'Ocultar clave' : 'Mostrar clave'}
+                      >
+                        <i className={`bi ${mostrarKey ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn ${copiadoKey ? 'btn-success' : 'btn-outline-secondary'}`}
+                        onClick={() => {
+                          const k = apiKeyInfo?.apiKey || 'cn_live_8f3a9b4c2e1d7065e94b28a1c9704e52';
+                          navigator.clipboard.writeText(k);
+                          setCopiadoKey(true);
+                          setTimeout(() => setCopiadoKey(false), 2000);
+                        }}
+                      >
+                        {copiadoKey ? (
+                          <>
+                            <i className="bi bi-check-lg me-1"></i>Copiado
+                          </>
+                        ) : (
+                          <>
+                            <i className="bi bi-clipboard me-1"></i>Copiar Clave
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <div className="small text-muted mt-1" style={{ fontSize: '0.75rem' }}>
+                      Envíala en tus peticiones en el header <code>x-api-key: TU_KEY</code> o <code>Authorization: Bearer TU_KEY</code>.
+                    </div>
+                  </div>
+                </div>
+
+                {/* Herramienta: Probar API en Vivo */}
+                <div className="card border-0 shadow-sm rounded-3 mb-3 bg-white">
+                  <div className="card-body p-3">
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <span className="fw-bold small text-dark">
+                        <i className="bi bi-lightning-charge-fill text-warning me-1"></i>Test de Conexión en Vivo
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-dark btn-sm px-3 fw-semibold"
+                        onClick={probarApiEnVivo}
+                        disabled={probandoApi || cargandoApiKey}
+                      >
+                        {probandoApi ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                            Consultando...
+                          </>
+                        ) : (
+                          <>
+                            <i className="bi bi-play-circle-fill me-1 text-success"></i>Probar API Ahora
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {pruebaApiResponse && (
+                      <div className="mt-2 p-2 bg-light rounded border">
+                        <div className="d-flex align-items-center justify-content-between mb-2">
+                          <span
+                            className={`badge ${
+                              pruebaApiResponse.ok ? 'bg-success' : 'bg-danger'
+                            }`}
+                          >
+                            Status: {pruebaApiResponse.status} {pruebaApiResponse.ok ? 'OK' : 'Error'}
+                          </span>
+                          <span className="small text-muted">
+                            <i className="bi bi-stopwatch me-1"></i>Latencia: {pruebaApiResponse.ms} ms
+                          </span>
+                        </div>
+                        <pre
+                          className="bg-dark text-white p-2 rounded small mb-0 font-monospace"
+                          style={{ maxHeight: '140px', overflowY: 'auto', fontSize: '0.75rem' }}
+                        >
+                          {JSON.stringify(pruebaApiResponse.data || pruebaApiResponse.error, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Ejemplos de Código de Integración */}
+                <div className="card border-0 shadow-sm rounded-3 mb-3 bg-white">
+                  <div className="card-header bg-white border-0 pb-0 pt-3 px-3">
+                    <ul className="nav nav-tabs card-header-tabs small">
+                      <li className="nav-item">
+                        <button
+                          type="button"
+                          className={`nav-link fw-bold ${tabApiDoc === 'js' ? 'active' : ''}`}
+                          onClick={() => setTabApiDoc('js')}
+                        >
+                          <i className="bi bi-filetype-js me-1 text-warning"></i>JavaScript (Fetch)
+                        </button>
+                      </li>
+                      <li className="nav-item">
+                        <button
+                          type="button"
+                          className={`nav-link fw-bold ${tabApiDoc === 'curl' ? 'active' : ''}`}
+                          onClick={() => setTabApiDoc('curl')}
+                        >
+                          <i className="bi bi-terminal me-1 text-primary"></i>cURL
+                        </button>
+                      </li>
+                      <li className="nav-item">
+                        <button
+                          type="button"
+                          className={`nav-link fw-bold ${tabApiDoc === 'python' ? 'active' : ''}`}
+                          onClick={() => setTabApiDoc('python')}
+                        >
+                          <i className="bi bi-filetype-py me-1 text-info"></i>Python
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+                  <div className="card-body p-3">
+                    {tabApiDoc === 'js' && (
+                      <pre
+                        className="bg-dark text-white p-3 rounded-3 small font-monospace mb-0"
+                        style={{ fontSize: '0.78rem' }}
+                      >
+{`// Consulta en tu entorno web centralizado
+const res = await fetch('https://propinas-one.vercel.app/api/v1/central-neuralgica', {
+  headers: {
+    'x-api-key': '${apiKeyInfo?.apiKey || 'cn_live_8f3a9b4c2e1d7065e94b28a1c9704e52'}'
+  }
+});
+const datos = await res.json();
+console.log('Total Red:', datos.kpis.totalRed);
+console.log('Ranking Sedes:', datos.ranking);`}
+                      </pre>
+                    )}
+
+                    {tabApiDoc === 'curl' && (
+                      <pre
+                        className="bg-dark text-white p-3 rounded-3 small font-monospace mb-0"
+                        style={{ fontSize: '0.78rem' }}
+                      >
+{`curl -X GET "https://propinas-one.vercel.app/api/v1/central-neuralgica" \\
+  -H "x-api-key: ${apiKeyInfo?.apiKey || 'cn_live_8f3a9b4c2e1d7065e94b28a1c9704e52'}"`}
+                      </pre>
+                    )}
+
+                    {tabApiDoc === 'python' && (
+                      <pre
+                        className="bg-dark text-white p-3 rounded-3 small font-monospace mb-0"
+                        style={{ fontSize: '0.78rem' }}
+                      >
+{`import requests
+
+url = "https://propinas-one.vercel.app/api/v1/central-neuralgica"
+headers = {"x-api-key": "${apiKeyInfo?.apiKey || 'cn_live_8f3a9b4c2e1d7065e94b28a1c9704e52'}"}
+resp = requests.get(url, headers=headers)
+data = resp.json()
+print("KPIs:", data["kpis"])`}
+                      </pre>
+                    )}
+                  </div>
+                </div>
+
+                {/* Parámetros de Filtrado Soportados */}
+                <div className="card border-0 shadow-sm rounded-3 bg-white">
+                  <div className="card-body p-3">
+                    <h6 className="fw-bold small text-dark mb-2">
+                      <i className="bi bi-funnel me-1"></i>Parámetros Opcionales de Consulta (Query Params)
+                    </h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm table-bordered align-middle small mb-0">
+                        <thead className="table-light">
+                          <tr>
+                            <th>Parámetro</th>
+                            <th>Ejemplo</th>
+                            <th>Descripción</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td><code>sede</code></td>
+                            <td><code>?sede=San+Isidro</code></td>
+                            <td>Filtra métricas y registros de una tienda específica.</td>
+                          </tr>
+                          <tr>
+                            <td><code>inicio</code> / <code>fin</code></td>
+                            <td><code>?inicio=2026-10-01&fin=2026-10-15</code></td>
+                            <td>Filtra el rango de fechas en formato ISO (YYYY-MM-DD).</td>
+                          </tr>
+                          <tr>
+                            <td><code>limite</code></td>
+                            <td><code>?limite=30</code></td>
+                            <td>Limita la cantidad de registros consolidados retornados.</td>
+                          </tr>
+                          <tr>
+                            <td><code>seccion</code></td>
+                            <td><code>?seccion=kpis</code></td>
+                            <td>
+                              Retorna solo una sección específica: <code>kpis</code>, <code>ranking</code>, <code>sanciones</code>, <code>perdida100</code>, <code>bi</code>, <code>registros</code> o <code>completo</code>.
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer border-0 bg-light py-2 px-4">
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm px-4 fw-semibold"
+                  onClick={() => setModalApiOpen(false)}
+                >
+                  Cerrar
+                </button>
               </div>
             </div>
           </div>

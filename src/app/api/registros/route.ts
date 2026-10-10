@@ -28,24 +28,65 @@ export async function GET(request: Request) {
         ...(fInicio && fFin ? { fecha: { gte: fInicio, lte: fFin } } : {}),
       },
       include: {
+        detalles: {
+          select: {
+            id: true,
+            colaborador: true,
+            area: true,
+            horas: true,
+            totalHorasArea: true,
+            propina: true,
+          },
+        },
         _count: {
           select: { detalles: true },
         },
       },
-      orderBy: { id: 'desc' },
+      orderBy: [{ fecha: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
     });
 
-    const lista = registros.map((r) => ({
-      idRegistro: r.id,
-      fecha: r.fecha,
-      montoTotal: r.montoTotal,
-      fondoSalon: r.fondoSalon,
-      fondoCocina: r.fondoCocina,
-      cantParticipantes: r._count.detalles,
-      estado: r.estado,
-      justificacion: r.justificacion || '',
-      validador: r.validador || '',
-    }));
+    // Agrupar registros por fecha para asignar correlativo cronológico de turnos independientes
+    const turnosPorFecha: Record<string, typeof registros> = {};
+    registros.forEach((r) => {
+      if (!turnosPorFecha[r.fecha]) turnosPorFecha[r.fecha] = [];
+      turnosPorFecha[r.fecha].push(r);
+    });
+
+    const turnoMap = new Map<number, { turnoNumero: number; turnosEnFecha: number }>();
+    Object.keys(turnosPorFecha).forEach((f) => {
+      // Orden cronológico ascendente (el primer registro del día es Turno 1, el siguiente Turno 2, etc.)
+      const grupo = turnosPorFecha[f].slice().sort((a, b) => {
+        const timeA = new Date(a.createdAt).getTime();
+        const timeB = new Date(b.createdAt).getTime();
+        if (timeA !== timeB) return timeA - timeB;
+        return a.id - b.id;
+      });
+      grupo.forEach((item, idx) => {
+        turnoMap.set(item.id, {
+          turnoNumero: idx + 1,
+          turnosEnFecha: grupo.length,
+        });
+      });
+    });
+
+    const lista = registros.map((r) => {
+      const turnoInfo = turnoMap.get(r.id) || { turnoNumero: 1, turnosEnFecha: 1 };
+      return {
+        idRegistro: r.id,
+        fecha: r.fecha,
+        createdAt: r.createdAt.toISOString(),
+        turnoNumero: turnoInfo.turnoNumero,
+        turnosEnFecha: turnoInfo.turnosEnFecha,
+        montoTotal: r.montoTotal,
+        fondoSalon: r.fondoSalon,
+        fondoCocina: r.fondoCocina,
+        cantParticipantes: r._count.detalles,
+        estado: r.estado,
+        justificacion: r.justificacion || '',
+        validador: r.validador || '',
+        detalles: r.detalles,
+      };
+    });
 
     return NextResponse.json(lista);
   } catch (error: any) {

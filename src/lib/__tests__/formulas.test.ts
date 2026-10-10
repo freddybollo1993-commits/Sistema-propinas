@@ -176,5 +176,58 @@ describe("Motor de Cálculo de Prorrateo de Propinas (60% Salón / 40% Cocina)",
 
 		expect(montoGen2).toBe(100);
 	});
+
+	it("debe unificar múltiples turnos registrados en la misma fecha en una sola jornada consolidada para la liquidación", () => {
+		// Simular dos turnos en la misma fecha (ej. 6:00 PM con ID 101 y 10:00 PM con ID 102)
+		const registrosSimulados = [
+			{
+				id: 101,
+				fecha: "2026-10-08",
+				detalles: [{ colaborador: "Mesero Test", horas: 6, propina: 30.5 }],
+			},
+			{
+				id: 102,
+				fecha: "2026-10-08",
+				detalles: [{ colaborador: "Mesero Test", horas: 6, propina: 40.25 }],
+			},
+		];
+
+		const mapaJornadas: Record<string, any> = {};
+		registrosSimulados.forEach((reg) => {
+			reg.detalles.forEach((det) => {
+				const f = reg.fecha;
+				if (!mapaJornadas[f]) {
+					mapaJornadas[f] = {
+						fecha: f,
+						ids: [reg.id],
+						horas: det.horas,
+						propina: det.propina,
+					};
+				} else {
+					mapaJornadas[f].ids.push(reg.id);
+					mapaJornadas[f].horas += det.horas;
+					mapaJornadas[f].propina += det.propina;
+				}
+			});
+		});
+
+		const detalleDiasUnificado = Object.values(mapaJornadas).map((j: any) => ({
+			fecha: j.fecha,
+			idRegistro: j.ids.length === 1 ? j.ids[0] : j.ids.join(", "),
+			turnoTexto: j.ids.length > 1 ? `${j.ids.length} turnos (#${j.ids.join(", #")})` : `Reg #${j.ids[0]}`,
+			horas: Math.round(j.horas * 100) / 100,
+			propina: Math.round(j.propina * 100) / 100,
+			cantTurnos: j.ids.length,
+		}));
+
+		// Debe haber exactamente 1 fila consolidada para la fecha
+		expect(detalleDiasUnificado.length).toBe(1);
+		expect(detalleDiasUnificado[0].fecha).toBe("2026-10-08");
+		expect(detalleDiasUnificado[0].horas).toBe(12);
+		expect(detalleDiasUnificado[0].propina).toBe(70.75);
+		expect(detalleDiasUnificado[0].cantTurnos).toBe(2);
+		expect(detalleDiasUnificado[0].turnoTexto).toBe("2 turnos (#101, #102)");
+	});
 });
+
 

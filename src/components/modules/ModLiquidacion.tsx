@@ -583,7 +583,19 @@ export default function ModLiquidacion({
                                       <i className="bi bi-calendar-check text-success me-1"></i>
                                       {d.fecha}
                                     </td>
-                                    <td>Reg #{d.idRegistro}</td>
+                                    <td>
+                                      {d.cantTurnos > 1 ? (
+                                        <span
+                                          className="badge bg-primary-subtle text-primary border border-primary-subtle"
+                                          title={d.turnosDetalle?.map((t: any) => `Reg #${t.idRegistro}: ${t.horas}h (S/ ${Number(t.propina || 0).toFixed(2)})`).join(' | ')}
+                                        >
+                                          <i className="bi bi-layers-fill me-1"></i>
+                                          {d.turnoTexto || `${d.cantTurnos} turnos unificados`}
+                                        </span>
+                                      ) : (
+                                        <span>{d.turnoTexto || `Reg #${d.idRegistro}`}</span>
+                                      )}
+                                    </td>
                                     <td className="text-center">{d.horas.toFixed(1)} hrs</td>
                                     <td className="text-end fw-semibold text-primary">
                                       S/ {d.propina.toFixed(2)}
@@ -1155,9 +1167,9 @@ export default function ModLiquidacion({
                           .filter((d: any) => !d.estado || d.estado === 'Activo')
                           .map((d: any, idx: number) => (
                           <tr key={idx}>
-                            <td>{d.fecha}</td>
-                            <td>Reg #{d.idRegistro}</td>
-                            <td className="text-center">{d.horas.toFixed(1)} hrs</td>
+                            <td style={{ fontSize: '7pt' }}>{d.fecha}</td>
+                            <td style={{ fontSize: '7pt' }}>{d.turnoTexto || `Reg #${d.idRegistro}`}</td>
+                            <td className="text-center" style={{ fontSize: '7pt' }}>{d.horas.toFixed(1)} hrs</td>
                             <td className="text-end fw-semibold text-primary">
                               S/ {d.propina.toFixed(2)}
                             </td>
