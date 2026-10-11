@@ -5,8 +5,10 @@ import Chart from 'chart.js/auto';
 import { SessionUser } from '@/lib/auth';
 
 interface ModCentralNeuralgicaProps {
-  currentUser: SessionUser | null;
+  currentUser?: SessionUser | null;
   onSelectTienda?: (tiendaId: string) => void;
+  apiKey?: string;
+  isStandalone?: boolean;
 }
 
 const COLORES_SEDES = [
@@ -17,7 +19,12 @@ const COLORES_SEDES = [
   '#9333ea', '#db2777'
 ];
 
-export default function ModCentralNeuralgica({ currentUser, onSelectTienda }: ModCentralNeuralgicaProps) {
+export default function ModCentralNeuralgica({
+  currentUser,
+  onSelectTienda,
+  apiKey,
+  isStandalone,
+}: ModCentralNeuralgicaProps) {
   const [tabActivo, setTabActivo] = useState<'dashboard' | 'bi'>('dashboard');
   const [cargando, setCargando] = useState(false);
   const [datos, setDatos] = useState<any>(null);
@@ -81,7 +88,12 @@ export default function ModCentralNeuralgica({ currentUser, onSelectTienda }: Mo
       if (fin) params.set('fin', fin);
       if (lim > 0) params.set('limite', String(lim));
 
-      const res = await fetch(`/api/central-dashboard?${params.toString()}`);
+      const headers: Record<string, string> = {};
+      if (apiKey) {
+        headers['x-api-key'] = apiKey;
+      }
+
+      const res = await fetch(`/api/v1/central-neuralgica?${params.toString()}`, { headers });
       const data = await res.json();
       setCargando(false);
 
@@ -169,6 +181,7 @@ export default function ModCentralNeuralgica({ currentUser, onSelectTienda }: Mo
   };
 
   const esMaster = Boolean(
+    apiKey ||
     currentUser?.esMaestro ||
     currentUser?.id === 'USR-MASTER' ||
     currentUser?.rol?.toLowerCase().includes('master') ||
@@ -1828,6 +1841,74 @@ export default function ModCentralNeuralgica({ currentUser, onSelectTienda }: Mo
                     </div>
                     <div className="small text-muted mt-1" style={{ fontSize: '0.75rem' }}>
                       Envíala en tus peticiones en el header <code>x-api-key: TU_KEY</code> o <code>Authorization: Bearer TU_KEY</code>.
+                    </div>
+                  </div>
+                </div>
+
+                {/* Enlace de Visualización Directa y Código Iframe para otra Web */}
+                <div className="card border-0 shadow-sm rounded-3 mb-3 bg-white border-start border-4 border-primary">
+                  <div className="card-body p-3">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <label className="form-label small fw-bold text-dark mb-0">
+                        <i className="bi bi-window-fullscreen me-1 text-primary"></i>VISTA VISUAL DIRECTA (PARA OTRA WEB O IFRAME)
+                      </label>
+                      <span className="badge bg-primary-subtle text-primary" style={{ fontSize: '0.68rem' }}>
+                        Ver Idéntico / Sin Menús
+                      </span>
+                    </div>
+                    <p className="small text-muted mb-2" style={{ fontSize: '0.78rem' }}>
+                      Usa este enlace para ver el módulo con todo su diseño visual (gráficos, tarjetas y tablas) tal cual como aquí, pero 100% aislado del resto de la plataforma:
+                    </p>
+                    <div className="input-group input-group-sm mb-2">
+                      <input
+                        type="text"
+                        className="form-control font-monospace"
+                        value={`https://propinas-one.vercel.app/central-neuralgica?key=${apiKeyInfo?.apiKey || 'cn_live_8f3a9b4c2e1d7065e94b28a1c9704e52'}`}
+                        readOnly
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => {
+                          const url = `https://propinas-one.vercel.app/central-neuralgica?key=${apiKeyInfo?.apiKey || 'cn_live_8f3a9b4c2e1d7065e94b28a1c9704e52'}`;
+                          navigator.clipboard.writeText(url);
+                          alert('¡Enlace de visualización copiado al portapapeles!');
+                        }}
+                      >
+                        <i className="bi bi-clipboard me-1"></i>Copiar Enlace
+                      </button>
+                      <a
+                        href={`/central-neuralgica?key=${apiKeyInfo?.apiKey || 'cn_live_8f3a9b4c2e1d7065e94b28a1c9704e52'}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn-outline-primary"
+                      >
+                        <i className="bi bi-box-arrow-up-right me-1"></i>Abrir
+                      </a>
+                    </div>
+
+                    <label className="form-label small fw-bold text-muted mb-1" style={{ fontSize: '0.72rem' }}>
+                      Código HTML para incrustar en tu otra web (Iframe):
+                    </label>
+                    <div className="input-group input-group-sm">
+                      <input
+                        type="text"
+                        className="form-control font-monospace"
+                        style={{ fontSize: '0.72rem' }}
+                        value={`<iframe src="https://propinas-one.vercel.app/central-neuralgica?key=${apiKeyInfo?.apiKey || 'cn_live_8f3a9b4c2e1d7065e94b28a1c9704e52'}" width="100%" height="950px" style="border:none; border-radius:12px;" title="Central Neurálgica"></iframe>`}
+                        readOnly
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary"
+                        onClick={() => {
+                          const ifr = `<iframe src="https://propinas-one.vercel.app/central-neuralgica?key=${apiKeyInfo?.apiKey || 'cn_live_8f3a9b4c2e1d7065e94b28a1c9704e52'}" width="100%" height="950px" style="border:none; border-radius:12px;" title="Central Neurálgica"></iframe>`;
+                          navigator.clipboard.writeText(ifr);
+                          alert('¡Código de Iframe copiado al portapapeles!');
+                        }}
+                      >
+                        Copiar Iframe
+                      </button>
                     </div>
                   </div>
                 </div>
