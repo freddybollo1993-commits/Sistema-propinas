@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { logAuditoria } from '@/lib/auditoria';
 import { resolveTiendaId } from '@/lib/tiendas';
+import { ordenarColaboradoresPorArea } from '@/lib/areas';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,26 +18,9 @@ export async function GET(request: Request) {
       where: { tiendaId },
     });
 
-    const getAreaGroup = (area: string) => {
-      const a = (area || '').trim().toLowerCase();
-      const isApoyo = a.includes('apoyo');
-      const isSalon = a.includes('salón') || a.includes('salon');
-      const isCocina = a.includes('cocina');
+    const personalOrdenado = ordenarColaboradoresPorArea(personal);
 
-      if (isSalon) return { groupOrder: 1, subOrder: isApoyo ? 2 : 1 };
-      if (isCocina) return { groupOrder: 2, subOrder: isApoyo ? 2 : 1 };
-      return { groupOrder: 3, subOrder: isApoyo ? 2 : 1 };
-    };
-
-    personal.sort((a, b) => {
-      const gA = getAreaGroup(a.area);
-      const gB = getAreaGroup(b.area);
-      if (gA.groupOrder !== gB.groupOrder) return gA.groupOrder - gB.groupOrder;
-      if (gA.subOrder !== gB.subOrder) return gA.subOrder - gB.subOrder;
-      return a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' });
-    });
-
-    return NextResponse.json(personal);
+    return NextResponse.json(personalOrdenado);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

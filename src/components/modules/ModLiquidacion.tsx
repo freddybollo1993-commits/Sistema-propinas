@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { SessionUser } from '@/lib/auth';
+import { getAreaGroup, ordenarColaboradoresPorArea } from '@/lib/areas';
 
 interface ModLiquidacionProps {
   currentUser: SessionUser | null;
@@ -18,6 +19,12 @@ export default function ModLiquidacion({
   const [fFin, setFFin] = useState('');
   const [datos, setDatos] = useState<any>(null);
   const [cargando, setCargando] = useState(false);
+
+  // Lista organizada: Salón, Apoyos Salón, Cocina, Apoyos Cocina
+  const listaColaboradores = useMemo(() => {
+    if (!datos?.lista || !Array.isArray(datos.lista)) return [];
+    return ordenarColaboradoresPorArea(datos.lista);
+  }, [datos?.lista]);
 
   // Boleta Individual Modal
   const [boletaModal, setBoletaModal] = useState<{
@@ -385,86 +392,117 @@ export default function ModLiquidacion({
               </tr>
             </thead>
             <tbody>
-              {!datos?.lista || datos.lista.length === 0 ? (
+              {!listaColaboradores || listaColaboradores.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="text-center text-muted py-5">
                     No hay colaboradores con turnos registrados en este periodo.
                   </td>
                 </tr>
               ) : (
-                datos.lista.map((c: any) => {
+                listaColaboradores.map((c: any, idx: number) => {
                   const esApoyo = c.area.includes('Apoyo');
+                  const infoGrupo = getAreaGroup(c.area);
+                  const prevWorker = idx > 0 ? listaColaboradores[idx - 1] : null;
+                  const prevGrupo = prevWorker ? getAreaGroup(prevWorker.area) : null;
+                  const mostrarCabeceraGrupo = idx === 0 || infoGrupo.groupKey !== prevGrupo?.groupKey;
+
                   return (
-                    <tr key={c.colaborador}>
-                      <td>
-                        <strong className="text-slate-900">{c.colaborador}</strong>
-                        {!esFondo && c.perdidaTotal && (
+                    <React.Fragment key={c.colaborador}>
+                      {mostrarCabeceraGrupo && (
+                        <tr className="table-light">
+                          <td
+                            colSpan={9}
+                            className={`py-2 px-3 fw-bold border-top border-bottom ${infoGrupo.headerClass}`}
+                          >
+                            <div className="d-flex align-items-center justify-content-between">
+                              <span className="d-flex align-items-center gap-2">
+                                <i className={`bi ${infoGrupo.iconClass}`}></i>
+                                <span>{infoGrupo.groupTitle}</span>
+                              </span>
+                              {esFondo ? (
+                                <span className="badge bg-success text-white" style={{ fontSize: '0.72rem' }}>
+                                  Fondo Mancomunado
+                                </span>
+                              ) : (
+                                <span className={`badge ${infoGrupo.badgeClass}`} style={{ fontSize: '0.72rem' }}>
+                                  {infoGrupo.fondoBadge}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      <tr>
+                        <td>
+                          <strong className="text-slate-900">{c.colaborador}</strong>
+                          {!esFondo && c.perdidaTotal && (
+                            <span
+                              className="badge bg-danger ms-2"
+                              title="Pérdida de 100% por reincidencia de sanciones"
+                            >
+                              100% Retenido
+                            </span>
+                          )}
+                        </td>
+                        <td>
                           <span
-                            className="badge bg-danger ms-2"
-                            title="Pérdida de 100% por reincidencia de sanciones"
+                            className={`badge ${
+                              esApoyo
+                                ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
+                                : 'bg-light text-slate-700 border'
+                            }`}
                           >
-                            100% Retenido
+                            {c.area}
                           </span>
-                        )}
-                      </td>
-                      <td>
-                        <span
-                          className={`badge ${
-                            esApoyo
-                              ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
-                              : 'bg-light text-slate-700 border'
-                          }`}
-                        >
-                          {c.area}
-                        </span>
-                      </td>
-                      <td className="font-mono">{c.diasTrabajados} d</td>
-                      <td className="font-mono">{c.horasTrabajadas.toFixed(1)} hrs</td>
-                      <td className="font-mono text-slate-800 fw-semibold">S/ {c.propinaBruta.toFixed(2)}</td>
-                      <td className="font-mono text-danger">S/ {c.deducciones.toFixed(2)}</td>
-                      <td>
-                        {esFondo ? (
-                          <span
-                            className="badge bg-success-subtle text-success border border-success-subtle"
-                            title="Sanciones destinadas al Fondo Mancomunado"
-                          >
-                            <i className="bi bi-piggy-bank me-1"></i>Fondo
-                          </span>
-                        ) : c.bonoRedistribucion > 0 ? (
-                          <span className="text-success fw-semibold font-mono">
-                            +S/ {c.bonoRedistribucion.toFixed(2)}
-                          </span>
-                        ) : esApoyo ? (
-                          <span className="text-muted small font-mono">
-                            S/ 0.00{' '}
-                            <span className="badge bg-light text-secondary border">Apoyo</span>
-                          </span>
-                        ) : (
-                          <span className="text-muted small font-mono">S/ 0.00</span>
-                        )}
-                      </td>
-                      <td className="fw-bold text-primary fs-6 font-mono">S/ {c.montoNeto.toFixed(2)}</td>
-                      <td className="text-center">
-                        <div className="d-inline-flex gap-1">
-                          <button
-                            type="button"
-                            className="btn btn-outline-primary btn-sm py-1 px-2 shadow-xs"
-                            onClick={() => handleAbrirBoleta(c)}
-                            title="Ver Boleta Detallada"
-                          >
-                            <i className="bi bi-file-text me-1"></i> Boleta
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-primary btn-sm py-1 px-2 shadow-xs"
-                            onClick={() => handleImprimirBoletaDirecta(c)}
-                            title="Imprimir Boleta Directa (1 Hoja A4)"
-                          >
-                            <i className="bi bi-printer-fill"></i>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                        </td>
+                        <td className="font-mono">{c.diasTrabajados} d</td>
+                        <td className="font-mono">{c.horasTrabajadas.toFixed(1)} hrs</td>
+                        <td className="font-mono text-slate-800 fw-semibold">S/ {c.propinaBruta.toFixed(2)}</td>
+                        <td className="font-mono text-danger">S/ {c.deducciones.toFixed(2)}</td>
+                        <td>
+                          {esFondo ? (
+                            <span
+                              className="badge bg-success-subtle text-success border border-success-subtle"
+                              title="Sanciones destinadas al Fondo Mancomunado"
+                            >
+                              <i className="bi bi-piggy-bank me-1"></i>Fondo
+                            </span>
+                          ) : c.bonoRedistribucion > 0 ? (
+                            <span className="text-success fw-semibold font-mono">
+                              +S/ {c.bonoRedistribucion.toFixed(2)}
+                            </span>
+                          ) : esApoyo ? (
+                            <span className="text-muted small font-mono">
+                              S/ 0.00{' '}
+                              <span className="badge bg-light text-secondary border">Apoyo</span>
+                            </span>
+                          ) : (
+                            <span className="text-muted small font-mono">S/ 0.00</span>
+                          )}
+                        </td>
+                        <td className="fw-bold text-primary fs-6 font-mono">S/ {c.montoNeto.toFixed(2)}</td>
+                        <td className="text-center">
+                          <div className="d-inline-flex gap-1">
+                            <button
+                              type="button"
+                              className="btn btn-outline-primary btn-sm py-1 px-2 shadow-xs"
+                              onClick={() => handleAbrirBoleta(c)}
+                              title="Ver Boleta Detallada"
+                            >
+                              <i className="bi bi-file-text me-1"></i> Boleta
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-primary btn-sm py-1 px-2 shadow-xs"
+                              onClick={() => handleImprimirBoletaDirecta(c)}
+                              title="Imprimir Boleta Directa (1 Hoja A4)"
+                            >
+                              <i className="bi bi-printer-fill"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    </React.Fragment>
                   );
                 })
               )}
@@ -1000,45 +1038,70 @@ export default function ModLiquidacion({
               </tr>
             </thead>
             <tbody>
-              {datos?.lista?.map((c: any, idx: number) => {
+              {listaColaboradores.map((c: any, idx: number) => {
                 const aviso = !esFondo && c.perdidaTotal ? ' [100% Retenido]' : '';
+                const infoGrupo = getAreaGroup(c.area);
+                const prevWorker = idx > 0 ? listaColaboradores[idx - 1] : null;
+                const prevGrupo = prevWorker ? getAreaGroup(prevWorker.area) : null;
+                const mostrarCabeceraGrupo = idx === 0 || infoGrupo.groupKey !== prevGrupo?.groupKey;
+
                 return (
-                  <tr key={c.colaborador}>
-                    <td>{idx + 1}</td>
-                    <td className="col-nombre">
-                      {c.colaborador}
-                      {aviso && (
-                        <span style={{ fontSize: '6.5pt', color: '#dc2626', fontWeight: 'bold' }}>
-                          {aviso}
-                        </span>
-                      )}
-                    </td>
-                    <td>{c.area}</td>
-                    <td>{c.diasTrabajados}</td>
-                    <td>{c.horasTrabajadas.toFixed(1)}</td>
-                    <td>S/ {c.propinaBruta.toFixed(2)}</td>
-                    <td style={{ color: '#b91c1c' }}>
-                      {c.adelantos > 0 ? `S/ ${c.adelantos.toFixed(2)}` : '-'}
-                    </td>
-                    <td style={{ color: '#b91c1c' }}>
-                      {c.sanciones > 0 ? `S/ ${c.sanciones.toFixed(2)}` : '-'}
-                    </td>
-                    <td>
-                      {esFondo ? (
-                        <span style={{ color: '#15803d', fontSize: '7pt' }}>Fondo</span>
-                      ) : c.bonoRedistribucion > 0 ? (
-                        `+S/ ${c.bonoRedistribucion.toFixed(2)}`
-                      ) : (
-                        'S/ 0.00'
-                      )}
-                    </td>
-                    <td className="col-neto">S/ {c.montoNeto.toFixed(2)}</td>
-                    <td className="col-firma">
-                      <div className="linea-firma-trabajador">
-                        <span style={{ fontSize: '6pt', color: '#94a3b8' }}>DNI: _____________</span>
-                      </div>
-                    </td>
-                  </tr>
+                  <React.Fragment key={c.colaborador}>
+                    {mostrarCabeceraGrupo && (
+                      <tr style={{ background: '#f1f5f9', fontWeight: 'bold' }}>
+                        <td
+                          colSpan={11}
+                          style={{
+                            textAlign: 'left',
+                            padding: '4px 8px',
+                            fontSize: '8pt',
+                            color: '#0f172a',
+                            borderTop: '1px solid #cbd5e1',
+                            borderBottom: '1px solid #cbd5e1',
+                          }}
+                        >
+                          <i className={`bi ${infoGrupo.iconClass} me-1`}></i>
+                          {infoGrupo.groupTitle}
+                        </td>
+                      </tr>
+                    )}
+                    <tr>
+                      <td>{idx + 1}</td>
+                      <td className="col-nombre">
+                        {c.colaborador}
+                        {aviso && (
+                          <span style={{ fontSize: '6.5pt', color: '#dc2626', fontWeight: 'bold' }}>
+                            {aviso}
+                          </span>
+                        )}
+                      </td>
+                      <td>{c.area}</td>
+                      <td>{c.diasTrabajados}</td>
+                      <td>{c.horasTrabajadas.toFixed(1)}</td>
+                      <td>S/ {c.propinaBruta.toFixed(2)}</td>
+                      <td style={{ color: '#b91c1c' }}>
+                        {c.adelantos > 0 ? `S/ ${c.adelantos.toFixed(2)}` : '-'}
+                      </td>
+                      <td style={{ color: '#b91c1c' }}>
+                        {c.sanciones > 0 ? `S/ ${c.sanciones.toFixed(2)}` : '-'}
+                      </td>
+                      <td>
+                        {esFondo ? (
+                          <span style={{ color: '#15803d', fontSize: '7pt' }}>Fondo</span>
+                        ) : c.bonoRedistribucion > 0 ? (
+                          `+S/ ${c.bonoRedistribucion.toFixed(2)}`
+                        ) : (
+                          'S/ 0.00'
+                        )}
+                      </td>
+                      <td className="col-neto">S/ {c.montoNeto.toFixed(2)}</td>
+                      <td className="col-firma">
+                        <div className="linea-firma-trabajador">
+                          <span style={{ fontSize: '6pt', color: '#94a3b8' }}>DNI: _____________</span>
+                        </div>
+                      </td>
+                    </tr>
+                  </React.Fragment>
                 );
               })}
             </tbody>

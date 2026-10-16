@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { SessionUser } from '@/lib/auth';
+import { getAreaGroup, ordenarColaboradoresPorArea } from '@/lib/areas';
 
 interface ModPersonalProps {
   currentUser: SessionUser | null;
@@ -56,13 +57,15 @@ export default function ModPersonal({
   if (!areasDisponibles.includes('Salón')) areasDisponibles.push('Salón');
   if (!areasDisponibles.includes('Cocina')) areasDisponibles.push('Cocina');
 
-  // Filtrado reactivo de colaboradores
-  const personalFiltrado = personal.filter((p) => {
-    const matchNombre = !filtroNombre.trim() || (p.nombre || '').toLowerCase().includes(filtroNombre.toLowerCase().trim());
-    const matchEstado = !filtroEstado || p.estado === filtroEstado;
-    const matchArea = !filtroArea || (p.area || '').toLowerCase() === filtroArea.toLowerCase();
-    return matchNombre && matchEstado && matchArea;
-  });
+  // Filtrado reactivo de colaboradores ordenados por Salón, Apoyo Salón, Cocina, Apoyo Cocina
+  const personalFiltrado = ordenarColaboradoresPorArea(
+    personal.filter((p) => {
+      const matchNombre = !filtroNombre.trim() || (p.nombre || '').toLowerCase().includes(filtroNombre.toLowerCase().trim());
+      const matchEstado = !filtroEstado || p.estado === filtroEstado;
+      const matchArea = !filtroArea || (p.area || '').toLowerCase() === filtroArea.toLowerCase();
+      return matchNombre && matchEstado && matchArea;
+    })
+  );
 
   const hayFiltrosActivos = !!filtroNombre.trim() || !!filtroEstado || !!filtroArea;
 
@@ -303,74 +306,106 @@ export default function ModPersonal({
                 </td>
               </tr>
             ) : (
-              personalFiltrado.map((p) => {
+              personalFiltrado.map((p, idx) => {
                 const esActivo = p.estado === 'Activo';
                 const esApoyo = p.area.includes('Apoyo');
+                const infoGrupo = getAreaGroup(p.area);
+                const prevWorker = idx > 0 ? personalFiltrado[idx - 1] : null;
+                const prevGrupo = prevWorker ? getAreaGroup(prevWorker.area) : null;
+                const mostrarCabeceraGrupo = idx === 0 || infoGrupo.groupKey !== prevGrupo?.groupKey;
 
                 return (
-                  <tr key={p.id}>
-                    <td>
-                      <div className="d-flex align-items-center gap-2">
-                        <div
-                          className="rounded-circle bg-light border d-flex align-items-center justify-content-center text-secondary fw-bold"
-                          style={{ width: '32px', height: '32px', fontSize: '0.8rem' }}
+                  <React.Fragment key={p.id}>
+                    {mostrarCabeceraGrupo && (
+                      <tr className="table-light">
+                        <td
+                          colSpan={4}
+                          className={`py-2 px-3 fw-bold border-top border-bottom ${infoGrupo.headerClass}`}
                         >
-                          {p.nombre.charAt(0).toUpperCase()}
+                          <div className="d-flex align-items-center justify-content-between">
+                            <span className="d-flex align-items-center gap-2">
+                              <i className={`bi ${infoGrupo.iconClass}`}></i>
+                              <span>{infoGrupo.groupTitle}</span>
+                            </span>
+                            <span
+                              className="badge bg-white text-secondary border px-2 py-1"
+                              style={{ fontSize: '0.72rem' }}
+                            >
+                              {
+                                personalFiltrado.filter(
+                                  (x) => getAreaGroup(x.area).groupKey === infoGrupo.groupKey
+                                ).length
+                              }{' '}
+                              registrados
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    <tr>
+                      <td>
+                        <div className="d-flex align-items-center gap-2">
+                          <div
+                            className="rounded-circle bg-light border d-flex align-items-center justify-content-center text-secondary fw-bold"
+                            style={{ width: '32px', height: '32px', fontSize: '0.8rem' }}
+                          >
+                            {p.nombre.charAt(0).toUpperCase()}
+                          </div>
+                          <strong className="text-slate-900">{p.nombre}</strong>
                         </div>
-                        <strong className="text-slate-900">{p.nombre}</strong>
-                      </div>
-                    </td>
-                    <td>
-                      {esApoyo ? (
-                        <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
-                          <i className="bi bi-person-badge me-1"></i>
-                          {p.area}
+                      </td>
+                      <td>
+                        {esApoyo ? (
+                          <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
+                            <i className="bi bi-person-badge me-1"></i>
+                            {p.area}
+                          </span>
+                        ) : (
+                          <span className="badge bg-light text-slate-700 border">{p.area}</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`badge ${esActivo ? 'badge-subtle-success' : 'badge-subtle-secondary'}`}>
+                          {p.estado}
                         </span>
-                      ) : (
-                        <span className="badge bg-light text-slate-700 border">{p.area}</span>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`badge ${esActivo ? 'badge-subtle-success' : 'badge-subtle-secondary'}`}>
-                        {p.estado}
-                      </span>
-                    </td>
-                    <td className="text-end">
-                      {esActivo ? (
-                        <button
-                          className="btn btn-outline-secondary btn-sm py-1 px-2 shadow-xs"
-                          onClick={() => handleCambiarEstado(p, 'Inactivo')}
-                          title="Dar de baja temporalmente"
-                        >
-                          <i className="bi bi-person-x me-1"></i>Baja
-                        </button>
-                      ) : (
-                        <button
-                          className="btn btn-outline-success btn-sm py-1 px-2 shadow-xs"
-                          onClick={() => handleCambiarEstado(p, 'Activo')}
-                          title="Reactivar colaborador"
-                        >
-                          <i className="bi bi-person-check me-1"></i>Reactivar
-                        </button>
-                      )}
+                      </td>
+                      <td className="text-end">
+                        {esActivo ? (
+                          <button
+                            className="btn btn-outline-secondary btn-sm py-1 px-2 shadow-xs"
+                            onClick={() => handleCambiarEstado(p, 'Inactivo')}
+                            title="Dar de baja temporalmente"
+                          >
+                            <i className="bi bi-person-x me-1"></i>Baja
+                          </button>
+                        ) : (
+                          <button
+                            className="btn btn-outline-success btn-sm py-1 px-2 shadow-xs"
+                            onClick={() => handleCambiarEstado(p, 'Activo')}
+                            title="Reactivar colaborador"
+                          >
+                            <i className="bi bi-person-check me-1"></i>Reactivar
+                          </button>
+                        )}
 
-                      {puedeEliminar && (
-                        <button
-                          className="btn btn-outline-danger btn-sm py-1 px-2 ms-1 shadow-xs"
-                          title="Eliminar del catálogo"
-                          onClick={() =>
-                            onOpenEliminarMaster(
-                              'Personal',
-                              p.nombre,
-                              `Colaborador: ${p.nombre} (${p.area})`
-                            )
-                          }
-                        >
-                          <i className="bi bi-trash3-fill"></i>
-                        </button>
-                      )}
-                    </td>
-                  </tr>
+                        {puedeEliminar && (
+                          <button
+                            className="btn btn-outline-danger btn-sm py-1 px-2 ms-1 shadow-xs"
+                            title="Eliminar del catálogo"
+                            onClick={() =>
+                              onOpenEliminarMaster(
+                                'Personal',
+                                p.nombre,
+                                `Colaborador: ${p.nombre} (${p.area})`
+                              )
+                            }
+                          >
+                            <i className="bi bi-trash3-fill"></i>
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  </React.Fragment>
                 );
               })
             )}

@@ -17,50 +17,8 @@ interface WorkerRow {
   propinaCalculada: number;
 }
 
-export function getAreaGroup(area: string, modoDistribucion: '60_40' | 'equitativo' = '60_40') {
-  const a = (area || '').trim().toLowerCase();
-  const isApoyo = a.includes('apoyo');
-  const isSalon = a.includes('salón') || a.includes('salon');
-  const isCocina = a.includes('cocina');
-
-  const badgeSalon = modoDistribucion === 'equitativo' ? 'Reparto Equitativo' : 'Fondo 60%';
-  const badgeCocina = modoDistribucion === 'equitativo' ? 'Reparto Equitativo' : 'Fondo 40%';
-
-  if (isSalon) {
-    return {
-      groupOrder: 1,
-      subOrder: isApoyo ? 2 : 1,
-      groupKey: 'salon' as const,
-      groupTitle: 'PERSONAL DE SALÓN (Incluye Apoyos de Salón)',
-      fondoBadge: badgeSalon,
-      badgeClass: 'bg-success text-white',
-      headerClass: 'bg-success-subtle text-success-emphasis',
-      iconClass: 'bi-shop',
-    };
-  }
-  if (isCocina) {
-    return {
-      groupOrder: 2,
-      subOrder: isApoyo ? 2 : 1,
-      groupKey: 'cocina' as const,
-      groupTitle: 'PERSONAL DE COCINA (Incluye Apoyos de Cocina)',
-      fondoBadge: badgeCocina,
-      badgeClass: 'bg-warning text-dark',
-      headerClass: 'bg-warning-subtle text-warning-emphasis',
-      iconClass: 'bi-fire',
-    };
-  }
-  return {
-    groupOrder: 3,
-    subOrder: isApoyo ? 2 : 1,
-    groupKey: 'otros' as const,
-    groupTitle: 'OTROS COLABORADORES',
-    fondoBadge: '',
-    badgeClass: 'bg-secondary text-white',
-    headerClass: 'bg-secondary-subtle text-secondary-emphasis',
-    iconClass: 'bi-person-badge',
-  };
-}
+import { getAreaGroup } from '@/lib/areas';
+export { getAreaGroup };
 
 export default function ModRegistroPropinas({
   currentUser,

@@ -1,4 +1,5 @@
 import prisma from './db';
+import { ordenarColaboradoresPorArea } from './areas';
 
 export interface ParticipantInput {
   colaborador: string;
@@ -979,8 +980,10 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
 
   const fondoMancomunado = await getEstadoFondoMancomunado(filtroRango, tiendaId);
 
+  const listaOrdenada = ordenarColaboradoresPorArea(listaFinal);
+
   return {
-    lista: listaFinal,
+    lista: listaOrdenada,
     horasSalon: Math.round(horasSalon * 10) / 10,
     horasCocina: Math.round(horasCocina * 10) / 10,
     totalBruto: Math.round(totalBruto * 100) / 100,

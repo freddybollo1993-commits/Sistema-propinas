@@ -6,6 +6,7 @@ import {
 	type SancionParaRedistribucion,
 	type TrabajadorJornadaFecha,
 } from "../formulas";
+import { getAreaGroup, ordenarColaboradoresPorArea } from "../areas";
 
 describe("Motor de Cálculo de Prorrateo de Propinas (60% Salón / 40% Cocina)", () => {
 	it("debe distribuir exactamente 60% para Salón y 40% para Cocina con horas iguales", () => {
@@ -445,6 +446,77 @@ describe("Redistribución Quirúrgica de Sanciones (Misma Fecha, Carga Horaria y
 
 		expect(resultado.fondoRedistribuirTotal).toBe(0);
 		expect(resultado.bonosPorColaborador["Mesero Solitario"]).toBeUndefined();
+	});
+});
+
+describe("Organización de Colaboradores (Salón, Apoyos Salón, Cocina, Apoyos Cocina)", () => {
+	it("debe clasificar correctamente las áreas y subgrupos con getAreaGroup", () => {
+		const salonRegular = getAreaGroup("Salón");
+		const salonApoyo = getAreaGroup("Apoyo Salón");
+		const cocinaRegular = getAreaGroup("Cocina");
+		const cocinaApoyo = getAreaGroup("Apoyo Cocina");
+		const admin = getAreaGroup("Administración");
+
+		expect(salonRegular.groupOrder).toBe(1);
+		expect(salonRegular.subOrder).toBe(1);
+
+		expect(salonApoyo.groupOrder).toBe(1);
+		expect(salonApoyo.subOrder).toBe(2);
+
+		expect(cocinaRegular.groupOrder).toBe(2);
+		expect(cocinaRegular.subOrder).toBe(1);
+
+		expect(cocinaApoyo.groupOrder).toBe(2);
+		expect(cocinaApoyo.subOrder).toBe(2);
+
+		expect(admin.groupOrder).toBe(3);
+		expect(admin.subOrder).toBe(1);
+	});
+
+	it("debe ordenar la lista estrictamente en la secuencia: 1° Salón, 2° Apoyos Salón, 3° Cocina, 4° Apoyos Cocina", () => {
+		const colaboradoresDesordenados = [
+			{ nombre: "Zulema Cocina Apoyo", area: "Apoyo Cocina" },
+			{ nombre: "Carlos Cocina Titular", area: "Cocina" },
+			{ nombre: "Beatriz Salón Apoyo", area: "Apoyo Salón" },
+			{ nombre: "Alberto Salón Titular", area: "Salón" },
+			{ nombre: "Daniel Salón Titular", area: "Salón" },
+			{ nombre: "Ximena Cocina Titular", area: "Cocina" },
+			{ nombre: "Ana Salón Apoyo", area: "Apoyo Salón" },
+		];
+
+		const ordenados = ordenarColaboradoresPorArea(colaboradoresDesordenados);
+
+		const nombresOrdenados = ordenados.map((c) => c.nombre);
+
+		expect(nombresOrdenados).toEqual([
+			// 1. Salón titulares (alfabético)
+			"Alberto Salón Titular",
+			"Daniel Salón Titular",
+			// 2. Salón apoyos (alfabético)
+			"Ana Salón Apoyo",
+			"Beatriz Salón Apoyo",
+			// 3. Cocina titulares (alfabético)
+			"Carlos Cocina Titular",
+			"Ximena Cocina Titular",
+			// 4. Cocina apoyos (alfabético)
+			"Zulema Cocina Apoyo",
+		]);
+	});
+
+	it("debe soportar indistintamente la propiedad 'colaborador' o 'nombre'", () => {
+		const listaLiquidacion = [
+			{ colaborador: "Pedro Cocina", area: "Cocina" },
+			{ colaborador: "Maria Apoyo Salón", area: "Apoyo Salón" },
+			{ colaborador: "Juan Salón", area: "Salón" },
+		];
+
+		const ordenados = ordenarColaboradoresPorArea(listaLiquidacion);
+
+		expect(ordenados.map((c) => c.colaborador)).toEqual([
+			"Juan Salón",
+			"Maria Apoyo Salón",
+			"Pedro Cocina",
+		]);
 	});
 });
 
