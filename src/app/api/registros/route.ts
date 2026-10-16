@@ -199,3 +199,149 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
+
+export async function PUT(request: Request) {
+  try {
+    const { tiendaId, user } = await resolveTiendaId(request);
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'No autenticado: Inicie sesión para editar registros.' },
+        { status: 401 }
+      );
+    }
+
+    const usuarioActual = user.nombre;
+    const payload = await request.json();
+    const idRegistro = parseInt(payload.idRegistro, 10);
+
+    if (!idRegistro || isNaN(idRegistro)) {
+      return NextResponse.json(
+        { success: false, message: 'ID de registro inválido.' },
+        { status: 400 }
+      );
+    }
+
+    const justificacionIngresada = (payload.justificacion || '').trim();
+    if (!justificacionIngresada) {
+      return NextResponse.json(
+        { success: false, message: 'Debe ingresar una justificación obligatoria para guardar las modificaciones.' },
+        { status: 400 }
+      );
+    }
+
+    const reg = await prisma.registroPropina.findUnique({
+      where: { id: idRegistro },
+      include: { detalles: true },
+    });
+
+    if (!reg) {
+      return NextResponse.json(
+        { success: false, message: `Registro #${idRegistro} no encontrado.` },
+        { status: 404 }
+      );
+    }
+
+    if (tiendaId && reg.tiendaId && reg.tiendaId !== tiendaId) {
+      return NextResponse.json(
+        { success: false, message: 'No tiene permisos para modificar registros de otra tienda.' },
+        { status: 403 }
+      );
+    }
+
+    if (reg.estado === 'Anulado') {
+      return NextResponse.json(
+        { success: false, message: 'No se puede editar un registro que ya se encuentra anulado.' },
+        { status: 400 }
+      );
+    }
+
+    const participantes = Array.isArray(payload.participantes) ? payload.participantes : [];
+    const participantesActivos = participantes.filter(
+      (p: any) => p && p.colaborador && Number(p.horas) > 0
+    );
+
+    if (participantesActivos.length === 0) {
+      return NextResponse.json(
+        { success: false, message: 'Debe haber al menos un trabajador activo con horas mayor a 0.' },
+        { status: 400 }
+      );
+    }
+
+    // Modo de distribución
+    const modoDistribucion = payload.modoDistribucion || (
+      reg.justificacion?.includes('Modo Especial Equitativo') ||
+      reg.justificacion?.includes('50/50') ||
+      reg.justificacion?.includes('Equitativo')
+        ? 'equitativo'
+        : '60_40'
+    );
+
+    const esModoEspecial =
+      modoDistribucion === 'equitativo' ||
+      modoDistribucion === '50_50' ||
+      modoDistribucion === 'EQUITATIVO_GENERAL';
+
+    const calculo = calcularProrrateoEnMemoria(
+      reg.montoTotal,
+      participantesActivos.map((p: any) => ({
+        colaborador: String(p.colaborador).trim(),
+        area: String(p.area || 'Salón').trim(),
+        horas: Number(p.horas) || 0,
+      })),
+      esModoEspecial ? 'EQUITATIVO_GENERAL' : 'REGULAR_60_40'
+    );
+
+    const timestampStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const notaEdicion = `[Edición ${timestampStr} por ${usuarioActual}]: ${justificacionIngresada}`;
+    const nuevaJustificacion = reg.justificacion
+      ? `${reg.justificacion} | ${notaEdicion}`
+      : notaEdicion;
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Eliminar los detalles anteriores
+      await tx.detalleParticipacion.deleteMany({
+        where: { registroId: reg.id },
+      });
+
+      // 2. Crear los nuevos detalles recalculados
+      await tx.detalleParticipacion.createMany({
+        data: calculo.detalles.map((d) => ({
+          registroId: reg.id,
+          colaborador: d.colaborador,
+          area: d.area,
+          horas: d.horas,
+          totalHorasArea: d.totalHorasArea,
+          propina: d.propinaAsignada,
+        })),
+      });
+
+      // 3. Actualizar cabecera del registro
+      await tx.registroPropina.update({
+        where: { id: reg.id },
+        data: {
+          fondoSalon: calculo.fondoSalon,
+          fondoCocina: calculo.fondoCocina,
+          justificacion: nuevaJustificacion,
+          validador: `Editado por ${usuarioActual}`,
+        },
+      });
+    });
+
+    await logAuditoria(
+      'Edición de Registro de Propinas',
+      `Registro #${reg.id} (${reg.fecha}, S/ ${reg.montoTotal.toFixed(2)}) modificado por ${usuarioActual}. Colaboradores: ${calculo.detalles.length}. Justificación: ${justificacionIngresada}`,
+      usuarioActual,
+      tiendaId || reg.tiendaId || undefined
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: `Registro #${reg.id} actualizado y recalculado exitosamente con ${calculo.detalles.length} colaboradores.`,
+      idRegistro: reg.id,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}
+

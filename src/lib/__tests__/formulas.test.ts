@@ -228,6 +228,64 @@ describe("Motor de Cálculo de Prorrateo de Propinas (60% Salón / 40% Cocina)",
 		expect(detalleDiasUnificado[0].cantTurnos).toBe(2);
 		expect(detalleDiasUnificado[0].turnoTexto).toBe("2 turnos (#101, #102)");
 	});
+
+	it("EDICIÓN DE TURNO: debe recalcular propinas al incorporar un apoyo registrado con posterioridad", () => {
+		const montoTotal = 1000;
+		// Registro original del día X sin el apoyo:
+		const original: ParticipantInput[] = [
+			{ colaborador: "Mesero 1", area: "Salón", horas: 12 },
+			{ colaborador: "Mesero 2", area: "Salón", horas: 12 },
+			{ colaborador: "Cocinero 1", area: "Cocina", horas: 12 },
+			{ colaborador: "Cocinero 2", area: "Cocina", horas: 12 },
+		];
+		const resOriginal = calcularProrrateoEnMemoria(montoTotal, original);
+		expect(resOriginal.detalles.find((d) => d.colaborador === "Mesero 1")?.propinaAsignada).toBe(300);
+		expect(resOriginal.detalles.find((d) => d.colaborador === "Mesero 2")?.propinaAsignada).toBe(300);
+
+		// Edición del turno incluyendo al nuevo apoyo registrado:
+		const editadoConApoyo: ParticipantInput[] = [
+			...original,
+			{ colaborador: "Apoyo Nuevo Salón", area: "Apoyo Salón", horas: 12 },
+		];
+		const resEditado = calcularProrrateoEnMemoria(montoTotal, editadoConApoyo);
+
+		// Fondo Salón (600) ahora se reparte entre 3 (Mesero 1, Mesero 2, Apoyo Salón)
+		const mesero1 = resEditado.detalles.find((d) => d.colaborador === "Mesero 1");
+		const mesero2 = resEditado.detalles.find((d) => d.colaborador === "Mesero 2");
+		const apoyo = resEditado.detalles.find((d) => d.colaborador === "Apoyo Nuevo Salón");
+		const cocinero1 = resEditado.detalles.find((d) => d.colaborador === "Cocinero 1");
+
+		expect(mesero1?.propinaAsignada).toBe(200);
+		expect(mesero2?.propinaAsignada).toBe(200);
+		expect(apoyo?.propinaAsignada).toBe(200);
+		// Cocina permanece intacta con S/ 200 c/u
+		expect(cocinero1?.propinaAsignada).toBe(200);
+		expect(resEditado.fondoSalon).toBe(600);
+		expect(resEditado.fondoCocina).toBe(400);
+	});
+
+	it("EDICIÓN DE TURNO: debe recalcular propinas al modificar horas trabajadas o desactivar trabajadores", () => {
+		const montoTotal = 1000;
+		// Modificación de horas: Mesero 1 hizo 12h, Mesero 2 se ajusta a 6h bajo justificación
+		const conHorasAjustadas: ParticipantInput[] = [
+			{ colaborador: "Mesero 1", area: "Salón", horas: 12 },
+			{ colaborador: "Mesero 2", area: "Salón", horas: 6 },
+			{ colaborador: "Cocinero Único", area: "Cocina", horas: 12 },
+		];
+
+		const res = calcularProrrateoEnMemoria(montoTotal, conHorasAjustadas);
+		// Fondo Salón = 600. Total horas Salón = 18h.
+		// Mesero 1: 600 * (12/18) = 400
+		// Mesero 2: 600 * (6/18) = 200
+		const m1 = res.detalles.find((d) => d.colaborador === "Mesero 1");
+		const m2 = res.detalles.find((d) => d.colaborador === "Mesero 2");
+		const c1 = res.detalles.find((d) => d.colaborador === "Cocinero Único");
+
+		expect(m1?.propinaAsignada).toBe(400);
+		expect(m2?.propinaAsignada).toBe(200);
+		expect(c1?.propinaAsignada).toBe(400);
+	});
 });
+
 
 

@@ -115,6 +115,28 @@ export default function ModRegistroPropinas({
     validador: string;
   }>({ show: false, idReg: 0, justificacion: '', validador: '' });
 
+  // Modal Editar Turno (Personal y Horas con Recálculo Automático)
+  const [modalEditar, setModalEditar] = useState<{
+    show: boolean;
+    idReg: number;
+    fecha: string;
+    createdAt?: string;
+    turnoNumero?: number;
+    turnosEnFecha?: number;
+    montoTotal: number;
+    modoDistribucion: '60_40' | 'equitativo';
+    colaboradores: WorkerRow[];
+    justificacion: string;
+  }>({
+    show: false,
+    idReg: 0,
+    fecha: '',
+    montoTotal: 0,
+    modoDistribucion: '60_40',
+    colaboradores: [],
+    justificacion: '',
+  });
+
   const formatHoraRegistro = (isoStr?: string) => {
     if (!isoStr) return '';
     try {
@@ -382,6 +404,246 @@ export default function ModRegistroPropinas({
     } catch (e: any) {
       setCargando(false);
       alert('Error al resolver anulación: ' + e.message);
+    }
+  };
+
+  // Recálculo en tiempo real para el modal de edición
+  const editMonto = modalEditar.montoTotal || 0;
+  const esEquitativoEdit = modalEditar.modoDistribucion === 'equitativo';
+  let editTotalHorasSalon = 0;
+  let editTotalHorasCocina = 0;
+  let editTotalHorasGlobal = 0;
+  let editActivosSalon = 0;
+  let editActivosCocina = 0;
+
+  modalEditar.colaboradores.forEach((c) => {
+    if (c.activo && c.horas > 0) {
+      editTotalHorasGlobal += c.horas;
+      if (c.area.includes('Salón')) {
+        editTotalHorasSalon += c.horas;
+        editActivosSalon += 1;
+      } else if (c.area.includes('Cocina')) {
+        editTotalHorasCocina += c.horas;
+        editActivosCocina += 1;
+      }
+    }
+  });
+
+  const getEditPropinaCalculada = (c: WorkerRow) => {
+    if (!c.activo || c.horas <= 0) return 0;
+    if (esEquitativoEdit) {
+      return editTotalHorasGlobal > 0 ? (editMonto * c.horas) / editTotalHorasGlobal : 0;
+    }
+    const esSalon = c.area.includes('Salón');
+    const totalArea = esSalon ? editTotalHorasSalon : editTotalHorasCocina;
+    const fondoArea = esSalon ? editMonto * 0.6 : editMonto * 0.4;
+    return totalArea > 0 ? (fondoArea * c.horas) / totalArea : 0;
+  };
+
+  let editFondoSalon = 0;
+  let editFondoCocina = 0;
+  if (esEquitativoEdit) {
+    modalEditar.colaboradores.forEach((c) => {
+      if (c.activo && c.horas > 0) {
+        const prop = getEditPropinaCalculada(c);
+        if (c.area.includes('Salón')) editFondoSalon += prop;
+        else editFondoCocina += prop;
+      }
+    });
+  } else {
+    editFondoSalon = editMonto * 0.6;
+    editFondoCocina = editMonto * 0.4;
+  }
+
+  const handleAbrirEditar = async (registro: any) => {
+    try {
+      setCargando(true);
+      const res = await fetch('/api/personal');
+      const personalList = await res.json();
+      setCargando(false);
+
+      const esModoEquitativo = Boolean(
+        registro.justificacion?.includes('Modo Especial Equitativo') ||
+        registro.justificacion?.includes('50/50') ||
+        registro.justificacion?.includes('Equitativo')
+      );
+
+      const detalles = Array.isArray(registro.detalles) ? registro.detalles : [];
+      const detalleMap = new Map<string, { horas: number; area: string }>();
+      detalles.forEach((d: any) => {
+        detalleMap.set((d.colaborador || '').trim().toLowerCase(), {
+          horas: Number(d.horas) || 12,
+          area: d.area || '',
+        });
+      });
+
+      const mergedWorkers: WorkerRow[] = [];
+      const processedNames = new Set<string>();
+
+      if (Array.isArray(personalList)) {
+        personalList.forEach((p: any) => {
+          const normName = (p.nombre || '').trim().toLowerCase();
+          processedNames.add(normName);
+          const inDetalle = detalleMap.get(normName);
+          if (inDetalle) {
+            mergedWorkers.push({
+              nombre: p.nombre,
+              area: inDetalle.area || p.area || 'Salón',
+              activo: true,
+              horas: inDetalle.horas,
+              prevHoras: inDetalle.horas,
+              propinaCalculada: 0,
+            });
+          } else {
+            // Trabajador registrado en la sede pero que no estuvo originalmente en el turno (ej. nuevo apoyo)
+            mergedWorkers.push({
+              nombre: p.nombre,
+              area: p.area || 'Salón',
+              activo: false,
+              horas: 12,
+              prevHoras: 12,
+              propinaCalculada: 0,
+            });
+          }
+        });
+      }
+
+      // Preservar colaboradores históricos del turno que ya no figuren en la nómina activa
+      detalles.forEach((d: any) => {
+        const normName = (d.colaborador || '').trim().toLowerCase();
+        if (!processedNames.has(normName)) {
+          processedNames.add(normName);
+          mergedWorkers.push({
+            nombre: d.colaborador,
+            area: d.area || 'Salón',
+            activo: true,
+            horas: Number(d.horas) || 12,
+            prevHoras: Number(d.horas) || 12,
+            propinaCalculada: 0,
+          });
+        }
+      });
+
+      mergedWorkers.sort((a, b) => {
+        const gA = getAreaGroup(a.area, esModoEquitativo ? 'equitativo' : '60_40');
+        const gB = getAreaGroup(b.area, esModoEquitativo ? 'equitativo' : '60_40');
+        if (gA.groupOrder !== gB.groupOrder) return gA.groupOrder - gB.groupOrder;
+        if (gA.subOrder !== gB.subOrder) return gA.subOrder - gB.subOrder;
+        return a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' });
+      });
+
+      setModalEditar({
+        show: true,
+        idReg: registro.idRegistro,
+        fecha: registro.fecha,
+        createdAt: registro.createdAt,
+        turnoNumero: registro.turnoNumero,
+        turnosEnFecha: registro.turnosEnFecha,
+        montoTotal: Number(registro.montoTotal) || 0,
+        modoDistribucion: esModoEquitativo ? 'equitativo' : '60_40',
+        colaboradores: mergedWorkers,
+        justificacion: '',
+      });
+    } catch (err: any) {
+      setCargando(false);
+      console.error('Error al preparar edición:', err);
+      alert('Error al obtener la lista de colaboradores: ' + err.message);
+    }
+  };
+
+  const handleToggleEditarAsistencia = (index: number) => {
+    setModalEditar((prev) => ({
+      ...prev,
+      colaboradores: prev.colaboradores.map((c, i) => {
+        if (i !== index) return c;
+        const nuevoActivo = !c.activo;
+        return {
+          ...c,
+          activo: nuevoActivo,
+          horas: nuevoActivo ? (c.horas > 0 ? c.horas : (c.prevHoras || 12)) : 0,
+          prevHoras: c.horas > 0 ? c.horas : c.prevHoras,
+        };
+      }),
+    }));
+  };
+
+  const handleChangeEditarHoras = (index: number, horas: number) => {
+    setModalEditar((prev) => ({
+      ...prev,
+      colaboradores: prev.colaboradores.map((c, i) => {
+        if (i !== index) return c;
+        const val = Math.max(0, horas);
+        return {
+          ...c,
+          horas: val,
+          prevHoras: val > 0 ? val : c.prevHoras,
+        };
+      }),
+    }));
+  };
+
+  const handleMarcarTodosEditar = (activos: boolean) => {
+    setModalEditar((prev) => ({
+      ...prev,
+      colaboradores: prev.colaboradores.map((c) => ({
+        ...c,
+        activo: activos,
+        horas: activos ? (c.horas > 0 ? c.horas : (c.prevHoras || 12)) : 0,
+        prevHoras: c.horas > 0 ? c.horas : c.prevHoras,
+      })),
+    }));
+  };
+
+  const handleConfirmarEdicion = async () => {
+    if (!modalEditar.justificacion.trim()) {
+      alert('Debe ingresar una justificación obligatoria para guardar las modificaciones del turno.');
+      return;
+    }
+
+    const participantesActivos = modalEditar.colaboradores
+      .filter((c) => c.activo && c.horas > 0)
+      .map((c) => ({
+        colaborador: c.nombre,
+        area: c.area,
+        horas: c.horas,
+      }));
+
+    if (participantesActivos.length === 0) {
+      alert('Debe haber al menos un trabajador activo con horas laboradas mayor a 0.');
+      return;
+    }
+
+    try {
+      setCargando(true);
+      const res = await fetch('/api/registros', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idRegistro: modalEditar.idReg,
+          justificacion: modalEditar.justificacion.trim(),
+          participantes: participantesActivos,
+          modoDistribucion: modalEditar.modoDistribucion,
+        }),
+      });
+      const data = await res.json();
+      setCargando(false);
+
+      alert(data.message);
+      if (data.success) {
+        setModalEditar({
+          show: false,
+          idReg: 0,
+          fecha: '',
+          montoTotal: 0,
+          modoDistribucion: '60_40',
+          colaboradores: [],
+          justificacion: '',
+        });
+        cargarHistorial();
+      }
+    } catch (err: any) {
+      setCargando(false);
+      alert('Error al guardar cambios: ' + err.message);
     }
   };
 
@@ -1110,6 +1372,14 @@ export default function ModRegistroPropinas({
                               )}
                               <button
                                 type="button"
+                                className="btn btn-outline-primary btn-sm py-0 px-2 me-1"
+                                title="Editar colaboradores y horas de este turno"
+                                onClick={() => handleAbrirEditar(r)}
+                              >
+                                <i className="bi bi-pencil-square me-1"></i>Editar
+                              </button>
+                              <button
+                                type="button"
                                 className="btn btn-outline-warning btn-sm py-0 px-2"
                                 title="Anular únicamente este turno específico"
                                 onClick={() =>
@@ -1370,26 +1640,39 @@ export default function ModRegistroPropinas({
                 <div className="modal-footer d-flex justify-content-between">
                   <div>
                     {modalDetalleReg.registro.estado === 'Activo' && (
-                      <button
-                        type="button"
-                        className="btn btn-outline-danger btn-sm"
-                        onClick={() => {
-                          const reg = modalDetalleReg.registro;
-                          setModalDetalleReg({ show: false, registro: null });
-                          setModalAnular({
-                            show: true,
-                            idReg: reg.idRegistro,
-                            fecha: reg.fecha,
-                            monto: reg.montoTotal,
-                            hora: formatHoraRegistro(reg.createdAt),
-                            turnoNumero: reg.turnoNumero,
-                            turnosEnFecha: reg.turnosEnFecha,
-                            justificacion: '',
-                          });
-                        }}
-                      >
-                        <i className="bi bi-slash-circle me-1"></i> Anular solo este Turno (#{modalDetalleReg.registro.idRegistro})
-                      </button>
+                      <div className="d-flex gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          onClick={() => {
+                            const reg = modalDetalleReg.registro;
+                            setModalDetalleReg({ show: false, registro: null });
+                            handleAbrirEditar(reg);
+                          }}
+                        >
+                          <i className="bi bi-pencil-square me-1"></i> Editar Turno (#{modalDetalleReg.registro.idRegistro})
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-outline-danger btn-sm"
+                          onClick={() => {
+                            const reg = modalDetalleReg.registro;
+                            setModalDetalleReg({ show: false, registro: null });
+                            setModalAnular({
+                              show: true,
+                              idReg: reg.idRegistro,
+                              fecha: reg.fecha,
+                              monto: reg.montoTotal,
+                              hora: formatHoraRegistro(reg.createdAt),
+                              turnoNumero: reg.turnoNumero,
+                              turnosEnFecha: reg.turnosEnFecha,
+                              justificacion: '',
+                            });
+                          }}
+                        >
+                          <i className="bi bi-slash-circle me-1"></i> Anular solo este Turno (#{modalDetalleReg.registro.idRegistro})
+                        </button>
+                      </div>
                     )}
                   </div>
                   <button
@@ -1466,6 +1749,354 @@ export default function ModRegistroPropinas({
                     }
                   >
                     Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Modal Editar Turno (Personal y Horas con Recálculo Automático) */}
+      {modalEditar.show && (
+        <>
+          <div className="modal-backdrop fade show" style={{ zIndex: 100010 }}></div>
+          <div className="modal fade show d-block" tabIndex={-1} style={{ zIndex: 100015 }}>
+            <div className="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+              <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '16px', overflow: 'hidden' }}>
+                <div className="modal-header bg-dark text-white py-3">
+                  <div>
+                    <h6 className="modal-title fw-bold mb-0 d-flex align-items-center gap-2">
+                      <i className="bi bi-pencil-square text-warning fs-5"></i>
+                      <span>Editar Personal y Horas del Turno #{modalEditar.idReg}</span>
+                      <span className="badge bg-primary-subtle text-primary border border-primary-subtle ms-2">
+                        Recálculo Automático
+                      </span>
+                    </h6>
+                    <small className="text-white-50">
+                      Fecha: <strong>{modalEditar.fecha}</strong>
+                      {modalEditar.createdAt && ` • Hora: ${formatHoraRegistro(modalEditar.createdAt)}`}
+                      {modalEditar.turnosEnFecha && modalEditar.turnosEnFecha > 1 && ` • Turno ${modalEditar.turnoNumero} de ${modalEditar.turnosEnFecha}`}
+                      {' • Monto Original: '}
+                      <span className="text-warning font-mono fw-bold">S/ {modalEditar.montoTotal.toFixed(2)}</span>
+                    </small>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-close btn-close-white"
+                    onClick={() =>
+                      setModalEditar({
+                        show: false,
+                        idReg: 0,
+                        fecha: '',
+                        montoTotal: 0,
+                        modoDistribucion: '60_40',
+                        colaboradores: [],
+                        justificacion: '',
+                      })
+                    }
+                  ></button>
+                </div>
+
+                <div className="modal-body p-3 p-md-4">
+                  {/* Banner Explicativo */}
+                  <div className="alert alert-primary bg-primary-subtle text-primary-emphasis border border-primary-subtle py-2 px-3 mb-3 d-flex align-items-center gap-2 small rounded-3">
+                    <i className="bi bi-info-circle-fill fs-5 text-primary"></i>
+                    <div>
+                      <strong>Actualización de Nómina y Horas:</strong> Puedes activar o desactivar trabajadores (incluyendo apoyos registrados con posterioridad) y ajustar sus horas laboradas. Las propinas de este turno se recalculan de forma proporcional e instantánea manteniendo intacto el monto recaudado de <strong>S/ {modalEditar.montoTotal.toFixed(2)}</strong>.
+                    </div>
+                  </div>
+
+                  {/* Tarjetas de Resumen en Tiempo Real */}
+                  <div className="row g-2 mb-3">
+                    <div className="col-6 col-md-3">
+                      <div className="p-2 p-md-3 bg-light rounded-3 border text-center">
+                        <span className="text-secondary small d-block">Monto Recaudado</span>
+                        <span className="fs-5 fw-bold font-mono text-dark">
+                          S/ {modalEditar.montoTotal.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="col-6 col-md-3">
+                      <div className="p-2 p-md-3 bg-success-subtle rounded-3 border border-success-subtle text-center">
+                        <span className="text-success small fw-semibold d-block">
+                          Fondo Salón ({esEquitativoEdit ? 'Equitativo' : '60%'})
+                        </span>
+                        <span className="fs-5 fw-bold font-mono text-success">
+                          S/ {editFondoSalon.toFixed(2)}
+                        </span>
+                        <div className="text-secondary small" style={{ fontSize: '0.72rem' }}>
+                          {editActivosSalon} colab. • {editTotalHorasSalon.toFixed(1)} hrs
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-6 col-md-3">
+                      <div className="p-2 p-md-3 bg-warning-subtle rounded-3 border border-warning-subtle text-center">
+                        <span className="text-warning-emphasis small fw-semibold d-block">
+                          Fondo Cocina ({esEquitativoEdit ? 'Equitativo' : '40%'})
+                        </span>
+                        <span className="fs-5 fw-bold font-mono text-warning-emphasis">
+                          S/ {editFondoCocina.toFixed(2)}
+                        </span>
+                        <div className="text-secondary small" style={{ fontSize: '0.72rem' }}>
+                          {editActivosCocina} colab. • {editTotalHorasCocina.toFixed(1)} hrs
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-6 col-md-3">
+                      <div className="p-2 p-md-3 bg-light rounded-3 border text-center">
+                        <span className="text-secondary small d-block">Personal Activo</span>
+                        <span className="fs-5 fw-bold font-mono text-primary">
+                          {editActivosSalon + editActivosCocina} trab.
+                        </span>
+                        <div className="text-secondary small" style={{ fontSize: '0.72rem' }}>
+                          {editTotalHorasGlobal.toFixed(1)} hrs totales
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Acciones Rápidas */}
+                  <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <span className="small text-secondary fw-semibold">
+                      <i className="bi bi-people me-1"></i> Lista completa de trabajadores y apoyos registrados:
+                    </span>
+                    <div className="d-flex gap-2">
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm py-0 px-2"
+                        style={{ fontSize: '0.78rem' }}
+                        onClick={() => handleMarcarTodosEditar(true)}
+                      >
+                        <i className="bi bi-check-all me-1"></i> Activar Todos
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm py-0 px-2"
+                        style={{ fontSize: '0.78rem' }}
+                        onClick={() => handleMarcarTodosEditar(false)}
+                      >
+                        <i className="bi bi-x-circle me-1"></i> Desactivar Todos
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tabla de Edición de Trabajadores */}
+                  <div className="table-responsive shadow-xs mb-3" style={{ maxHeight: '360px', overflowY: 'auto', borderRadius: '10px' }}>
+                    <table className="table table-hover table-sm align-middle small mb-0">
+                      <thead className="table-light sticky-top">
+                        <tr>
+                          <th style={{ width: '18%' }}>Estado en Turno</th>
+                          <th style={{ width: '32%' }}>Colaborador</th>
+                          <th style={{ width: '16%' }}>Área</th>
+                          <th style={{ width: '18%' }}>Horas Laboradas</th>
+                          <th style={{ width: '16%' }} className="text-end">Propina Recalculada</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {modalEditar.colaboradores.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="text-center text-muted py-4">
+                              No hay colaboradores disponibles.
+                            </td>
+                          </tr>
+                        ) : (
+                          modalEditar.colaboradores.map((c, idx) => {
+                            const propina = getEditPropinaCalculada(c);
+                            const esApoyo = c.area.toLowerCase().includes('apoyo');
+                            const infoGrupo = getAreaGroup(c.area, modalEditar.modoDistribucion);
+
+                            const prevWorker = idx > 0 ? modalEditar.colaboradores[idx - 1] : null;
+                            const prevGrupo = prevWorker ? getAreaGroup(prevWorker.area, modalEditar.modoDistribucion) : null;
+                            const mostrarCabecera = idx === 0 || infoGrupo.groupKey !== prevGrupo?.groupKey;
+
+                            return (
+                              <React.Fragment key={c.nombre}>
+                                {mostrarCabecera && (
+                                  <tr className="table-light">
+                                    <td
+                                      colSpan={5}
+                                      className={`py-1 px-3 fw-bold border-top border-bottom ${infoGrupo.headerClass}`}
+                                      style={{ fontSize: '0.78rem' }}
+                                    >
+                                      <div className="d-flex align-items-center justify-content-between">
+                                        <span className="d-flex align-items-center gap-2">
+                                          <i className={`bi ${infoGrupo.iconClass}`}></i>
+                                          <span>{infoGrupo.groupTitle}</span>
+                                        </span>
+                                        {infoGrupo.fondoBadge && (
+                                          <span className={`badge ${infoGrupo.badgeClass}`} style={{ fontSize: '0.68rem' }}>
+                                            {infoGrupo.fondoBadge}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                                <tr className={!c.activo ? 'table-light opacity-50' : ''}>
+                                  <td>
+                                    <div className="form-check form-switch d-flex align-items-center gap-2 m-0">
+                                      <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        checked={c.activo}
+                                        onChange={() => handleToggleEditarAsistencia(idx)}
+                                        id={`sw_edit_${idx}`}
+                                        style={{ cursor: 'pointer' }}
+                                      />
+                                      <label
+                                        className={`form-check-label small fw-semibold user-select-none ${
+                                          c.activo ? 'text-success' : 'text-muted'
+                                        }`}
+                                        htmlFor={`sw_edit_${idx}`}
+                                        style={{ cursor: 'pointer', fontSize: '0.76rem' }}
+                                      >
+                                        {c.activo ? 'Laborando' : 'Inactivo'}
+                                      </label>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <div className="d-flex align-items-center gap-1 flex-wrap">
+                                      <strong className="text-dark">{c.nombre}</strong>
+                                      {esApoyo && (
+                                        <span className="badge bg-warning text-dark border border-warning" style={{ fontSize: '0.68rem' }}>
+                                          <i className="bi bi-star-fill me-1"></i>Apoyo
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <span
+                                      className={`badge ${
+                                        esApoyo
+                                          ? 'bg-warning-subtle text-dark border border-warning'
+                                          : infoGrupo.groupKey === 'salon'
+                                          ? 'bg-success-subtle text-success border border-success-subtle'
+                                          : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
+                                      }`}
+                                      style={{ fontSize: '0.72rem' }}
+                                    >
+                                      {c.area}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <div className="d-flex align-items-center gap-1">
+                                      <div className="input-group input-group-sm" style={{ width: '90px' }}>
+                                        <input
+                                          type="number"
+                                          step="0.5"
+                                          min={c.activo ? '0.5' : '0'}
+                                          max="24"
+                                          className="form-control form-control-sm font-mono text-center px-1"
+                                          value={c.horas}
+                                          disabled={!c.activo}
+                                          onChange={(e) =>
+                                            handleChangeEditarHoras(idx, parseFloat(e.target.value) || 0)
+                                          }
+                                        />
+                                        <span className="input-group-text px-1 small text-secondary" style={{ fontSize: '0.72rem' }}>
+                                          h
+                                        </span>
+                                      </div>
+                                      {c.activo && (
+                                        <div className="btn-group btn-group-sm">
+                                          {[12, 8, 6, 4].map((hVal) => (
+                                            <button
+                                              key={hVal}
+                                              type="button"
+                                              className={`btn btn-xs py-0 px-1 border ${
+                                                c.horas === hVal ? 'btn-primary text-white' : 'btn-light text-secondary'
+                                              }`}
+                                              style={{ fontSize: '0.68rem' }}
+                                              onClick={() => handleChangeEditarHoras(idx, hVal)}
+                                              title={`Fijar a ${hVal} horas`}
+                                            >
+                                              {hVal}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="text-end font-mono">
+                                    {c.activo ? (
+                                      <strong className="text-success fs-6">
+                                        S/ {propina.toFixed(2)}
+                                      </strong>
+                                    ) : (
+                                      <span className="text-muted small">S/ 0.00</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              </React.Fragment>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Justificación Obligatoria */}
+                  <div className="p-3 bg-light rounded-3 border">
+                    <label className="form-label small fw-bold text-danger mb-1 d-flex align-items-center gap-1">
+                      <i className="bi bi-shield-check"></i>
+                      <span>Justificación Obligatoria de la Modificación *</span>
+                    </label>
+                    <p className="text-secondary small mb-2" style={{ fontSize: '0.78rem' }}>
+                      Indica detalladamente el motivo del cambio (ej: se incluyó al colaborador de apoyo Juan Pérez que trabajó en este turno y no estaba en el sistema, y se ajustaron horas de Ana a 8 hrs). Este registro se conservará de forma inmutable en el historial y en la auditoría.
+                    </p>
+                    <textarea
+                      className="form-control form-control-sm border-danger-subtle"
+                      rows={2}
+                      placeholder="Escribe aquí la justificación obligatoria del cambio..."
+                      value={modalEditar.justificacion}
+                      onChange={(e) =>
+                        setModalEditar((prev) => ({ ...prev, justificacion: e.target.value }))
+                      }
+                      required
+                    ></textarea>
+                    {!modalEditar.justificacion.trim() && (
+                      <span className="text-danger small mt-1 d-block fw-semibold" style={{ fontSize: '0.74rem' }}>
+                        * La justificación es obligatoria para poder guardar y recalcular el turno.
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="modal-footer d-flex justify-content-between py-2">
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() =>
+                      setModalEditar({
+                        show: false,
+                        idReg: 0,
+                        fecha: '',
+                        montoTotal: 0,
+                        modoDistribucion: '60_40',
+                        colaboradores: [],
+                        justificacion: '',
+                      })
+                    }
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm px-3 fw-bold shadow-xs"
+                    disabled={cargando || !modalEditar.justificacion.trim() || editTotalHorasGlobal <= 0}
+                    onClick={handleConfirmarEdicion}
+                  >
+                    {cargando ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                        Guardando...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-check2-circle me-1"></i> Guardar Cambios y Recalcular
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
