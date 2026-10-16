@@ -145,7 +145,7 @@ export default function ModSanciones({
     const textoModo = activarFondo ? 'FONDO MANCOMUNADO' : 'MODO CLÁSICO';
     const detalle = activarFondo
       ? 'En el Fondo Mancomunado, las sanciones no se redistribuirán entre el personal; se acumularán en un fondo común para gastos del equipo (comida, lonche, merienda, daños). El saldo trasciende periodos.'
-      : 'En el Modo Clásico, las sanciones vuelven a redistribuirse de forma equitativa entre los compañeros de área en cada liquidación.';
+      : 'En el Modo Clásico, las sanciones se redistribuyen únicamente entre el personal registrado en la misma fecha de la infracción, de forma proporcional a las horas trabajadas en su respectiva área (Salón o Cocina).';
 
     if (!confirm(`¿Confirmas el cambio de modalidad a ${textoModo}?\n\n${detalle}`)) {
       return;
@@ -526,7 +526,7 @@ export default function ModSanciones({
             <span className="text-danger-subtle" style={{ fontSize: '0.95rem', fontFamily: 'Noto Sans JP', fontWeight: 700 }}>減点管理</span>
           </h5>
           <p className="text-muted small mb-0">
-            Modalidad dual: Modo Clásico (Redistribución por Área) y Modo Fondo Mancomunado (Fondo Común de Trabajadores).
+            Modalidad dual: Modo Clásico (Redistribución por Fecha y Horas por Área) y Modo Fondo Mancomunado (Fondo Común de Trabajadores).
           </p>
         </div>
 
@@ -571,7 +571,7 @@ export default function ModSanciones({
           <div className="alert alert-primary py-2 px-3 small d-flex align-items-center mb-3">
             <i className="bi bi-info-circle-fill me-2 fs-6"></i>
             <span>
-              <strong>Modo Clásico Activo:</strong> Las sanciones aplicadas se redistribuyen de forma equitativa entre los compañeros de su respectiva área (Salón o Cocina) al cierre de cada liquidación.
+              <strong>Modo Clásico Activo:</strong> Las sanciones aplicadas se redistribuyen únicamente entre el personal de su respectiva área (Salón para Salón, Cocina para Cocina) que laboró en la <u>misma fecha</u> de la sanción, de forma proporcional a las <u>horas trabajadas</u>.
             </span>
           </div>
 

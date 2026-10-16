@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { calcularProrrateoEnMemoria, type ParticipantInput } from "../formulas";
+import {
+	calcularProrrateoEnMemoria,
+	calcularRedistribucionSanciones,
+	type ParticipantInput,
+	type SancionParaRedistribucion,
+	type TrabajadorJornadaFecha,
+} from "../formulas";
 
 describe("Motor de Cálculo de Prorrateo de Propinas (60% Salón / 40% Cocina)", () => {
 	it("debe distribuir exactamente 60% para Salón y 40% para Cocina con horas iguales", () => {
@@ -284,6 +290,161 @@ describe("Motor de Cálculo de Prorrateo de Propinas (60% Salón / 40% Cocina)",
 		expect(m1?.propinaAsignada).toBe(400);
 		expect(m2?.propinaAsignada).toBe(200);
 		expect(c1?.propinaAsignada).toBe(400);
+	});
+});
+
+describe("Redistribución Quirúrgica de Sanciones (Misma Fecha, Carga Horaria y Área)", () => {
+	it("REGLA 1: Debe redistribuir fondos ÚNICAMENTE al personal que laboró en la misma fecha de la sanción", () => {
+		const sanciones: SancionParaRedistribucion[] = [
+			{ colaborador: "Mesero Sancionado", monto: 50, fecha: "2026-10-10", area: "Salón" },
+		];
+
+		const personalPorFecha: Record<string, Record<string, TrabajadorJornadaFecha>> = {
+			"2026-10-10": {
+				"Mesero Sancionado": { colaborador: "Mesero Sancionado", horas: 8, area: "Salón" },
+				"Mesero Mismo Dia": { colaborador: "Mesero Mismo Dia", horas: 8, area: "Salón" },
+			},
+			"2026-10-11": {
+				"Mesero Otro Dia": { colaborador: "Mesero Otro Dia", horas: 8, area: "Salón" },
+			},
+		};
+
+		const resultado = calcularRedistribucionSanciones(sanciones, personalPorFecha);
+
+		// "Mesero Mismo Dia" estuvo presente en la fecha de la sanción -> recibe los S/ 50
+		expect(resultado.bonosPorColaborador["Mesero Mismo Dia"]).toBe(50);
+		// "Mesero Otro Dia" trabajó en otra fecha -> debe recibir S/ 0 (o undefined)
+		expect(resultado.bonosPorColaborador["Mesero Otro Dia"]).toBeUndefined();
+		// El sancionado no recibe parte de su propia sanción
+		expect(resultado.bonosPorColaborador["Mesero Sancionado"]).toBeUndefined();
+		expect(resultado.fondoRedistribuirTotal).toBe(50);
+	});
+
+	it("REGLA 2: Debe prorratear los fondos proporcionalmente a las horas registradas (carga de trabajo)", () => {
+		const sanciones: SancionParaRedistribucion[] = [
+			{ colaborador: "Mesero Infractor", monto: 60, fecha: "2026-10-12", area: "Salón" },
+		];
+
+		const personalPorFecha: Record<string, Record<string, TrabajadorJornadaFecha>> = {
+			"2026-10-12": {
+				"Mesero Infractor": { colaborador: "Mesero Infractor", horas: 6, area: "Salón" },
+				"Mesero 8h": { colaborador: "Mesero 8h", horas: 8, area: "Salón" },
+				"Mesero 4h": { colaborador: "Mesero 4h", horas: 4, area: "Salón" },
+			},
+		};
+
+		// Total horas destinatarios = 8h + 4h = 12h
+		// Mesero 8h: 60 * (8 / 12) = S/ 40.00
+		// Mesero 4h: 60 * (4 / 12) = S/ 20.00
+		const resultado = calcularRedistribucionSanciones(sanciones, personalPorFecha);
+
+		expect(resultado.bonosPorColaborador["Mesero 8h"]).toBe(40);
+		expect(resultado.bonosPorColaborador["Mesero 4h"]).toBe(20);
+		expect(resultado.fondoSalonTotal).toBe(60);
+		expect(resultado.fondoCocinaTotal).toBe(0);
+
+		// Detalle de auditoría
+		const detalle8h = resultado.detallesPorColaborador["Mesero 8h"];
+		expect(detalle8h).toHaveLength(1);
+		expect(detalle8h[0].horasTrabajador).toBe(8);
+		expect(detalle8h[0].totalHorasArea).toBe(12);
+		expect(detalle8h[0].montoBono).toBe(40);
+	});
+
+	it("REGLA 3: Debe respetar la separación estricta de áreas (Salón para Salón, Cocina para Cocina)", () => {
+		const sanciones: SancionParaRedistribucion[] = [
+			{ colaborador: "Mesero Sancionado", monto: 100, fecha: "2026-10-14", area: "Salón" },
+			{ colaborador: "Cocinero Sancionado", monto: 40, fecha: "2026-10-14", area: "Cocina" },
+		];
+
+		const personalPorFecha: Record<string, Record<string, TrabajadorJornadaFecha>> = {
+			"2026-10-14": {
+				"Mesero Sancionado": { colaborador: "Mesero Sancionado", horas: 8, area: "Salón" },
+				"Mesero Limpio": { colaborador: "Mesero Limpio", horas: 8, area: "Salón" },
+				"Cocinero Sancionado": { colaborador: "Cocinero Sancionado", horas: 8, area: "Cocina" },
+				"Cocinero Limpio": { colaborador: "Cocinero Limpio", horas: 8, area: "Cocina" },
+			},
+		};
+
+		const resultado = calcularRedistribucionSanciones(sanciones, personalPorFecha);
+
+		// Salón se queda en Salón
+		expect(resultado.bonosPorColaborador["Mesero Limpio"]).toBe(100);
+		// Cocina se queda en Cocina
+		expect(resultado.bonosPorColaborador["Cocinero Limpio"]).toBe(40);
+		expect(resultado.fondoSalonTotal).toBe(100);
+		expect(resultado.fondoCocinaTotal).toBe(40);
+		expect(resultado.fondoRedistribuirTotal).toBe(140);
+	});
+
+	it("REGLA 4: Debe excluir al infractor y a trabajadores con pérdida total del 100%", () => {
+		const sanciones: SancionParaRedistribucion[] = [
+			{ colaborador: "Mesero A", monto: 90, fecha: "2026-10-15", area: "Salón" },
+		];
+
+		const personalPorFecha: Record<string, Record<string, TrabajadorJornadaFecha>> = {
+			"2026-10-15": {
+				"Mesero A": { colaborador: "Mesero A", horas: 8, area: "Salón" },
+				"Mesero Con Pérdida": { colaborador: "Mesero Con Pérdida", horas: 8, area: "Salón" },
+				"Mesero Elegible": { colaborador: "Mesero Elegible", horas: 8, area: "Salón" },
+			},
+		};
+
+		const colaboradoresConPerdidaTotal = new Set<string>(["Mesero Con Pérdida"]);
+
+		const resultado = calcularRedistribucionSanciones(
+			sanciones,
+			personalPorFecha,
+			colaboradoresConPerdidaTotal
+		);
+
+		// "Mesero Con Pérdida" está vetado -> 0
+		expect(resultado.bonosPorColaborador["Mesero Con Pérdida"]).toBeUndefined();
+		// "Mesero A" es el infractor -> 0
+		expect(resultado.bonosPorColaborador["Mesero A"]).toBeUndefined();
+		// "Mesero Elegible" se lleva el 100% de la sanción (S/ 90)
+		expect(resultado.bonosPorColaborador["Mesero Elegible"]).toBe(90);
+	});
+
+	it("REGLA 5: Soporta consolidación de múltiples turnos en la misma fecha", () => {
+		const sanciones: SancionParaRedistribucion[] = [
+			{ colaborador: "Infracción Cocina", monto: 120, fecha: "2026-10-16", area: "Cocina" },
+		];
+
+		// Cocinero Doble Turno hizo 2 turnos de 6h (total 12h)
+		// Cocinero Turno Simple hizo 1 turno de 6h (total 6h)
+		const personalPorFecha: Record<string, Record<string, TrabajadorJornadaFecha>> = {
+			"2026-10-16": {
+				"Infracción Cocina": { colaborador: "Infracción Cocina", horas: 6, area: "Cocina" },
+				"Cocinero Doble Turno": { colaborador: "Cocinero Doble Turno", horas: 12, area: "Cocina" },
+				"Cocinero Turno Simple": { colaborador: "Cocinero Turno Simple", horas: 6, area: "Cocina" },
+			},
+		};
+
+		// Total horas elegibles = 18h
+		// Doble Turno (12h): 120 * (12 / 18) = S/ 80.00
+		// Turno Simple (6h): 120 * (6 / 18) = S/ 40.00
+		const resultado = calcularRedistribucionSanciones(sanciones, personalPorFecha);
+
+		expect(Math.round(resultado.bonosPorColaborador["Cocinero Doble Turno"] * 100) / 100).toBe(80);
+		expect(Math.round(resultado.bonosPorColaborador["Cocinero Turno Simple"] * 100) / 100).toBe(40);
+	});
+
+	it("REGLA 6: Manejo seguro cuando no existen otros colaboradores elegibles en esa fecha", () => {
+		const sanciones: SancionParaRedistribucion[] = [
+			{ colaborador: "Mesero Solitario", monto: 30, fecha: "2026-10-17", area: "Salón" },
+		];
+
+		const personalPorFecha: Record<string, Record<string, TrabajadorJornadaFecha>> = {
+			"2026-10-17": {
+				"Mesero Solitario": { colaborador: "Mesero Solitario", horas: 8, area: "Salón" },
+			},
+		};
+
+		const resultado = calcularRedistribucionSanciones(sanciones, personalPorFecha);
+
+		expect(resultado.fondoRedistribuirTotal).toBe(0);
+		expect(resultado.bonosPorColaborador["Mesero Solitario"]).toBeUndefined();
 	});
 });
 

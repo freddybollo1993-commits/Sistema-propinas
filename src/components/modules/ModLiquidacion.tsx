@@ -430,14 +430,14 @@ export default function ModLiquidacion({
                           >
                             <i className="bi bi-piggy-bank me-1"></i>Fondo
                           </span>
+                        ) : c.bonoRedistribucion > 0 ? (
+                          <span className="text-success fw-semibold font-mono">
+                            +S/ {c.bonoRedistribucion.toFixed(2)}
+                          </span>
                         ) : esApoyo ? (
                           <span className="text-muted small font-mono">
                             S/ 0.00{' '}
                             <span className="badge bg-light text-secondary border">Apoyo</span>
-                          </span>
-                        ) : c.bonoRedistribucion > 0 ? (
-                          <span className="text-success fw-semibold font-mono">
-                            +S/ {c.bonoRedistribucion.toFixed(2)}
                           </span>
                         ) : (
                           <span className="text-muted small font-mono">S/ 0.00</span>
@@ -812,6 +812,37 @@ export default function ModLiquidacion({
                           >
                             {boletaModal.colaborador.motivoBono}
                           </div>
+                          {!esFondo && boletaModal.colaborador.detalleBonoRedistribucion?.length > 0 && (
+                            <table className="tabla-boleta-sub border-top-0">
+                              <thead>
+                                <tr>
+                                  <th style={{ width: '22%' }}>Fecha</th>
+                                  <th style={{ width: '38%' }}>Sancionado (Área)</th>
+                                  <th style={{ width: '20%' }} className="text-center">Tus hrs / Área</th>
+                                  <th style={{ width: '20%' }} className="text-end">Bono</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {boletaModal.colaborador.detalleBonoRedistribucion.map((b: any, bIdx: number) => (
+                                  <tr key={bIdx}>
+                                    <td>{b.fecha}</td>
+                                    <td>
+                                      <strong>{b.sancionado}</strong>{' '}
+                                      <span className="text-muted" style={{ fontSize: '6.5pt' }}>
+                                        ({b.area} -S/ {Number(b.montoSancion).toFixed(2)})
+                                      </span>
+                                    </td>
+                                    <td className="text-center">
+                                      {b.horasTrabajador}h / {b.totalHorasArea}h
+                                    </td>
+                                    <td className="text-end fw-semibold text-success">
+                                      + S/ {Number(b.montoBono).toFixed(2)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1386,6 +1417,37 @@ export default function ModLiquidacion({
                   >
                     {boletaModal.colaborador.motivoBono}
                   </div>
+                  {!esFondo && boletaModal.colaborador.detalleBonoRedistribucion?.length > 0 && (
+                    <table className="tabla-boleta-sub border-top-0">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '22%' }}>Fecha</th>
+                          <th style={{ width: '38%' }}>Sancionado (Área)</th>
+                          <th style={{ width: '20%' }} className="text-center">Tus hrs / Área</th>
+                          <th style={{ width: '20%' }} className="text-end">Bono</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {boletaModal.colaborador.detalleBonoRedistribucion.map((b: any, bIdx: number) => (
+                          <tr key={bIdx}>
+                            <td>{b.fecha}</td>
+                            <td>
+                              <strong>{b.sancionado}</strong>{' '}
+                              <span className="text-muted" style={{ fontSize: '6.5pt' }}>
+                                ({b.area} -S/ {Number(b.montoSancion).toFixed(2)})
+                              </span>
+                            </td>
+                            <td className="text-center">
+                              {b.horasTrabajador}h / {b.totalHorasArea}h
+                            </td>
+                            <td className="text-end fw-semibold text-success">
+                              + S/ {Number(b.montoBono).toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </div>
             </div>

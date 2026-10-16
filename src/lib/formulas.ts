@@ -356,6 +356,137 @@ export async function getEstadoFondoMancomunado(filtroRango?: { inicio?: string;
   };
 }
 
+export interface SancionParaRedistribucion {
+  id?: number;
+  colaborador: string;
+  monto: number;
+  fecha: string;
+  area: string;
+}
+
+export interface TrabajadorJornadaFecha {
+  colaborador: string;
+  horas: number;
+  area: string;
+}
+
+export interface DetalleBonoAsignado {
+  fecha: string;
+  sancionado: string;
+  montoSancion: number;
+  montoBono: number;
+  horasTrabajador: number;
+  totalHorasArea: number;
+  area: string;
+}
+
+export interface ResultadoRedistribucion {
+  bonosPorColaborador: Record<string, number>;
+  detallesPorColaborador: Record<string, DetalleBonoAsignado[]>;
+  fondoRedistribuirTotal: number;
+  fondoSalonTotal: number;
+  fondoCocinaTotal: number;
+}
+
+/**
+ * Motor de redistribución de propinas por sanciones según reglas de negocio:
+ * 1. Solo para el personal registrado en la MISMA FECHA que se registra la sanción.
+ * 2. Prorrateado según las HORAS REGISTRADAS por trabajador en esa fecha (carga de trabajo).
+ * 3. Salón para Salón y Cocina para Cocina.
+ * 4. Excluye al trabajador sancionado y a trabajadores con pérdida total.
+ */
+export function calcularRedistribucionSanciones(
+  sanciones: SancionParaRedistribucion[],
+  personalPorFecha: Record<string, Record<string, TrabajadorJornadaFecha>>,
+  colaboradoresConPerdidaTotal: Set<string> = new Set()
+): ResultadoRedistribucion {
+  const bonosPorColaborador: Record<string, number> = {};
+  const detallesPorColaborador: Record<string, DetalleBonoAsignado[]> = {};
+  let fondoRedistribuirTotal = 0;
+  let fondoSalonTotal = 0;
+  let fondoCocinaTotal = 0;
+
+  for (const s of sanciones) {
+    const montoSancion = Number(s.monto) || 0;
+    if (montoSancion <= 0) continue;
+
+    const fechaSancion = (s.fecha || '').trim();
+    if (!fechaSancion) continue;
+
+    const sancionado = (s.colaborador || '').trim();
+    const esSalonSancionado = (s.area || '').includes('Salón') || (s.area || '').includes('Salon');
+
+    // 1. Obtener los trabajadores registrados en la MISMA FECHA que se registra la sanción
+    const trabajadoresDia = personalPorFecha[fechaSancion];
+    if (!trabajadoresDia) {
+      continue;
+    }
+
+    // 2. Filtrar destinatarios elegibles:
+    // - Misma área (Salón para Salón, Cocina para Cocina)
+    // - Distinto al sancionado
+    // - No tiene pérdida total
+    // - Horas trabajadas en esa fecha > 0
+    const destinatariosNombres = Object.keys(trabajadoresDia).filter((nom) => {
+      if (nom === sancionado) return false;
+      if (colaboradoresConPerdidaTotal.has(nom)) return false;
+
+      const t = trabajadoresDia[nom];
+      if (!t || Number(t.horas) <= 0) return false;
+
+      const esSalonTrabajador = t.area.includes('Salón') || t.area.includes('Salon');
+      return esSalonTrabajador === esSalonSancionado;
+    });
+
+    if (destinatariosNombres.length === 0) {
+      continue;
+    }
+
+    // 3. Sumar las horas trabajadas por los destinatarios elegibles en esa fecha
+    const totalHorasAreaDia = destinatariosNombres.reduce((sum, nom) => {
+      return sum + Number(trabajadoresDia[nom].horas || 0);
+    }, 0);
+
+    if (totalHorasAreaDia <= 0) continue;
+
+    fondoRedistribuirTotal += montoSancion;
+    if (esSalonSancionado) {
+      fondoSalonTotal += montoSancion;
+    } else {
+      fondoCocinaTotal += montoSancion;
+    }
+
+    // 4. Distribuir proporcionalmente según horas trabajadas en esa fecha
+    for (const nom of destinatariosNombres) {
+      const horasTrabajador = Number(trabajadoresDia[nom].horas || 0);
+      const cuota = (montoSancion * horasTrabajador) / totalHorasAreaDia;
+
+      bonosPorColaborador[nom] = (bonosPorColaborador[nom] || 0) + cuota;
+
+      if (!detallesPorColaborador[nom]) {
+        detallesPorColaborador[nom] = [];
+      }
+      detallesPorColaborador[nom].push({
+        fecha: fechaSancion,
+        sancionado,
+        montoSancion,
+        montoBono: Math.round(cuota * 100) / 100,
+        horasTrabajador,
+        totalHorasArea: totalHorasAreaDia,
+        area: esSalonSancionado ? 'Salón' : 'Cocina',
+      });
+    }
+  }
+
+  return {
+    bonosPorColaborador,
+    detallesPorColaborador,
+    fondoRedistribuirTotal,
+    fondoSalonTotal,
+    fondoCocinaTotal,
+  };
+}
+
 /**
  * Motor integral de liquidación de propinas
  */
@@ -387,6 +518,7 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
         detalleDias: [],
         detalleSanciones: [],
         detalleAdelantos: [],
+        detalleBonoRedistribucion: [],
         propinaBruta: 0,
         propinaBrutaOriginal: 0,
         sanciones: 0,
@@ -421,9 +553,27 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
   );
 
   // 3. Procesar detalle de jornadas
+  // Mapa de colaboradores y sus horas efectivas por fecha: fecha -> nombre -> { colaborador, horas, area }
+  const personalPorFecha: Record<string, Record<string, TrabajadorJornadaFecha>> = {};
+
   registros.forEach((reg) => {
     reg.detalles.forEach((det) => {
       const nombre = det.colaborador.trim();
+      const fecha = reg.fecha;
+
+      // Indexar horas por fecha para redistribución quirúrgica por carga de trabajo
+      if (!personalPorFecha[fecha]) {
+        personalPorFecha[fecha] = {};
+      }
+      if (!personalPorFecha[fecha][nombre]) {
+        personalPorFecha[fecha][nombre] = {
+          colaborador: nombre,
+          horas: 0,
+          area: det.area.trim(),
+        };
+      }
+      personalPorFecha[fecha][nombre].horas += det.horas;
+
       if (!colaboradores[nombre]) {
         colaboradores[nombre] = {
           colaborador: nombre,
@@ -434,6 +584,7 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
           jornadasPorFecha: {} as Record<string, any>,
           detalleSanciones: [],
           detalleAdelantos: [],
+          detalleBonoRedistribucion: [],
           propinaBruta: 0,
           propinaBrutaOriginal: 0,
           sanciones: 0,
@@ -451,7 +602,6 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
       colaboradores[nombre].propinaBrutaOriginal += det.propina;
 
       // Agrupar turnos en la misma fecha para unificarlos en la liquidación
-      const fecha = reg.fecha;
       if (!colaboradores[nombre].jornadasPorFecha) {
         colaboradores[nombre].jornadasPorFecha = {};
       }
@@ -552,6 +702,8 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
     (item) => (item.estado || '').trim().toLowerCase() === 'aprobado'
   );
 
+  const sancionesAprobadasList: SancionParaRedistribucion[] = [];
+
   sancionesAdelantos.forEach((item) => {
     const nombre = item.colaborador.trim();
     if (!colaboradores[nombre]) {
@@ -563,7 +715,9 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
         detalleDias: [],
         detalleSanciones: [],
         detalleAdelantos: [],
+        detalleBonoRedistribucion: [],
         propinaBruta: 0,
+        propinaBrutaOriginal: 0,
         sanciones: 0,
         adelantos: 0,
         conteoInfracciones: {},
@@ -600,6 +754,17 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
       }
 
       colaboradores[nombre].sanciones += montoEfectivo;
+
+      if (montoEfectivo > 0) {
+        sancionesAprobadasList.push({
+          id: item.id,
+          colaborador: nombre,
+          monto: montoEfectivo,
+          fecha: (item.fechaAfectada || item.fecha).trim(),
+          area: colaboradores[nombre]?.area || 'Salón',
+        });
+      }
+
       let cuentaParaFrecuencia = true;
       let etiquetaConteo = item.concepto
         .replace('Sanción Fondo: ', '')
@@ -661,6 +826,7 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
 
   // 6. Evaluar pérdida del 100% por reincidencia (Exclusivo de Modo Clásico)
   // En Fondo Mancomunado no aplican las condiciones del modelo clásico y NUNCA se pierde el 100% de la propina
+  const colaboradoresConPerdidaTotal = new Set<string>();
   if (!esFondoMancomunado) {
     Object.keys(colaboradores).forEach((nombre) => {
       const c = colaboradores[nombre];
@@ -675,6 +841,7 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
       });
       if (superoLimite) {
         c.perdidaTotal = true;
+        colaboradoresConPerdidaTotal.add(nombre);
       }
     });
   } else {
@@ -683,79 +850,71 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
     });
   }
 
-  // 7. Reparto equitativo en Modo Clásico vs Fondo Mancomunado
+  // 7. Redistribución por sanciones en Modo Clásico:
+  // - Solo para el personal registrado en la MISMA FECHA que se registra la sanción.
+  // - Prorrateado según las HORAS REGISTRADAS por trabajador en esa fecha (carga de trabajo).
+  // - Salón para Salón y Cocina para Cocina.
   let fondoRedistribuirTotal = 0;
   let fondoSalonTotal = 0;
   let fondoCocinaTotal = 0;
 
-  Object.keys(colaboradores).forEach((nombre) => {
-    const c = colaboradores[nombre];
-    const esSalon = c.area.includes('Salón');
-    let montoGenerado = 0;
+  if (!esFondoMancomunado) {
+    const sancionesParaRedistribuir: SancionParaRedistribucion[] = [];
 
-    if (!esFondoMancomunado && c.perdidaTotal) {
-      // La redistribución por pérdida del 100% de propina incluye la diferencia
-      // tras el adelanto + el adelanto mismo (es decir, el 100% de la propina acumulada
-      // o el monto del adelanto recibido si fuese mayor, pues el sancionado no puede disfrutar de fondos del periodo).
-      const propinaBase = c.propinaBrutaOriginal || c.propinaBruta;
-      const diferencia = Math.max(0, propinaBase - c.adelantos);
-      montoGenerado = diferencia + c.adelantos;
-      c.propinaBruta = 0; // Se anula la percepción neta individual del sancionado
-    } else {
-      montoGenerado = c.sanciones;
-    }
-
-    if (montoGenerado > 0) {
-      fondoRedistribuirTotal += montoGenerado;
-      if (esSalon) fondoSalonTotal += montoGenerado;
-      else fondoCocinaTotal += montoGenerado;
-
-      const destinatarios = Object.keys(colaboradores).filter((destNombre) => {
-        const dest = colaboradores[destNombre];
-        const destEsSalon = dest.area.includes('Salón');
-        const destEsApoyo = dest.area.toLowerCase().includes('apoyo');
-        return (
-          destEsSalon === esSalon &&
-          destNombre !== nombre &&
-          !dest.perdidaTotal &&
-          !destEsApoyo &&
-          dest.horasTrabajadas > 0
-        );
-      });
-
-      if (!esFondoMancomunado) {
-        if (destinatarios.length > 0) {
-          const cuota = montoGenerado / destinatarios.length;
-          destinatarios.forEach((destNombre) => {
-            colaboradores[destNombre].bonoRedistribucion += cuota;
-          });
-        } else {
-          // Si no hay compañeros en su misma área, redistribuir entre el resto del personal activo del local
-          const destinatariosGlobales = Object.keys(colaboradores).filter((destNombre) => {
-            const dest = colaboradores[destNombre];
-            const destEsApoyo = dest.area.toLowerCase().includes('apoyo');
-            return (
-              destNombre !== nombre &&
-              !dest.perdidaTotal &&
-              !destEsApoyo &&
-              dest.horasTrabajadas > 0
-            );
-          });
-          if (destinatariosGlobales.length > 0) {
-            const cuotaGlobal = montoGenerado / destinatariosGlobales.length;
-            destinatariosGlobales.forEach((destNombre) => {
-              colaboradores[destNombre].bonoRedistribucion += cuotaGlobal;
+    // A) Colaboradores con Pérdida Total del 100%:
+    // Su propina confiscada día a día se redistribuye a los compañeros de la misma fecha y área según horas
+    Object.keys(colaboradores).forEach((nombre) => {
+      const c = colaboradores[nombre];
+      if (c.perdidaTotal) {
+        c.propinaBruta = 0; // Se anula la percepción neta del sancionado
+        c.detalleDias.forEach((d: any) => {
+          if (d.propina > 0) {
+            sancionesParaRedistribuir.push({
+              colaborador: c.colaborador,
+              monto: d.propina,
+              fecha: d.fecha,
+              area: c.area,
             });
           }
-        }
+        });
       }
-    }
-  });
+    });
+
+    // B) Sanciones regulares de colaboradores que NO tienen pérdida total
+    sancionesAprobadasList.forEach((s) => {
+      const c = colaboradores[s.colaborador];
+      if (!c || !c.perdidaTotal) {
+        sancionesParaRedistribuir.push(s);
+      }
+    });
+
+    const resultado = calcularRedistribucionSanciones(
+      sancionesParaRedistribuir,
+      personalPorFecha,
+      colaboradoresConPerdidaTotal
+    );
+
+    fondoSalonTotal = resultado.fondoSalonTotal;
+    fondoCocinaTotal = resultado.fondoCocinaTotal;
+
+    Object.keys(colaboradores).forEach((nombre) => {
+      const c = colaboradores[nombre];
+      const bono = resultado.bonosPorColaborador[nombre] || 0;
+      c.bonoRedistribucion = Math.round(bono * 100) / 100;
+      c.detalleBonoRedistribucion = resultado.detallesPorColaborador[nombre] || [];
+    });
+
+    fondoRedistribuirTotal = Object.values(colaboradores).reduce(
+      (acc: number, c: any) => acc + (c.bonoRedistribucion || 0),
+      0
+    );
+  }
 
   // 8. Determinar textos explicativos de bonos
   Object.keys(colaboradores).forEach((nombre) => {
     const c = colaboradores[nombre];
     const areaTexto = c.area.includes('Salón') ? 'Salón' : 'Cocina';
+    const cantBeneficios = c.detalleBonoRedistribucion?.length || 0;
 
     if (esFondoMancomunado) {
       c.bonoRedistribucion = 0;
@@ -764,15 +923,10 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
     } else if (c.perdidaTotal) {
       c.bonoRedistribucion = 0;
       c.motivoBono = c.adelantos > 0
-        ? `No aplica (Pérdida del 100% de propina por sanción. Su propina acumulada y el adelanto de S/ ${c.adelantos.toFixed(2)} fueron redistribuidos al equipo. Saldo deudor de S/ ${c.adelantos.toFixed(2)} pendiente de devolución por el trabajador al fondo).`
+        ? `No aplica (Pérdida del 100% de propina por reincidencia de sanciones. Saldo deudor de S/ ${c.adelantos.toFixed(2)} pendiente de devolución por el trabajador al fondo).`
         : 'No aplica (Pérdida del 100% de propinas por superar la frecuencia máxima de sanciones permitidas).';
-    } else if (c.area.toLowerCase().includes('apoyo')) {
-      c.bonoRedistribucion = 0;
-      c.motivoBono = 'No aplica (Personal de Apoyo).';
-    } else if (c.bonoRedistribucion > 0 && c.sanciones > 0) {
-      c.motivoBono = `Participación en la redistribución de penalizaciones de compañeros de ${areaTexto} (excluyendo su propia sanción).`;
     } else if (c.bonoRedistribucion > 0) {
-      c.motivoBono = `Bonificación equitativa del fondo de penalidades del área de ${areaTexto} por registrar cero sanciones.`;
+      c.motivoBono = `Redistribución de sanciones de ${areaTexto} en la(s) misma(s) fecha(s) laborada(s), proporcional a las horas trabajadas (${cantBeneficios} sanción${cantBeneficios > 1 ? 'es' : ''} redistribuida${cantBeneficios > 1 ? 's' : ''}).`;
     } else {
       c.motivoBono = 'Sin bonificaciones por redistribución aplicables en este ciclo.';
     }
@@ -810,6 +964,7 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
       detalleDias: c.detalleDias.sort((a: any, b: any) => (a.fecha > b.fecha ? 1 : -1)),
       detalleSanciones: c.detalleSanciones.sort((a: any, b: any) => (a.fecha > b.fecha ? 1 : -1)),
       detalleAdelantos: c.detalleAdelantos.sort((a: any, b: any) => (a.fecha > b.fecha ? 1 : -1)),
+      detalleBonoRedistribucion: c.detalleBonoRedistribucion || [],
       motivoBono: c.motivoBono || 'Sin bonificación',
       propinaBruta: Math.round(propinaBrutaReporte * 100) / 100,
       propinaBrutaOriginal: Math.round(propinaBrutaReporte * 100) / 100,
