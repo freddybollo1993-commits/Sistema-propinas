@@ -184,11 +184,15 @@ export default function HomePage() {
     }
   };
 
-  const handleResolverSolicitud = async (id: number, accion: 'Aprobado' | 'Rechazado') => {
+  const handleResolverSolicitud = async (
+    id: number,
+    accion: 'Aprobado' | 'Rechazado',
+    tipo?: string
+  ) => {
     const res = await fetch('/api/solicitudes/resolver', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, nuevaAccion: accion }),
+      body: JSON.stringify({ id, nuevaAccion: accion, tipo }),
     });
     const data = await res.json();
     if (data.success) {
@@ -264,6 +268,13 @@ export default function HomePage() {
     );
   }
 
+  // Conteo de solicitudes pendientes agrupadas por módulo para badges de acceso rápido
+  const conteosPendientes = {
+    RegistroPropinas: solicitudesPendientes.filter((s) => s.tipo === 'ANULACION_PROPINA').length,
+    Sanciones: solicitudesPendientes.filter((s) => s.tipo === 'SANCION' || s.tipo === 'RETIRO_FONDO').length,
+    Adelantos: solicitudesPendientes.filter((s) => s.tipo === 'ADELANTO').length,
+  };
+
   return (
     <div
       className={`${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${
@@ -276,7 +287,7 @@ export default function HomePage() {
         onClick={() => setMobileSidebarOpen(false)}
       ></div>
 
-      {/* Sidebar Plegable con Indicador de Restaurante */}
+      {/* Sidebar Plegable con Indicador de Restaurante y Badges de Solicitudes */}
       <Sidebar
         currentModule={currentModule}
         onSelectModule={(mod) => {
@@ -287,6 +298,7 @@ export default function HomePage() {
         onCloseMobile={() => setMobileSidebarOpen(false)}
         isOpenMobile={mobileSidebarOpen}
         activeTiendaNombre={activeTiendaNombre}
+        conteosPendientes={conteosPendientes}
       />
 
       {/* Contenedor Principal */}
@@ -309,13 +321,16 @@ export default function HomePage() {
           }}
         />
 
-        {/* Notificación de Modo Moderador */}
+        {/* Notificación Informativa de Modo Moderador */}
         {currentUser.rol === 'Moderador' && (
           <div className="px-3 pt-2 no-print">
-            <div className="alert alert-warning py-2 px-3 small border mb-0 d-flex align-items-center gap-2">
-              <i className="bi bi-info-circle-fill fs-6"></i>
+            <div
+              className="alert py-2 px-3 small border mb-0 d-flex align-items-center gap-2 rounded-3 shadow-xs"
+              style={{ background: '#f0f9ff', borderColor: '#bae6fd', color: '#0369a1' }}
+            >
+              <i className="bi bi-shield-check fs-5 text-primary"></i>
               <span>
-                <strong>Modo Moderador:</strong> Tus registros de propina, sanciones y solicitudes quedan en estado <em>Pendiente</em> hasta que un Administrador o Supervisor los apruebe.
+                <strong>Modo Moderador Activo:</strong> Tienes capacidad directa para dar de alta nuevos trabajadores, dar de baja y eliminar colaboradores sin requerir aprobación. Todo proceso que amerite aprobación (anulación de turnos, sanciones, adelantos y retiros) se canaliza automáticamente en forma de notificación hacia el Administrador o Supervisor.
               </span>
             </div>
           </div>
@@ -445,6 +460,10 @@ export default function HomePage() {
         onClose={() => setModalNotifShow(false)}
         onResolver={handleResolverSolicitud}
         onRecargar={cargarSolicitudesPendientes}
+        onUbicar={(mod) => {
+          setCurrentModule(mod as ModuleName);
+          setModalNotifShow(false);
+        }}
       />
     </div>
   );

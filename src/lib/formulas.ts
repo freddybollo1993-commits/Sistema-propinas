@@ -245,7 +245,7 @@ export async function getEstadoFondoMancomunado(filtroRango?: { inicio?: string;
 
   const rawRetiros = await prisma.retiroFondo.findMany({
     where: {
-      estado: { notIn: ['Anulado', 'anulado', 'ANULADO', 'Rechazado', 'rechazado', 'Eliminado'] },
+      estado: { notIn: ['Anulado', 'anulado', 'ANULADO', 'Rechazado', 'rechazado', 'Eliminado', 'Pendiente', 'pendiente'] },
       monto: { gt: 0 },
       ...(tiendaId ? { tiendaId } : {}),
     },
@@ -254,7 +254,7 @@ export async function getEstadoFondoMancomunado(filtroRango?: { inicio?: string;
 
   const todosRetiros = rawRetiros.filter((r) => {
     const est = (r.estado || '').trim().toLowerCase();
-    return est !== 'anulado' && est !== 'rechazado' && est !== 'eliminado';
+    return est !== 'anulado' && est !== 'rechazado' && est !== 'eliminado' && est !== 'pendiente';
   });
 
   let totalIngresosHistorico = 0;
@@ -696,13 +696,14 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
       ...(fInicio && fFin ? { fecha: { gte: fInicio, lte: fFin } } : {}),
       ...(tiendaId ? { tiendaId } : {}),
     },
-    orderBy: { fecha: 'asc' },
+    orderBy: [{ fecha: 'asc' }, { id: 'asc' }],
   });
 
   const sancionesAdelantos = rawSancionesAdelantos.filter(
     (item) => (item.estado || '').trim().toLowerCase() === 'aprobado'
   );
 
+  const bolsaTardanzaPorColaborador: Record<string, number> = {};
   const sancionesAprobadasList: SancionParaRedistribucion[] = [];
 
   sancionesAdelantos.forEach((item) => {
@@ -790,10 +791,17 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
         const reglaTard = catalogo.find((c) => c.infraccion === 'Tardanza');
         if (reglaTard && reglaTard.toleranciaActiva && !item.esEspecial) {
           const tolMin = reglaTard.toleranciaMin || 0;
-          const matchMin = (item.detalle || '').match(/Tardanza:\s*(\d+(\.\d+)?)\s*min/i);
+          const matchMin = (item.detalle || '').match(/Tardanza:\s*(\d+(\.\d+)?)\s*min/i) ||
+                           (item.detalle || '').match(/(\d+(\.\d+)?)\s*min/i);
           const minTardanza = matchMin ? parseFloat(matchMin[1]) : item.monto > 0 ? tolMin + 1 : 0;
-          if (minTardanza <= tolMin && item.monto === 0) {
+
+          bolsaTardanzaPorColaborador[nombre] = (bolsaTardanzaPorColaborador[nombre] || 0) + minTardanza;
+
+          // Si el total acumulado en el ciclo no supera la bolsa de tolerancia quincenal y no tiene monto explícito
+          if (bolsaTardanzaPorColaborador[nombre] <= tolMin && item.monto === 0) {
             cuentaParaFrecuencia = false;
+          } else {
+            cuentaParaFrecuencia = true;
           }
         }
       }
@@ -967,7 +975,7 @@ export async function getLiquidacionResumen(filtroRango?: { inicio?: string; fin
       detalleAdelantos: c.detalleAdelantos.sort((a: any, b: any) => (a.fecha > b.fecha ? 1 : -1)),
       detalleBonoRedistribucion: c.detalleBonoRedistribucion || [],
       motivoBono: c.motivoBono || 'Sin bonificación',
-      propinaBruta: Math.round(propinaBrutaReporte * 100) / 100,
+      propinaBruta: c.perdidaTotal ? 0 : Math.round(propinaBrutaReporte * 100) / 100,
       propinaBrutaOriginal: Math.round(propinaBrutaReporte * 100) / 100,
       sanciones: Math.round(c.sanciones * 100) / 100,
       adelantos: Math.round(c.adelantos * 100) / 100,

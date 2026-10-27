@@ -113,12 +113,40 @@ export async function POST(request: Request) {
     });
     const reglaTardanza = catalogo.find((c) => c.infraccion === 'Tardanza');
 
-    // Validación bolsa de tolerancia para Tardanza
+    // Obtener ciclo activo e historial previo para evaluar bolsa acumulativa de tolerancia y reincidencia
+    const ciclo = await getCicloActivo(tiendaId);
+    const historial = await prisma.sancionAdelanto.findMany({
+      where: {
+        colaborador: payload.colaborador,
+        estado: 'Aprobado',
+        tiendaId,
+        fecha: {
+          gte: ciclo.fechaInicio,
+          lte: ciclo.fechaFin,
+        },
+      },
+    });
+
+    let minutosTardanzaPrevios = 0;
+    historial
+      .filter((h) => h.concepto.includes('Tardanza'))
+      .forEach((h) => {
+        const matchMin = (h.detalle || '').match(/Tardanza:\s*(\d+(\.\d+)?)\s*min/i) ||
+                         (h.detalle || '').match(/(\d+(\.\d+)?)\s*min/i);
+        if (matchMin) minutosTardanzaPrevios += parseFloat(matchMin[1]);
+      });
+
+    // Validación bolsa acumulativa de tolerancia para Tardanza
     if (payload.infraccion === 'Tardanza' && reglaTardanza && reglaTardanza.toleranciaActiva) {
       const tiempoIng = parseFloat(payload.tiempoTardanza) || 0;
       const tolMin = reglaTardanza.toleranciaMin || 0;
-      if (tiempoIng <= tolMin) {
+      const totalAcumulado = minutosTardanzaPrevios + tiempoIng;
+      if (totalAcumulado <= tolMin) {
         monto = 0;
+        detalleCompleto += ` (Bolsa tolerancia: ${totalAcumulado}/${tolMin} min consumidos)`;
+      } else {
+        const exceso = totalAcumulado - tolMin;
+        detalleCompleto += ` (Excede tolerancia acumulada: ${totalAcumulado}/${tolMin} min consumidos [exceso: +${exceso} min])`;
       }
     }
 
@@ -168,7 +196,8 @@ export async function POST(request: Request) {
       if (payload.infraccion === 'Tardanza' && (criterio === 'TOLERANCIA' || criterio === 'TOLERANCIA_O_FRECUENCIA')) {
         const tiempoIng = parseFloat(payload.tiempoTardanza) || 0;
         const tolMin = reglaTardanza?.toleranciaMin || 0;
-        if (tiempoIng > tolMin || !reglaTardanza?.toleranciaActiva) {
+        const totalAcumulado = minutosTardanzaPrevios + tiempoIng;
+        if (totalAcumulado > tolMin || !reglaTardanza?.toleranciaActiva) {
           disparaModificador = true;
         }
       } else if (payload.infraccion === 'Break' && criterio === 'DEMORA') {
@@ -248,9 +277,8 @@ export async function POST(request: Request) {
       usuarioActual
     );
 
-    // Validación de reincidencia en el ciclo activo
-    const ciclo = await getCicloActivo(tiendaId);
-    const historial = await prisma.sancionAdelanto.findMany({
+    // Validación de reincidencia en el ciclo activo con la sanción recién creada
+    const historialActualizado = await prisma.sancionAdelanto.findMany({
       where: {
         colaborador: payload.colaborador,
         estado: 'Aprobado',
@@ -271,7 +299,7 @@ export async function POST(request: Request) {
           reglaInasistencia.frecuenciaMax !== undefined && reglaInasistencia.frecuenciaMax !== null
             ? reglaInasistencia.frecuenciaMax
             : 0;
-        const faltas = historial.filter((h) =>
+        const faltas = historialActualizado.filter((h) =>
           h.concepto.includes('Inasistencia injustificada')
         ).length;
 
@@ -297,27 +325,27 @@ export async function POST(request: Request) {
           let minutosAcumulados = 0;
           let tardanzasExcedidas = 0;
 
-          historial
+          historialActualizado
             .filter((h) => h.concepto.includes('Tardanza'))
             .forEach((h) => {
-              const matchMin = (h.detalle || '').match(/Tardanza:\s*(\d+(\.\d+)?)\s*min/i);
+              const matchMin = (h.detalle || '').match(/Tardanza:\s*(\d+(\.\d+)?)\s*min/i) ||
+                               (h.detalle || '').match(/(\d+(\.\d+)?)\s*min/i);
               const minHist = matchMin ? parseFloat(matchMin[1]) : h.monto > 0 ? tolMin + 1 : 0;
               minutosAcumulados += minHist;
               if (minutosAcumulados > tolMin) tardanzasExcedidas++;
             });
 
-          const totalAcumuladoConActual = minutosAcumulados + tiempoIngresado;
-          if (totalAcumuladoConActual <= tolMin) {
+          if (minutosAcumulados <= tolMin) {
             await logAuditoria(
               'Tardanza dentro de Tolerancia',
-              `${payload.colaborador} registró tardanza de ${tiempoIngresado} min (Bolsa tolerancia: ${totalAcumuladoConActual}/${tolMin} min consumidos). No suma a la frecuencia de pérdida del 100%.`,
+              `${payload.colaborador} registró tardanza de ${tiempoIngresado} min (Bolsa tolerancia: ${minutosAcumulados}/${tolMin} min consumidos). No suma a la frecuencia de pérdida del 100%.`,
               'Sistema'
             );
           } else {
-            if (tardanzasExcedidas >= maxPermitido) {
+            if (tardanzasExcedidas > maxPermitido) {
               await logAuditoria(
                 'Alerta Crítica: Reincidencia Sanción',
-                `${payload.colaborador} superó la frecuencia permitida de ${maxPermitido} tardanzas fuera de tolerancia (Bolsa rebasada: ${totalAcumuladoConActual}/${tolMin} min). Aplica pérdida del 100% de propinas.`,
+                `${payload.colaborador} superó la frecuencia permitida de ${maxPermitido} tardanzas fuera de tolerancia (Bolsa rebasada: ${minutosAcumulados}/${tolMin} min, ${tardanzasExcedidas} faltas acumuladas). Aplica pérdida del 100% de propinas.`,
                 'Sistema'
               );
             }
@@ -331,7 +359,7 @@ export async function POST(request: Request) {
           reglaGenerica.frecuenciaMax !== undefined && reglaGenerica.frecuenciaMax !== null
             ? reglaGenerica.frecuenciaMax
             : 0;
-        const faltas = historial.filter((h) =>
+        const faltas = historialActualizado.filter((h) =>
           h.concepto.includes(payload.infraccion)
         ).length;
 

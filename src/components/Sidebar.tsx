@@ -41,6 +41,11 @@ interface SidebarProps {
 	onCloseMobile: () => void;
 	isOpenMobile?: boolean;
 	activeTiendaNombre?: string;
+	conteosPendientes?: {
+		RegistroPropinas?: number;
+		Sanciones?: number;
+		Adelantos?: number;
+	};
 }
 
 export default function Sidebar({
@@ -50,6 +55,7 @@ export default function Sidebar({
 	onCloseMobile,
 	isOpenMobile = false,
 	activeTiendaNombre,
+	conteosPendientes,
 }: SidebarProps) {
 	const esMaster = Boolean(
 		currentUser?.esMaestro ||
@@ -121,6 +127,11 @@ export default function Sidebar({
 					label: "Registro de Propinas",
 					jpLabel: "チップ記録",
 					icon: "bi-pencil-square",
+					badge:
+						conteosPendientes?.RegistroPropinas && conteosPendientes.RegistroPropinas > 0
+							? String(conteosPendientes.RegistroPropinas)
+							: undefined,
+					badgeColor: "bg-danger",
 				},
 			],
 		},
@@ -139,12 +150,22 @@ export default function Sidebar({
 					label: "Sanciones & Faltas",
 					jpLabel: "規律・減点",
 					icon: "bi-exclamation-octagon",
+					badge:
+						conteosPendientes?.Sanciones && conteosPendientes.Sanciones > 0
+							? String(conteosPendientes.Sanciones)
+							: undefined,
+					badgeColor: "bg-warning text-dark",
 				},
 				{
 					id: "Adelantos",
 					label: "Adelantos de Propinas",
 					jpLabel: "前払い管理",
 					icon: "bi-wallet2",
+					badge:
+						conteosPendientes?.Adelantos && conteosPendientes.Adelantos > 0
+							? String(conteosPendientes.Adelantos)
+							: undefined,
+					badgeColor: "bg-info text-dark",
 				},
 				{
 					id: "FechasActivas",

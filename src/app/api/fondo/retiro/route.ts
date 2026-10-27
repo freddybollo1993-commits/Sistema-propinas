@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const rolUsuario = user?.rol || 'Moderador';
     const idUsuario = user?.id || '';
 
-    const esAutorizado =
+    const esAprobadorDirecto =
       rolUsuario === 'Administrador' ||
       rolUsuario === 'Supervisor' ||
       idUsuario === 'USR-MASTER' ||
@@ -20,16 +20,20 @@ export async function POST(request: Request) {
       usuarioActual.toLowerCase().includes('admin') ||
       usuarioActual.toLowerCase().includes('super');
 
-    if (!esAutorizado) {
+    const esModerador = rolUsuario === 'Moderador';
+
+    if (!esAprobadorDirecto && !esModerador) {
       return NextResponse.json(
         {
           success: false,
           message:
-            'Acceso denegado: Solo usuarios con rango Supervisor, Administrador o Maestro pueden registrar retiros del Fondo Mancomunado.',
+            'Acceso denegado: No cuenta con permisos para solicitar o autorizar retiros del Fondo Mancomunado.',
         },
         { status: 403 }
       );
     }
+
+    const estadoInicial = esAprobadorDirecto ? 'Aprobado' : 'Pendiente';
 
     const payload = await request.json();
     const monto = parseFloat(payload.monto);
@@ -86,21 +90,27 @@ export async function POST(request: Request) {
         justificacion,
         solicitadoPor: usuarioActual,
         rol: rolUsuario,
-        estado: 'Aprobado',
+        estado: estadoInicial,
         tiendaId,
       },
     });
 
     await logAuditoria(
-      'Retiro Fondo Mancomunado',
-      `Retiro de S/ ${monto.toFixed(2)} para '${concepto}'. Justificación: ${justificacion} por ${usuarioActual} [${rolUsuario}] en tienda ${tiendaId}`,
+      estadoInicial === 'Aprobado'
+        ? 'Retiro Fondo Mancomunado'
+        : 'Solicitud de Retiro Fondo Mancomunado',
+      `Retiro de S/ ${monto.toFixed(2)} para '${concepto}' [${estadoInicial}]. Justificación: ${justificacion} por ${usuarioActual} [${rolUsuario}] en tienda ${tiendaId}`,
       usuarioActual
     );
 
     return NextResponse.json({
       success: true,
-      message: `Retiro de S/ ${monto.toFixed(2)} para '${concepto}' registrado y descontado del Fondo Mancomunado exitosamente.`,
+      message:
+        estadoInicial === 'Aprobado'
+          ? `Retiro de S/ ${monto.toFixed(2)} para '${concepto}' registrado y descontado del Fondo Mancomunado exitosamente.`
+          : `Solicitud de retiro de S/ ${monto.toFixed(2)} enviada exitosamente. Se notificó al Administrador o Supervisor para su aprobación.`,
       id: retiro.id,
+      estado: estadoInicial,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

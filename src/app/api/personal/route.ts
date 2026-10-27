@@ -40,11 +40,12 @@ export async function POST(request: Request) {
     const esAutorizado =
       Boolean(user.esMaestro) ||
       user.rol === 'Administrador' ||
-      user.rol === 'Supervisor';
+      user.rol === 'Supervisor' ||
+      user.rol === 'Moderador';
 
     if (!esAutorizado) {
       return NextResponse.json(
-        { success: false, message: 'Acceso denegado: Se requieren permisos de Administrador o Supervisor.' },
+        { success: false, message: 'Acceso denegado: Se requieren permisos para gestionar personal.' },
         { status: 403 }
       );
     }
@@ -113,6 +114,71 @@ export async function POST(request: Request) {
         message: 'Colaborador registrado exitosamente.',
       });
     }
+  } catch (error: any) {
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { tiendaId, user } = await resolveTiendaId(request);
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'No autenticado: Inicie sesión para eliminar personal.' },
+        { status: 401 }
+      );
+    }
+
+    const esAutorizado =
+      Boolean(user.esMaestro) ||
+      user.rol === 'Administrador' ||
+      user.rol === 'Supervisor' ||
+      user.rol === 'Moderador';
+
+    if (!esAutorizado) {
+      return NextResponse.json(
+        { success: false, message: 'Acceso denegado: Se requieren permisos para eliminar personal.' },
+        { status: 403 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const idParam = searchParams.get('id');
+    const nombreParam = searchParams.get('nombre');
+
+    let colab = null;
+    if (idParam && !isNaN(parseInt(idParam, 10))) {
+      colab = await prisma.colaborador.findFirst({
+        where: { id: parseInt(idParam, 10), tiendaId },
+      });
+    } else if (nombreParam) {
+      colab = await prisma.colaborador.findFirst({
+        where: { nombre: { equals: nombreParam.trim(), mode: 'insensitive' }, tiendaId },
+      });
+    }
+
+    if (!colab) {
+      return NextResponse.json(
+        { success: false, message: 'Colaborador no encontrado en el catálogo de esta sede.' },
+        { status: 404 }
+      );
+    }
+
+    await prisma.colaborador.delete({
+      where: { id: colab.id },
+    });
+
+    await logAuditoria(
+      'Baja Definitiva de Personal',
+      `Colaborador eliminado del catálogo: ${colab.nombre} (${colab.area}) por ${user.nombre} [${user.rol}]`,
+      user.nombre
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: `Colaborador ${colab.nombre} eliminado exitosamente del catálogo.`,
+    });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }

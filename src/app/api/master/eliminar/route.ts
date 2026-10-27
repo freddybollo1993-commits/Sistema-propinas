@@ -19,10 +19,18 @@ export async function POST(request: Request) {
     const usuarioActual = user.nombre;
     const idUsuario = user.id;
     const rolUsuario = user.rol;
+
+    const { modulo, idOParam, justificacion } = await request.json();
+
+    const esAutorizadoPersonal =
+      rolUsuario === 'Moderador' &&
+      (String(modulo).toLowerCase() === 'personal');
+
     const esAutorizado =
       Boolean(user.esMaestro) ||
       rolUsuario === 'Administrador' ||
-      rolUsuario === 'Supervisor';
+      rolUsuario === 'Supervisor' ||
+      esAutorizadoPersonal;
 
     if (!esAutorizado) {
       return NextResponse.json(
@@ -34,8 +42,6 @@ export async function POST(request: Request) {
         { status: 403 }
       );
     }
-
-    const { modulo, idOParam, justificacion } = await request.json();
 
     if (!justificacion || String(justificacion).trim() === '') {
       return NextResponse.json(

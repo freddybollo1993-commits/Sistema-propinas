@@ -457,7 +457,18 @@ export default function ModLiquidacion({
                         </td>
                         <td className="font-mono">{c.diasTrabajados} d</td>
                         <td className="font-mono">{c.horasTrabajadas.toFixed(1)} hrs</td>
-                        <td className="font-mono text-slate-800 fw-semibold">S/ {c.propinaBruta.toFixed(2)}</td>
+                        <td className="font-mono text-slate-800 fw-semibold">
+                          {!esFondo && c.perdidaTotal ? (
+                            <span className="text-danger" title="Propina bruta retenida al 100% por reincidencia">
+                              <span className="text-muted text-decoration-line-through me-1 small">
+                                S/ {(c.propinaBrutaOriginal || c.propinaBruta || 0).toFixed(2)}
+                              </span>
+                              <span className="fw-bold">S/ 0.00</span>
+                            </span>
+                          ) : (
+                            `S/ ${c.propinaBruta.toFixed(2)}`
+                          )}
+                        </td>
                         <td className="font-mono text-danger">S/ {c.deducciones.toFixed(2)}</td>
                         <td>
                           {esFondo ? (

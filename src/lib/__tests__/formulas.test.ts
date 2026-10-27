@@ -160,6 +160,38 @@ describe("Motor de Cálculo de Prorrateo de Propinas (60% Salón / 40% Cocina)",
 		expect(superoLimite).toBe(true);
 	});
 
+	it("debe acumular la bolsa de tolerancia de tardanzas por quincena y aplicar pérdida del 100% al superar frecuenciaMax", () => {
+		// Simulación de regla con tolerancia de 15 min y frecuenciaMax de 1
+		const tolMin = 15;
+		const frecuenciaMax = 1;
+
+		// El colaborador llega tarde 6 veces, cada una de pocos minutos pero acumulando 38 min
+		const tardanzas = [
+			{ minutos: 2, monto: 0 },
+			{ minutos: 6, monto: 0 },
+			{ minutos: 2, monto: 0 },
+			{ minutos: 14, monto: 0 }, // acumula 24 > 15 -> falta #1
+			{ minutos: 11, monto: 0 }, // acumula 35 > 15 -> falta #2
+			{ minutos: 3, monto: 0 },  // acumula 38 > 15 -> falta #3
+		];
+
+		let bolsaAcumulada = 0;
+		let faltasComputables = 0;
+
+		tardanzas.forEach((t) => {
+			bolsaAcumulada += t.minutos;
+			if (bolsaAcumulada > tolMin || t.monto > 0) {
+				faltasComputables++;
+			}
+		});
+
+		const superoLimite = faltasComputables > frecuenciaMax;
+
+		expect(bolsaAcumulada).toBe(38);
+		expect(faltasComputables).toBe(3);
+		expect(superoLimite).toBe(true);
+	});
+
 	it("debe redistribuir la diferencia restante más el adelanto completo cuando un colaborador pierde el 100% de la propina", () => {
 		// Colaborador A gana S/ 300 de propina y solicitó un adelanto de S/ 100
 		const propinaBruta = 300;

@@ -3,6 +3,9 @@ import { GET as getV1, OPTIONS as optionsV1 } from '../../app/api/v1/central-neu
 import { GET as getLegacy } from '../../app/api/central-dashboard/route';
 import { GET as getUsuarios } from '../../app/api/usuarios/route';
 import { GET as getApiKeyInfo } from '../../app/api/central-dashboard/api-key/route';
+import { GET as getSolicitudes } from '../../app/api/solicitudes/route';
+import { POST as postResolverSolicitud } from '../../app/api/solicitudes/resolver/route';
+import { POST as postPersonal, DELETE as deletePersonal } from '../../app/api/personal/route';
 
 describe('Endpoint /api/v1/central-neuralgica', () => {
   it('debe responder a OPTIONS con 204 y encabezados CORS', async () => {
@@ -114,5 +117,49 @@ describe('Endpoint /api/v1/central-neuralgica', () => {
     expect(body.endpoints.v1).toContain('/api/v1/central-neuralgica');
     expect(body.ejemplosIntegracion.curl).toBeDefined();
     expect(body.ejemplosIntegracion.javascript).toBeDefined();
+  });
+});
+
+describe('Módulo de Notificaciones y Solicitudes Pendientes', () => {
+  it('GET /api/solicitudes debe denegar acceso sin sesión de Administrador/Supervisor con 403', async () => {
+    const req = new Request('https://propinas-one.vercel.app/api/solicitudes');
+    const res = await getSolicitudes(req);
+    expect(res.status).toBe(403);
+
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.message).toContain('Permisos insuficientes');
+  });
+
+  it('POST /api/solicitudes/resolver debe rechazar llamadas sin permisos de Administrador/Supervisor con 403', async () => {
+    const req = new Request('https://propinas-one.vercel.app/api/solicitudes/resolver', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: 1, nuevaAccion: 'Aprobado' }),
+    });
+    const res = await postResolverSolicitud(req);
+    expect(res.status).toBe(403);
+
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.message).toContain('Permisos insuficientes');
+  });
+
+  it('POST /api/personal debe rechazar llamadas sin autenticación con 401', async () => {
+    const req = new Request('https://propinas-one.vercel.app/api/personal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre: 'Trabajador Test', area: 'Salón', estado: 'Activo' }),
+    });
+    const res = await postPersonal(req);
+    expect(res.status).toBe(401);
+  });
+
+  it('DELETE /api/personal debe rechazar llamadas sin autenticación con 401', async () => {
+    const req = new Request('https://propinas-one.vercel.app/api/personal?nombre=Test', {
+      method: 'DELETE',
+    });
+    const res = await deletePersonal(req);
+    expect(res.status).toBe(401);
   });
 });

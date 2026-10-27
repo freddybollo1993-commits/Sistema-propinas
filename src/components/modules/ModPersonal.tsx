@@ -31,7 +31,8 @@ export default function ModPersonal({
     currentUser?.esMaestro ||
     currentUser?.id === 'USR-MASTER' ||
     currentUser?.rol === 'Administrador' ||
-    currentUser?.rol === 'Supervisor';
+    currentUser?.rol === 'Supervisor' ||
+    currentUser?.rol === 'Moderador';
 
   useEffect(() => {
     cargarPersonal();
