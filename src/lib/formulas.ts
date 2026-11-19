@@ -435,6 +435,9 @@ export function calcularRedistribucionSanciones(
       const t = trabajadoresDia[nom];
       if (!t || Number(t.horas) <= 0) return false;
 
+      // El personal de Apoyo (de otras tiendas) no recibe bonos de redistribución
+      if ((t.area || '').toLowerCase().includes('apoyo')) return false;
+
       const esSalonTrabajador = t.area.includes('Salón') || t.area.includes('Salon');
       return esSalonTrabajador === esSalonSancionado;
     });

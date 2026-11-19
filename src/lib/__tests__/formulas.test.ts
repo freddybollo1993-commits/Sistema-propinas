@@ -353,6 +353,22 @@ describe("Redistribución Quirúrgica de Sanciones (Misma Fecha, Carga Horaria y
 		expect(resultado.fondoRedistribuirTotal).toBe(50);
 	});
 
+	it("REGLA APOYOS: El personal de Apoyo no recibe redistribución", () => {
+		const sanciones: SancionParaRedistribucion[] = [
+			{ colaborador: "Mesero Infractor", monto: 60, fecha: "2026-10-12", area: "Salón" },
+		];
+		const personalPorFecha: Record<string, Record<string, TrabajadorJornadaFecha>> = {
+			"2026-10-12": {
+				"Mesero Infractor": { colaborador: "Mesero Infractor", horas: 6, area: "Salón" },
+				"Mesero Titular": { colaborador: "Mesero Titular", horas: 8, area: "Salón" },
+				"Apoyo Salon": { colaborador: "Apoyo Salon", horas: 8, area: "Apoyo Salón" },
+			},
+		};
+		const resultado = calcularRedistribucionSanciones(sanciones, personalPorFecha);
+		expect(resultado.bonosPorColaborador["Mesero Titular"]).toBe(60);
+		expect(resultado.bonosPorColaborador["Apoyo Salon"]).toBeUndefined();
+	});
+
 	it("REGLA 2: Debe prorratear los fondos proporcionalmente a las horas registradas (carga de trabajo)", () => {
 		const sanciones: SancionParaRedistribucion[] = [
 			{ colaborador: "Mesero Infractor", monto: 60, fecha: "2026-10-12", area: "Salón" },
