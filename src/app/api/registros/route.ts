@@ -84,6 +84,8 @@ export async function GET(request: Request) {
         estado: r.estado,
         justificacion: r.justificacion || '',
         validador: r.validador || '',
+        turnoId: r.turnoId,
+        turnoNombre: r.turnoNombre || null,
         detalles: r.detalles,
       };
     });
@@ -151,6 +153,26 @@ export async function POST(request: Request) {
       ? `[Modo Especial Equitativo]: ${justificacionIngresada}`
       : null;
 
+    // Turno personalizado (opcional): si no se envía, el registro es clásico
+    let turnoId: number | null = null;
+    let turnoNombre: string | null = null;
+    if (payload.turnoId !== undefined && payload.turnoId !== null && payload.turnoId !== '') {
+      const tid = parseInt(payload.turnoId, 10);
+      const turno = isNaN(tid)
+        ? null
+        : await prisma.turnoPersonalizado.findFirst({
+            where: { id: tid, tiendaId, estado: 'Activo' },
+          });
+      if (!turno) {
+        return NextResponse.json(
+          { success: false, message: 'El turno seleccionado no existe o fue eliminado.' },
+          { status: 400 }
+        );
+      }
+      turnoId = turno.id;
+      turnoNombre = turno.nombre;
+    }
+
     // Guardar atómicamente el registro y sus detalles en base de datos
     const nuevoRegistro = await prisma.$transaction(async (tx) => {
       const reg = await tx.registroPropina.create({
@@ -162,6 +184,8 @@ export async function POST(request: Request) {
           estado: 'Activo',
           justificacion: justificacionGuardar,
           tiendaId,
+          turnoId,
+          turnoNombre,
         },
       });
 
@@ -179,9 +203,10 @@ export async function POST(request: Request) {
       return reg;
     });
 
+    const sufijoTurno = turnoNombre ? ` [Turno personalizado: ${turnoNombre}]` : '';
     const descAuditoria = esModoEspecial
-      ? `Nuevo turno registrado en Modo Especial Reparto Equitativo: S/ ${montoTotal.toFixed(2)} (${calculo.detalles.length} colaboradores) el ${fecha}. Justificación: ${justificacionIngresada}`
-      : `Nuevo turno registrado en Modo Regular 60/40: S/ ${montoTotal.toFixed(2)} (${calculo.detalles.length} colaboradores) el ${fecha}`;
+      ? `Nuevo turno registrado en Modo Especial Reparto Equitativo: S/ ${montoTotal.toFixed(2)} (${calculo.detalles.length} colaboradores) el ${fecha}${sufijoTurno}. Justificación: ${justificacionIngresada}`
+      : `Nuevo turno registrado en Modo Regular 60/40: S/ ${montoTotal.toFixed(2)} (${calculo.detalles.length} colaboradores) el ${fecha}${sufijoTurno}`;
 
     await logAuditoria(
       'Registro de Propinas',

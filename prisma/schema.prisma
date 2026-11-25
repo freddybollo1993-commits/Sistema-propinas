@@ -31,6 +31,7 @@ model Tienda {
   retirosFondo        RetiroFondo[]
   configuraciones     ConfiguracionSistema[]
   auditorias          Auditoria[]
+  turnosPersonalizados TurnoPersonalizado[]
 
   @@map("tiendas")
 }
@@ -101,10 +102,41 @@ model RegistroPropina {
   validador     String?
   tiendaId      String?
   tienda        Tienda?                @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  // Turno personalizado opcional (null = registro clásico sin turno programado)
+  turnoId       Int?
+  turnoNombre   String?
+  turno         TurnoPersonalizado?    @relation(fields: [turnoId], references: [id], onDelete: SetNull)
   createdAt     DateTime               @default(now())
   detalles      DetalleParticipacion[]
 
   @@map("registro_propinas")
+}
+
+// Turnos personalizados (opcionales): plantilla de quiénes y cuántas horas
+model TurnoPersonalizado {
+  id        Int               @id @default(autoincrement())
+  nombre    String
+  estado    String            @default("Activo") // Activo, Inactivo
+  tiendaId  String?
+  tienda    Tienda?           @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  creadoPor String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  miembros  TurnoMiembro[]
+  registros RegistroPropina[]
+
+  @@map("turnos_personalizados")
+}
+
+model TurnoMiembro {
+  id          Int                @id @default(autoincrement())
+  turnoId     Int
+  colaborador String
+  horas       Float
+  turno       TurnoPersonalizado @relation(fields: [turnoId], references: [id], onDelete: Cascade)
+
+  @@unique([turnoId, colaborador])
+  @@map("turno_miembros")
 }
 
 model DetalleParticipacion {

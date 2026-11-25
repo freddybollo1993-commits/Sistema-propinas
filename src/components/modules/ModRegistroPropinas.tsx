@@ -34,6 +34,27 @@ export default function ModRegistroPropinas({
   const [modoDistribucion, setModoDistribucion] = useState<'60_40' | 'equitativo'>('60_40');
   const [justificacionModo, setJustificacionModo] = useState('');
 
+  // Turnos personalizados (opcionales)
+  interface TurnoMiembroUI {
+    colaborador: string;
+    horas: number;
+    area: string | null;
+    disponible: boolean;
+  }
+  interface TurnoUI {
+    id: number;
+    nombre: string;
+    miembros: TurnoMiembroUI[];
+  }
+  const [turnos, setTurnos] = useState<TurnoUI[]>([]);
+  const [turnoSel, setTurnoSel] = useState<string>(''); // '' = sin turno (registro clásico)
+  const [modalTurnos, setModalTurnos] = useState<{
+    show: boolean;
+    editId: number | null; // null = lista; 0 = nuevo; >0 = editando
+    nombre: string;
+    filas: { nombre: string; area: string; incluido: boolean; horas: number }[];
+  }>({ show: false, editId: null, nombre: '', filas: [] });
+
   // Historial
   const [historial, setHistorial] = useState<any[]>([]);
   const [pendientesCount, setPendientesCount] = useState(0);
@@ -120,7 +141,148 @@ export default function ModRegistroPropinas({
     setFecha(new Date().toISOString().split('T')[0]);
     cargarPlantillaPersonal();
     cargarHistorial();
+    cargarTurnos();
   }, []);
+
+  const cargarTurnos = async () => {
+    try {
+      const res = await fetch('/api/turnos');
+      const data = await res.json();
+      if (Array.isArray(data)) setTurnos(data);
+    } catch (e) {
+      console.error('Error al cargar turnos personalizados:', e);
+    }
+  };
+
+  // Elegir un turno personalizado: marca solo a sus miembros con sus horas.
+  // Sin turno ('') vuelve al comportamiento clásico (toda la plantilla).
+  const handleSeleccionarTurno = (valor: string) => {
+    setTurnoSel(valor);
+    if (!valor) {
+      cargarPlantillaPersonal();
+      return;
+    }
+    const turno = turnos.find((t) => String(t.id) === valor);
+    if (!turno) return;
+    const horasPorNombre = new Map(
+      turno.miembros
+        .filter((m) => m.disponible)
+        .map((m) => [m.colaborador.trim().toLowerCase(), m.horas])
+    );
+    setColaboradores((prev) =>
+      prev.map((c) => {
+        const h = horasPorNombre.get(c.nombre.trim().toLowerCase());
+        return h !== undefined
+          ? { ...c, activo: true, horas: h, prevHoras: h }
+          : { ...c, activo: false, horas: 0 };
+      })
+    );
+    const noDisponibles = turno.miembros.filter((m) => !m.disponible);
+    if (noDisponibles.length > 0) {
+      alert(
+        `Aviso: estos colaboradores del turno ya no están activos en la sede y se omitieron: ${noDisponibles
+          .map((m) => m.colaborador)
+          .join(', ')}.`
+      );
+    }
+  };
+
+  const abrirGestionTurnos = async () => {
+    try {
+      const res = await fetch('/api/personal');
+      const data = await res.json();
+      if (!Array.isArray(data)) return;
+      const activos = data.filter((p: any) => (p.estado || '').toLowerCase() !== 'inactivo');
+      setModalTurnos({
+        show: true,
+        editId: null,
+        nombre: '',
+        filas: activos.map((p: any) => ({
+          nombre: p.nombre,
+          area: p.area,
+          incluido: false,
+          horas: 8,
+        })),
+      });
+    } catch (e: any) {
+      alert('Error al cargar el personal: ' + e.message);
+    }
+  };
+
+  const editarTurno = (t: TurnoUI | null) => {
+    setModalTurnos((prev) => {
+      const mapa = new Map(
+        (t?.miembros || []).map((m) => [m.colaborador.trim().toLowerCase(), m.horas])
+      );
+      return {
+        ...prev,
+        editId: t ? t.id : 0,
+        nombre: t ? t.nombre : '',
+        filas: prev.filas.map((f) => {
+          const h = mapa.get(f.nombre.trim().toLowerCase());
+          return { ...f, incluido: h !== undefined, horas: h !== undefined ? h : 8 };
+        }),
+      };
+    });
+  };
+
+  const guardarTurno = async () => {
+    const miembros = modalTurnos.filas
+      .filter((f) => f.incluido && f.horas > 0)
+      .map((f) => ({ colaborador: f.nombre, horas: f.horas }));
+    if (!modalTurnos.nombre.trim()) {
+      alert('Ingresa un nombre para el turno.');
+      return;
+    }
+    if (miembros.length === 0) {
+      alert('Selecciona al menos un colaborador con horas mayores a 0.');
+      return;
+    }
+    try {
+      setCargando(true);
+      const res = await fetch('/api/turnos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: modalTurnos.editId && modalTurnos.editId > 0 ? modalTurnos.editId : undefined,
+          nombre: modalTurnos.nombre.trim(),
+          miembros,
+        }),
+      });
+      const data = await res.json();
+      setCargando(false);
+      alert(data.message);
+      if (data.success) {
+        await cargarTurnos();
+        setModalTurnos((prev) => ({ ...prev, editId: null }));
+      }
+    } catch (e: any) {
+      setCargando(false);
+      alert('Error al guardar el turno: ' + e.message);
+    }
+  };
+
+  const eliminarTurno = async (t: TurnoUI) => {
+    if (!confirm(`¿Eliminar el turno "${t.nombre}"? Los registros ya hechos con este turno no se modifican.`))
+      return;
+    try {
+      setCargando(true);
+      const res = await fetch(`/api/turnos?id=${t.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      setCargando(false);
+      alert(data.message);
+      if (data.success) {
+        if (turnoSel === String(t.id)) {
+          setTurnoSel('');
+          cargarPlantillaPersonal();
+        }
+        cargarTurnos();
+      }
+    } catch (e: any) {
+      setCargando(false);
+      alert('Error al eliminar el turno: ' + e.message);
+    }
+  };
 
   const cargarPlantillaPersonal = async () => {
     try {
@@ -291,6 +453,7 @@ export default function ModRegistroPropinas({
           participantes,
           modoDistribucion,
           justificacion: modoDistribucion === 'equitativo' ? justificacionModo.trim() : '',
+          turnoId: turnoSel ? parseInt(turnoSel, 10) : undefined,
         }),
       });
       const data = await res.json();
@@ -298,6 +461,7 @@ export default function ModRegistroPropinas({
 
       alert(data.message);
       if (data.success) {
+        setTurnoSel('');
         setMontoTotal('');
         setModoDistribucion('60_40');
         setJustificacionModo('');
@@ -720,6 +884,47 @@ export default function ModRegistroPropinas({
                 </div>
               );
             })()}
+          </div>
+
+          {/* Turno personalizado (opcional) */}
+          <div className="card border-0 shadow-xs mb-4 p-3 bg-light rounded-3">
+            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <div>
+                <label className="form-label small fw-bold text-slate-800 mb-0 d-flex align-items-center gap-2">
+                  <i className="bi bi-diagram-3 text-primary"></i>
+                  <span>Turno personalizado</span>
+                  <span className="badge bg-secondary-subtle text-secondary border fw-normal">Opcional</span>
+                </label>
+                <span className="text-secondary small d-block" style={{ fontSize: '0.8rem' }}>
+                  Elige un turno para cargar sus colaboradores y horas, o déjalo en &quot;Sin turno&quot; para registrar como siempre.
+                </span>
+              </div>
+              <button
+                type="button"
+                className="btn btn-outline-primary btn-sm shadow-xs"
+                onClick={abrirGestionTurnos}
+              >
+                <i className="bi bi-gear me-1"></i> Gestionar turnos
+              </button>
+            </div>
+            <select
+              className="form-select form-select-sm mt-2"
+              value={turnoSel}
+              onChange={(e) => handleSeleccionarTurno(e.target.value)}
+            >
+              <option value="">Sin turno (registro normal: toda la plantilla)</option>
+              {turnos.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nombre} ({t.miembros.length} colab.)
+                </option>
+              ))}
+            </select>
+            {turnoSel && (
+              <div className="text-secondary small mt-2">
+                <i className="bi bi-info-circle text-primary me-1"></i>
+                Puedes ajustar las horas o los presentes antes de registrar; el turno guardado no cambia.
+              </div>
+            )}
           </div>
 
           {/* Selector de Modalidad de Distribución de Fondos */}
@@ -1173,6 +1378,15 @@ export default function ModRegistroPropinas({
                             {r.createdAt && (
                               <span className="badge bg-light text-secondary border font-mono" style={{ fontSize: '0.72rem' }}>
                                 <i className="bi bi-clock me-1"></i>{formatHoraRegistro(r.createdAt)}
+                              </span>
+                            )}
+                            {r.turnoNombre && (
+                              <span
+                                className="badge bg-info-subtle text-info-emphasis border border-info-subtle"
+                                style={{ fontSize: '0.72rem' }}
+                                title="Turno personalizado"
+                              >
+                                <i className="bi bi-diagram-3 me-1"></i>{r.turnoNombre}
                               </span>
                             )}
                             {r.turnosEnFecha > 1 ? (
@@ -2056,6 +2270,175 @@ export default function ModRegistroPropinas({
                       </>
                     )}
                   </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Modal Gestionar Turnos Personalizados */}
+      {modalTurnos.show && (
+        <>
+          <div className="modal-backdrop fade show" style={{ zIndex: 100010 }}></div>
+          <div className="modal fade show d-block" tabIndex={-1} style={{ zIndex: 100015 }}>
+            <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+              <div className="modal-content border-0 shadow">
+                <div className="modal-header bg-primary text-white">
+                  <h6 className="modal-title fw-bold">
+                    <i className="bi bi-diagram-3 me-2"></i>Turnos personalizados
+                  </h6>
+                  <button
+                    type="button"
+                    className="btn-close btn-close-white"
+                    onClick={() => setModalTurnos((p) => ({ ...p, show: false, editId: null }))}
+                  ></button>
+                </div>
+                <div className="modal-body">
+                  {modalTurnos.editId === null ? (
+                    <>
+                      <div className="d-flex justify-content-between align-items-center mb-3">
+                        <span className="text-secondary small">
+                          Los turnos son opcionales: si no usas ninguno, el registro funciona igual que siempre.
+                        </span>
+                        <button type="button" className="btn btn-primary btn-sm" onClick={() => editarTurno(null)}>
+                          <i className="bi bi-plus-lg me-1"></i>Nuevo turno
+                        </button>
+                      </div>
+                      {turnos.length === 0 ? (
+                        <div className="text-center text-muted py-4">Aún no hay turnos personalizados.</div>
+                      ) : (
+                        <ul className="list-group">
+                          {turnos.map((t) => (
+                            <li
+                              key={t.id}
+                              className="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2"
+                            >
+                              <div>
+                                <strong>{t.nombre}</strong>
+                                <div className="text-secondary small">
+                                  {t.miembros.map((m) => `${m.colaborador} (${m.horas} h)`).join(', ')}
+                                </div>
+                              </div>
+                              <div className="d-flex gap-1">
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-primary btn-sm py-0"
+                                  onClick={() => editarTurno(t)}
+                                >
+                                  <i className="bi bi-pencil-square me-1"></i>Editar
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-danger btn-sm py-0"
+                                  onClick={() => eliminarTurno(t)}
+                                >
+                                  <i className="bi bi-trash3 me-1"></i>Eliminar
+                                </button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="mb-3">
+                        <label className="form-label small fw-bold">Nombre del turno</label>
+                        <input
+                          type="text"
+                          className="form-control form-control-sm"
+                          placeholder="Ej. Almuerzo, Cena, Fin de semana"
+                          value={modalTurnos.nombre}
+                          onChange={(e) => setModalTurnos((p) => ({ ...p, nombre: e.target.value }))}
+                        />
+                      </div>
+                      <div className="table-responsive">
+                        <table className="table table-sm align-middle small mb-0">
+                          <thead>
+                            <tr>
+                              <th style={{ width: '12%' }}>Incluir</th>
+                              <th>Colaborador</th>
+                              <th style={{ width: '22%' }}>Área</th>
+                              <th style={{ width: '22%' }}>Horas</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {modalTurnos.filas.map((f, i) => (
+                              <tr key={f.nombre} className={f.incluido ? '' : 'text-muted'}>
+                                <td>
+                                  <input
+                                    type="checkbox"
+                                    className="form-check-input"
+                                    checked={f.incluido}
+                                    onChange={(e) =>
+                                      setModalTurnos((p) => ({
+                                        ...p,
+                                        filas: p.filas.map((x, j) =>
+                                          j === i ? { ...x, incluido: e.target.checked } : x
+                                        ),
+                                      }))
+                                    }
+                                  />
+                                </td>
+                                <td>{f.nombre}</td>
+                                <td>{f.area}</td>
+                                <td>
+                                  <input
+                                    type="number"
+                                    step="0.5"
+                                    min="0.5"
+                                    max="24"
+                                    className="form-control form-control-sm font-mono"
+                                    style={{ maxWidth: '100px' }}
+                                    value={f.horas}
+                                    disabled={!f.incluido}
+                                    onChange={(e) =>
+                                      setModalTurnos((p) => ({
+                                        ...p,
+                                        filas: p.filas.map((x, j) =>
+                                          j === i ? { ...x, horas: parseFloat(e.target.value) || 0 } : x
+                                        ),
+                                      }))
+                                    }
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="modal-footer bg-light">
+                  {modalTurnos.editId === null ? (
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary btn-sm"
+                      onClick={() => setModalTurnos((p) => ({ ...p, show: false }))}
+                    >
+                      Cerrar
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm"
+                        onClick={() => setModalTurnos((p) => ({ ...p, editId: null }))}
+                      >
+                        Volver
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm px-3 fw-bold"
+                        disabled={cargando}
+                        onClick={guardarTurno}
+                      >
+                        <i className="bi bi-check2-circle me-1"></i>Guardar turno
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
